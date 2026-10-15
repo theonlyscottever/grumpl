@@ -1,0 +1,73 @@
+@mixin bp($point) {
+	$bp-embryo: "(max-width: 520px)";
+	$bp-baby: "(max-width: 720px)";
+	$bp-medium: "(max-width: 1120px)";
+	$bp-concert: "(max-width: 1440px)";
+	@if $point == embryo {
+		@media #{$bp-embryo} {
+			@content;
+		}
+	}
+	@if $point == baby {
+		@media #{$bp-baby} {
+			@content;
+		}
+	}
+	@if $point == medium {
+		@media #{$bp-medium} {
+			@content;
+		}
+	}
+	@if $point == concert {
+		@media #{$bp-concert} {
+			@content;
+		}
+	}
+}
+@mixin img-fit {
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+}
+@mixin flex($direction: row, $align: center, $justify: center) {
+	display: flex;
+	flex-direction: $direction;
+	align-items: $align;
+	justify-content: $justify;
+}
+@mixin square($size, $radius: 0) {
+	width: $size;
+	aspect-ratio: 1;
+
+	@if $radius !=0 {
+		border-radius: $radius;
+		overflow: hidden;
+	}
+}
+@mixin circle($size) {
+	width: $size;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	overflow: hidden;
+}
+@mixin hover {
+	cursor: pointer;
+	&:not([disabled]):hover {
+		@content;
+	}
+}
+@mixin push {
+	margin-inline: auto;
+}
+@mixin font($family: var(--t-primary), $weight: 400, $size: 16px, $height: 1.6, $spacing: -0.01em) {
+	font: normal $weight $size $family;
+	letter-spacing: $spacing;
+	line-height: $height;
+}
+
+@mixin contain($size: 1080px) {
+	width: min($size, 100%);
+	margin-inline: auto;
+}
