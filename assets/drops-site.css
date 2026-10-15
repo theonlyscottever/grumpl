@@ -199,6 +199,7 @@ body.ds-no-scroll { overflow: hidden; }
 :is(#Drops, #DropOverlays) .car-nav .pips button { width: 9px; height: 9px; border-radius: 2px 3px 2px 3px; background: color-mix(in oklab, var(--light) 45%, transparent); transition: width 0.45s var(--ease), background-color 0.3s; }
 :is(#Drops, #DropOverlays) .car-nav .pips button.on { width: 22px; background: var(--lemon); }
 :is(#Drops, #DropOverlays) .car-nav .pips button.is3d { border-radius: 50%; }
+:is(#Drops, #DropOverlays) .car-nav .pips button.is3d.on { border-radius: 2px 3px 2px 3px; } /* stretched, the circle went oval; on, it matches the other pips */
 :is(#Drops, #DropOverlays) .tilt { position: absolute; z-index: 3; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px 8px 9px;
 	background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18);
 	font: 400 18px/1 var(--font-cute); transform: rotate(1.5deg); animation: ds-nudge 2.6s var(--ease) infinite; }
