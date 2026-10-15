@@ -1,0 +1,150 @@
+/* "Request a color" section. Everything is scoped under #Colors. Uses the page tokens from index.html:
+   --ink --paper --lemon --wash --font-cute --font-solid --ease --tag-radius --gut */
+#Colors {
+	--cl-c: #56c2dc; --cl-edge: #6d72ff; --cl-belly: #9fe0ea; --cl-c-ink: var(--ink); --cl-hue: hsl(200 100% 50%); --cl-wash: #e6f5f9;
+	--cl-r: 12px 9px 7px 15px;
+	--cl-shadow: 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / .12);
+	position: relative; padding: 56px var(--gut, 16px) 72px; color: var(--ink); background: var(--paper); overflow-x: clip;
+}
+#Colors [hidden] { display: none !important; }
+#Colors *, #Colors *::before, #Colors *::after { box-sizing: border-box; }
+#Colors button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#Colors :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+#Colors .cl-wrap { max-width: 1080px; margin: 0 auto; }
+#Colors .cl-head { margin: 0 0 22px; }
+#Colors .cl-head h2 { margin: 0 0 6px; font: 400 clamp(40px, 9vw, 64px)/.92 var(--font-cute); letter-spacing: .01em; }
+#Colors .cl-head p { margin: 0; font: 500 17px/1.4 var(--font-solid); color: color-mix(in oklab, var(--ink) 70%, var(--paper)); max-width: 34em; }
+
+/* ---------- layout: preview, picker, name (mobile), two columns on desktop ---------- */
+#Colors .cl-grid { display: grid; gap: 20px; grid-template-areas: "preview" "picker" "name"; min-width: 0; }
+#Colors .cl-preview { grid-area: preview; }
+#Colors .cl-picker { grid-area: picker; }
+#Colors .cl-namecard { grid-area: name; }
+@media (min-width: 860px) {
+	#Colors { padding-top: 88px; padding-bottom: 96px; }
+	#Colors .cl-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "preview picker" "preview name"; gap: 26px 34px; align-items: start; }
+	#Colors .cl-preview { position: sticky; top: 24px; }
+}
+
+#Colors .cl-card { min-width: 0; margin: 0; padding: 16px; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--cl-r);
+	box-shadow: var(--cl-shadow); transform: rotate(var(--tilt, 0deg)); transition: transform .5s var(--ease); }
+
+/* ---------- preview ---------- */
+#Colors .cl-preview { padding: 0; overflow: hidden; border-width: 4px;
+	background: radial-gradient(110% 80% at 50% 38%, var(--cl-wash) 0%, color-mix(in oklab, var(--cl-wash) 45%, #fff) 55%, #fff 90%); transition: transform .5s var(--ease), background-color .4s; }
+#Colors .cl-stage { position: relative; height: clamp(250px, 68vw, 300px); }
+@media (min-width: 860px) { #Colors .cl-stage { height: 540px; } }
+#Colors .cl-guy { position: absolute; left: 12px; right: 12px; top: 54px; bottom: 14px; width: calc(100% - 24px); height: calc(100% - 68px); overflow: visible; }
+@media (min-width: 860px) { #Colors .cl-guy { top: 90px; bottom: 40px; height: calc(100% - 130px); } }
+#Colors .cl-floor { fill: rgba(27 22 32 / .12); }
+#Colors .cl-eyes { fill: #0b0a0d; }
+#Colors .cl-tag { position: absolute; left: 12px; top: 12px; max-width: calc(100% - 24px); padding: 7px 11px 6px; border-radius: var(--tag-radius); background: var(--ink); color: var(--paper);
+	font: 400 21px/1.05 var(--font-cute); letter-spacing: .01em; transform: rotate(-3deg); transform-origin: 0 50%; overflow-wrap: anywhere; }
+#Colors .cl-tag.empty { color: color-mix(in oklab, var(--paper) 60%, var(--ink)); }
+#Colors .cl-hexsticker { position: absolute; right: 12px; bottom: 12px; padding: 5px 9px 4px; background: var(--lemon); border: 3px solid var(--ink); border-radius: 6px 4px 7px 5px;
+	box-shadow: 2px 3px 0 var(--ink); font: 600 13px/1 var(--font-solid); letter-spacing: .06em; text-transform: uppercase; transform: rotate(4deg); }
+@media (min-width: 860px) { #Colors .cl-tag { left: 20px; top: 20px; font-size: 28px; padding: 9px 14px 8px; } #Colors .cl-hexsticker { right: 20px; bottom: 20px; font-size: 14px; } }
+
+/* ---------- picker ---------- */
+#Colors .cl-picker { display: grid; gap: 14px; }
+#Colors .cl-sv { position: relative; height: clamp(170px, 46vw, 260px); border: 3px solid var(--ink); border-radius: 9px 7px 10px 8px; touch-action: none; cursor: crosshair;
+	background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, var(--cl-hue)); }
+#Colors .cl-sv-thumb { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: var(--cl-c);
+	border: 4px solid #fff; box-shadow: 0 0 0 3px var(--ink), 2px 3px 0 3px rgba(0 0 0 / .25); pointer-events: none; transition: transform .35s var(--ease); }
+#Colors .cl-hue { position: relative; height: 40px; border: 3px solid var(--ink); border-radius: 8px 6px 9px 7px; touch-action: none; cursor: ew-resize;
+	background: linear-gradient(to right, #f00 0%, #ff0 16.66%, #0f0 33.33%, #0ff 50%, #00f 66.66%, #f0f 83.33%, #f00 100%); }
+#Colors .cl-hue-thumb { position: absolute; top: -9px; bottom: -9px; width: 18px; margin-left: -9px; border-radius: 7px; background: var(--cl-hue);
+	border: 4px solid #fff; box-shadow: 0 0 0 3px var(--ink), 2px 3px 0 3px rgba(0 0 0 / .2); pointer-events: none; transition: transform .35s var(--ease); }
+#Colors .grab .cl-sv-thumb, #Colors .grab .cl-hue-thumb { transform: scale(1.25); }
+#Colors .cl-sv:focus-visible, #Colors .cl-hue:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+
+#Colors .cl-hexrow { display: flex; gap: 10px; align-items: stretch; min-width: 0; }
+#Colors .cl-chip { flex: none; width: 48px; border: 3px solid var(--ink); border-radius: 50% 46% 50% 44%; background: var(--cl-c); transform: rotate(-6deg); }
+#Colors .cl-hexfield { flex: 1; min-width: 0; display: flex; align-items: center; height: 48px; padding: 0 0 0 12px; border: 3px solid var(--ink); border-radius: var(--tag-radius); background: #fff;
+	font: 600 19px/1 var(--font-solid); letter-spacing: .05em; }
+#Colors .cl-hexfield span { color: var(--muted, #8d8494); }
+#Colors .cl-hexfield input { flex: 1; min-width: 0; width: 100%; height: 100%; padding: 0 8px 0 2px; border: 0; background: none; font: inherit; text-transform: lowercase; color: var(--ink); outline: 0; }
+#Colors .cl-hexfield:focus-within { box-shadow: 0 0 0 3px var(--cl-c); }
+#Colors .cl-hexfield:has(input[aria-invalid]) { background: #ffe9e4; }
+
+#Colors .cl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px; padding: 8px 14px 7px; border: 3px solid var(--ink); border-radius: var(--tag-radius);
+	background: var(--paper); color: var(--ink); font: 400 19px/1 var(--font-cute); text-decoration: none; white-space: nowrap; transition: transform .45s var(--ease), background-color .2s; }
+#Colors .cl-btn svg { width: 19px; height: 19px; flex: none; }
+#Colors .cl-btn:hover { transform: rotate(-3deg) scale(1.05); background: var(--lemon); }
+#Colors .cl-btn:active { transform: scale(.96); }
+#Colors .cl-eye span { display: none; }
+#Colors .cl-eye { width: 48px; padding: 0; }
+@media (min-width: 420px) { #Colors .cl-eye { width: auto; padding: 8px 14px 7px; } #Colors .cl-eye span { display: inline; } }
+
+#Colors .cl-starters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+#Colors .cl-starters button { aspect-ratio: 1; min-height: 40px; padding: 0; border: 3px solid var(--ink); border-radius: 50% 44% 50% 46%;
+	background: radial-gradient(circle at 40% 36%, color-mix(in oklab, var(--sw) 55%, #fff) 0 14%, var(--sw) 52%, color-mix(in oklab, var(--sw) 75%, #000) 120%);
+	transition: transform .45s var(--ease); }
+#Colors .cl-starters button:nth-child(odd) { transform: rotate(-8deg); }
+#Colors .cl-starters button:hover { transform: translateY(-4px) scale(1.08) rotate(4deg); }
+#Colors .cl-starters button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ink); transform: scale(1.06); }
+@media (min-width: 860px) { #Colors .cl-starters { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 9px; padding: 0 2px; }
+	#Colors .cl-starters button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4.5px var(--ink); } }
+
+/* ---------- name + actions ---------- */
+#Colors .cl-namecard { display: grid; gap: 12px; }
+#Colors .cl-lbl { font: 600 12px/1 var(--font-solid); letter-spacing: .12em; text-transform: uppercase; color: var(--muted, #8d8494); }
+#Colors .cl-namerow { display: grid; gap: 10px; }
+#Colors .cl-name { width: 100%; min-width: 0; height: 52px; padding: 0 14px; border: 3px solid var(--ink); border-radius: var(--tag-radius); background: #fff; color: var(--ink);
+	font: 400 23px/1 var(--font-cute); letter-spacing: .01em; }
+#Colors .cl-name::placeholder { color: color-mix(in oklab, var(--ink) 30%, #fff); }
+#Colors .cl-name:focus { outline: 0; box-shadow: 0 0 0 3px var(--cl-c); }
+#Colors .cl-gen { background: var(--lemon); transform: rotate(-1deg); }
+#Colors .cl-gen:hover { background: var(--lemon); }
+@media (min-width: 420px) { #Colors .cl-namerow { grid-template-columns: minmax(0, 1fr) auto; } }
+
+#Colors .cl-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+#Colors .cl-go { grid-column: 1 / -1; min-height: 56px; padding: 12px 18px 11px; border: 3px solid var(--ink); border-radius: var(--cl-r); background: var(--cl-c); color: var(--cl-c-ink);
+	font: 400 25px/1 var(--font-cute); letter-spacing: .01em; box-shadow: 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / .12); transform: rotate(-.8deg);
+	transition: transform .5s var(--ease), background-color .3s; }
+#Colors .cl-go:hover { transform: rotate(1.5deg) scale(1.03); }
+#Colors .cl-go:active { transform: translate(2px, 3px); box-shadow: 0 0 0 var(--ink); }
+#Colors .cl-go:disabled { opacity: .6; cursor: progress; }
+#Colors .cl-actions .cl-btn { font-size: 18px; padding-inline: 8px; }
+#Colors .cl-x { background: var(--ink); color: var(--paper); }
+#Colors .cl-x:hover { background: var(--ink); color: var(--lemon); }
+#Colors .cl-status { margin: 0; min-height: 1.4em; font: 500 15px/1.35 var(--font-solid); }
+#Colors .cl-status:empty { min-height: 0; margin-top: -12px; }
+#Colors .cl-status[data-kind="ok"]::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 7px; border: 2.5px solid var(--ink); border-radius: 50%; background: var(--cl-c); vertical-align: -1px; }
+#Colors .cl-status[data-kind="warn"] { color: #a3361f; }
+
+/* ---------- the list ---------- */
+#Colors .cl-listwrap { margin-top: 44px; }
+#Colors .cl-listhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 16px; }
+#Colors .cl-listhead h3 { margin: 0; display: inline-block; padding: 6px 12px 5px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius);
+	font: 400 28px/1 var(--font-cute); transform: rotate(-2deg); }
+#Colors .cl-listhead p { margin: 0; font: 500 15px/1.35 var(--font-solid); color: color-mix(in oklab, var(--ink) 65%, var(--paper)); }
+#Colors .cl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 560px) { #Colors .cl-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 980px) { #Colors .cl-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
+#Colors .cl-list li { position: relative; display: flex; align-items: stretch; min-width: 0; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--cl-r);
+	box-shadow: 2px 3px 0 var(--ink); transform: rotate(var(--tilt, 0deg)); transition: transform .45s var(--ease); }
+#Colors .cl-list li:hover { transform: rotate(0deg) translateY(-2px); }
+#Colors .cl-list li.mine { background: #fffbe3; }
+#Colors .cl-load { flex: 1; min-width: 0; display: grid; grid-template-columns: 44px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; align-items: center;
+	padding: 9px 8px 9px 10px; border: 0; background: none; text-align: left; border-radius: inherit; }
+#Colors .cl-load i { grid-row: 1 / 3; width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 50% 44% 50% 46%;
+	background: radial-gradient(circle at 40% 36%, color-mix(in oklab, var(--sw) 55%, #fff) 0 14%, var(--sw) 52%, color-mix(in oklab, var(--sw) 75%, #000) 120%); }
+#Colors .cl-load b { font: 400 20px/1.05 var(--font-cute); letter-spacing: .01em; overflow-wrap: anywhere; }
+#Colors .cl-load small { display: flex; align-items: center; gap: 7px; font: 600 12px/1.4 var(--font-solid); letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #8d8494); }
+#Colors .cl-load em { font: 400 14px/1 var(--font-cute); font-style: normal; letter-spacing: .02em; text-transform: none; padding: 3px 7px 2px; background: var(--lemon); color: var(--ink);
+	border: 2px solid var(--ink); border-radius: 5px 3px 6px 4px; transform: rotate(-4deg); }
+#Colors .cl-vote { flex: none; display: grid; place-content: center; gap: 1px; width: 58px; padding: 6px 0; border: 0; border-left: 3px solid var(--ink); background: none;
+	border-radius: 0 6px 12px 0; font: 400 19px/1 var(--font-cute); transition: background-color .2s; }
+#Colors .cl-vote span { font: 600 12px/1 var(--font-solid); color: var(--muted, #8d8494); }
+#Colors .cl-vote:hover { background: color-mix(in oklab, var(--lemon) 60%, #fff); }
+#Colors .cl-vote[aria-pressed="true"] { background: var(--lemon); }
+#Colors .cl-vote[aria-pressed="true"] span { color: var(--ink); }
+#Colors .cl-empty { padding: 16px; color: var(--muted, #8d8494); }
+#Colors .cl-more { margin-top: 16px; }
+
+/* ---------- bounce ---------- */
+#Colors .bump { animation: cl-bump .55s var(--ease); }
+@keyframes cl-bump { 0% { scale: 1; } 35% { scale: 1.08; rotate: -2deg; } 100% { scale: 1; rotate: 0deg; } }
+@media (prefers-reduced-motion: reduce) { #Colors *, #Colors *::before, #Colors *::after { animation: none !important; transition-duration: .01s !important; } }

@@ -1,0 +1,14 @@
+[
+  { "name": "Gravytoe", "hex": "#8a5a3b", "count": 41 },
+  { "name": "Puddle Slushie", "hex": "#5a8fd6", "count": 33 },
+  { "name": "Color That Tastes Like Nana's Purse", "hex": "#c99aa6", "count": 28 },
+  { "name": "Snotfroth", "hex": "#9fc23a", "count": 25 },
+  { "name": "Cardboard Pudding", "hex": "#b58a5c", "count": 19 },
+  { "name": "Bruiseberry", "hex": "#6b4c9a", "count": 17 },
+  { "name": "Mayo Speshul", "hex": "#f3ecd0", "count": 14 },
+  { "name": "Veinjuice", "hex": "#3f63b8", "count": 12 },
+  { "name": "Pickle Milk", "hex": "#c8d68a", "count": 9 },
+  { "name": "Earwax Custard", "hex": "#e0b04a", "count": 7 },
+  { "name": "Tonguegum", "hex": "#f08aa0", "count": 5 },
+  { "name": "Tar Soup", "hex": "#2b2630", "count": 3 }
+]

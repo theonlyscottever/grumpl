@@ -5,11 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Grumpl</title>
 <meta name="description" content="A plump little vinyl guy. Play with the newest drop.">
+<meta property="og:title" content="Grumpl">
+<meta property="og:description" content="A plump little vinyl guy. Throw him around.">
 <meta name="theme-color" content="#eef3fb">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Fredoka:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://use.typekit.net/nsx2gny.css">
+<link rel="stylesheet" href="assets/page.css">
+<link rel="stylesheet" href="assets/colors.css">
+<link rel="stylesheet" href="assets/studio.css">
+<link rel="stylesheet" href="assets/artists.css">
+<link rel="stylesheet" href="assets/butt.css">
 <style>
 :root {
 	--paper: #ffffff;
@@ -144,38 +151,41 @@ body.ready #loading { opacity: 0; }
 #Sheet .photos img:first-child { grid-column: 1 / -1; aspect-ratio: 4 / 3; }
 #Sheet .nophoto, #Sheet .fine { color: var(--muted); font-size: 14px; }
 
-/* below the hero (phase 2 lands here) */
-.next { min-height: 60svh; display: grid; place-items: center; padding: 60px var(--gut); text-align: center; color: var(--muted); }
-.next b { display: block; font: 400 34px/1 var(--font-cute); color: var(--ink); margin-bottom: 8px; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: 0.01s !important; } }
 </style>
 </head>
 <body>
+<header id="Top">
+	<button id="Burger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="Menu">
+		<svg viewBox="0 0 48 48" aria-hidden="true">
+			<path d="M8 21c0-8 7.5-13 16-13s16 5 16 13z" fill="#f2b36a" stroke="#1b1620" stroke-width="3" stroke-linejoin="round"/>
+			<path d="M7 25.5c3-2.5 5 1 8-1.2s5 1.6 8-.6 5 1.6 8-.6 5 1.6 10 .2" fill="none" stroke="#7bc96f" stroke-width="3.4" stroke-linecap="round"/>
+			<rect x="7" y="28" width="34" height="6" rx="3" fill="#8a4b3a" stroke="#1b1620" stroke-width="3"/>
+			<path d="M8 37h32c0 3-3 5-6 5H14c-3 0-6-2-6-5z" fill="#f2b36a" stroke="#1b1620" stroke-width="3" stroke-linejoin="round"/>
+			<g fill="#fff4dc"><circle cx="18" cy="14" r="1.2"/><circle cx="25" cy="12" r="1.2"/><circle cx="31" cy="15" r="1.2"/></g>
+		</svg>
+	</button>
+	<a id="Mark" href="#Hero" aria-label="Grumpl, back to the top"></a>
+	<div id="Cta">
+		<button class="go" type="button"></button>
+		<div class="pop" role="dialog" aria-label="Remind me">
+			<button class="close" type="button" aria-label="Close"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg></button>
+			<p>One email when this drop opens. Nothing else.</p>
+			<form novalidate><input type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Email"><button type="submit">Ping me</button></form>
+			<p class="done" hidden></p>
+		</div>
+	</div>
+</header>
+
 <section id="Hero" aria-label="The newest drop">
 	<div id="stage"></div>
 	<div id="loading">Waking the Grumpls…</div>
 
-	<div class="bar">
-		<button id="Burger" type="button" aria-label="Menu (coming soon)">
-			<svg viewBox="0 0 48 48" aria-hidden="true">
-				<path d="M8 21c0-8 7.5-13 16-13s16 5 16 13z" fill="#f2b36a" stroke="#1b1620" stroke-width="3" stroke-linejoin="round"/>
-				<path d="M7 25.5c3-2.5 5 1 8-1.2s5 1.6 8-.6 5 1.6 8-.6 5 1.6 10 .2" fill="none" stroke="#7bc96f" stroke-width="3.4" stroke-linecap="round"/>
-				<rect x="7" y="28" width="34" height="6" rx="3" fill="#8a4b3a" stroke="#1b1620" stroke-width="3"/>
-				<path d="M8 37h32c0 3-3 5-6 5H14c-3 0-6-2-6-5z" fill="#f2b36a" stroke="#1b1620" stroke-width="3" stroke-linejoin="round"/>
-				<g fill="#fff4dc"><circle cx="18" cy="14" r="1.2"/><circle cx="25" cy="12" r="1.2"/><circle cx="31" cy="15" r="1.2"/></g>
-			</svg>
-		</button>
+	<canvas id="Eyes" aria-hidden="true"></canvas>
+	<div class="hero-tools">
 		<button id="Tilt" class="tilt" type="button" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="2" width="9" height="16" rx="2.2" fill="none" stroke="currentColor" stroke-width="2.2" transform="rotate(-14 10 10)"/><path d="M2 7q-1.6 3 0 6M18 7q1.6 3 0 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Shake me</span></button>
-		<div id="Cta">
-			<button class="go" type="button"></button>
-			<div class="pop" role="dialog" aria-label="Remind me">
-				<button class="close" type="button" aria-label="Close"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg></button>
-				<p>One email when this drop opens. Nothing else.</p>
-				<form novalidate><input type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Email"><button type="submit">Ping me</button></form>
-				<p class="done" hidden></p>
-			</div>
-		</div>
+		<button class="sound-btn" type="button" data-sound aria-pressed="false"><span>Sound off</span></button>
 	</div>
 
 	<div id="Info" aria-live="polite">
@@ -195,9 +205,50 @@ body.ready #loading { opacity: 0; }
 	</div>
 </section>
 
-<section class="next">
-	<p><b>More below soon</b>The sticky logo, the burger menu, every drop, the story and the artists come next.</p>
+<main>
+<section id="Drops" class="sec" aria-labelledby="drops-h">
+	<header class="sec-head">
+		<p class="kicker">Drops</p>
+		<h2 id="drops-h">Every drop</h2>
+		<p>Newest first. The one up on the clouds is the next one.</p>
+	</header>
+	<div id="DropList"></div>
 </section>
+
+<section id="Story" class="sec" aria-labelledby="story-h">
+	<header class="sec-head">
+		<p class="kicker">Story</p>
+		<h2 id="story-h">What we know about Grumpls</h2>
+		<p>Not much. Here it is anyway.</p>
+	</header>
+	<div id="Book"></div>
+</section>
+
+<section id="Make" class="sec" aria-labelledby="make-h">
+	<header class="sec-head">
+		<p class="kicker">Make your own</p>
+		<h2 id="make-h">Make your own</h2>
+		<p>Ask for a color, then pose a Grumpl in it and take him home as a wallpaper.</p>
+	</header>
+	<section id="Colors" aria-label="Request a color"></section>
+	<section id="Studio" aria-label="Pose and download"></section>
+</section>
+
+<section id="Artists" aria-label="The artists"></section>
+</main>
+
+<footer id="Foot">
+	<div id="Butt"></div>
+	<nav class="links" aria-label="Elsewhere">
+		<a href="https://www.dyli.io/profile/goblintown" target="_blank" rel="noopener">Secondary on DYLI</a>
+		<a href="brand/" target="_blank" rel="noopener">Brand book</a>
+		<a href="#Artists">The artists</a>
+		<button type="button" data-sound aria-pressed="false"><span>Sound off</span></button>
+	</nav>
+	<p class="fine">Grumpl is a vinyl art toy. Made by two people and a lot of burgers.</p>
+</footer>
+
+<div id="Menu" hidden></div>
 
 <div id="Sheet" hidden>
 	<div class="card" role="dialog" aria-label="Flavor details">
@@ -214,5 +265,6 @@ body.ready #loading { opacity: 0; }
 } }
 </script>
 <script type="module" src="assets/app.js"></script>
+<script type="module" src="assets/page.js"></script>
 </body>
 </html>

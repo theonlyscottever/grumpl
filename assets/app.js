@@ -5,13 +5,13 @@
 // - the brand-book logo pressed into one foreground cloud,
 // - a page tint taken from the focused Grumpl's secondary color.
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as CANNON from 'cannon-es';
 import { buildStudioEnv, makeLightU, buildFigure, loadGLB } from './grumpl-look.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { DROP, FLAVORS } from './drop.js';
 import { initUI } from './ui.js';
 import { createMotion, canMove, haptic } from './motion.js';
+import { sound } from './sound.js';
 
 const HULL = {"v":[[-0.3237,0.0,0.1173],[0.5271,1.9964,-0.329],[0.9383,0.6757,0.0653],[-0.1516,1.2282,0.56],[-0.4956,1.9708,-0.3318],[0.2007,0.5576,-0.5524],[-0.9294,0.7082,0.1177],[0.2442,0.4608,0.5809],[0.4813,0.0073,-0.0364],[0.0212,1.9077,0.2427],[-0.4673,0.585,-0.4272],[0.0209,1.7802,-0.6516],[-0.3224,0.6529,0.5423],[0.3647,1.4639,0.4544],[-0.3369,1.626,0.3886],[0.4025,1.5924,-0.5027],[-0.3495,1.5827,-0.5076],[0.501,1.7099,0.1171],[0.4827,0.333,-0.3489],[-0.2092,0.2646,-0.4104],[-0.118,0.3431,0.5525],[0.013,1.6479,0.5067],[-0.1505,0.5936,-0.5573],[-0.0102,0.7329,0.6432],[0.3602,0.0024,0.2699],[0.2938,1.7752,0.3555],[0.1704,1.2287,0.5663],[0.4872,0.6315,-0.4523],[-0.2741,1.8422,0.2349],[0.3307,0.7125,0.5626],[-0.2687,0.0128,-0.1393],[0.2524,0.3158,-0.4574],[-0.4396,0.3542,-0.3639],[-0.1151,1.7982,0.3936],[-0.3222,0.4259,0.5003],[0.0016,0.5144,0.6415],[-0.1851,1.5292,0.5017],[0.5453,0.0098,0.1634],[-0.3063,0.4402,-0.501],[0.0354,1.9571,0.045],[0.2219,1.6036,0.4907],[0.0829,0.3333,0.5636],[0.0901,1.8083,0.4009],[0.3715,0.4699,-0.5024],[0.2882,0.0011,-0.0808],[-0.436,0.0105,-0.039],[0.1542,0.6235,0.638],[0.239,1.8843,0.2146],[0.4038,0.4522,0.4856],[-0.1533,0.6155,0.624],[-0.5062,0.0092,0.1347],[-0.4068,1.7179,0.224],[0.4395,1.682,0.2825],[0.2642,1.5104,-0.5724],[-0.313,0.6173,-0.5254],[-0.393,0.0085,0.2644],[-0.8881,0.6296,-0.0163],[-0.2035,1.6811,0.4564],[-0.1308,1.9071,0.1972],[0.3962,0.0001,0.1135],[0.3565,1.6414,0.4093],[0.0158,1.2311,0.5803],[-0.1528,0.4394,-0.5236],[0.3417,0.6186,-0.5321]],"f":[[6,4,56],[16,56,4],[51,4,6],[18,27,2],[43,27,18],[2,1,17],[17,52,2],[1,52,17],[11,4,1],[11,16,4],[56,16,10],[1,4,39],[39,9,1],[33,9,58],[58,39,4],[9,39,58],[25,52,1],[2,13,29],[43,18,31],[2,52,60],[60,13,2],[52,25,60],[61,3,23],[5,31,62],[43,31,5],[16,11,54],[54,10,16],[14,51,6],[36,57,14],[33,58,28],[28,57,33],[4,51,28],[28,58,4],[51,14,28],[28,14,57],[1,9,47],[47,25,1],[6,56,50],[42,9,33],[42,47,9],[25,47,42],[13,60,40],[40,60,25],[25,42,40],[43,5,63],[63,5,11],[11,53,63],[63,27,43],[15,1,2],[2,27,15],[15,11,1],[15,53,11],[27,63,15],[15,63,53],[22,54,11],[22,5,62],[11,5,22],[12,3,36],[12,14,6],[36,14,12],[34,12,6],[26,29,13],[13,40,26],[26,61,23],[36,3,21],[3,61,21],[21,57,36],[61,26,21],[21,26,40],[21,40,42],[33,57,21],[21,42,33],[62,31,19],[31,30,19],[8,31,18],[8,18,2],[23,3,49],[3,12,49],[12,34,49],[34,20,49],[32,19,30],[56,10,32],[44,30,31],[31,8,44],[37,8,2],[45,32,30],[45,50,56],[56,32,45],[62,19,38],[19,32,38],[38,22,62],[54,22,38],[10,54,38],[38,32,10],[55,20,34],[6,50,55],[55,34,6],[59,44,8],[8,37,59],[48,37,2],[2,29,48],[29,7,48],[35,49,20],[23,49,35],[20,55,41],[41,35,20],[7,35,41],[24,59,37],[24,41,55],[7,41,24],[37,48,24],[24,48,7],[0,55,50],[44,59,0],[0,24,55],[59,24,0],[50,45,0],[30,44,0],[0,45,30],[46,7,29],[46,35,7],[23,35,46],[46,26,23],[29,26,46]]};
 const COM_Y = 0.9;                                   // model origin is at his feet; physics body is centred here
@@ -29,7 +29,7 @@ const stage = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: false });
 const DPR_STEPS = [0.75, 1, 1.25, 1.5, 1.75, 2].filter((d) => d <= Math.max(1, devicePixelRatio));
 let dprMax = DPR_STEPS.length - 1;
-let dprIdx = DPR_STEPS.indexOf(coarse ? 1 : Math.min(1.25, DPR_STEPS[dprMax]));
+let dprIdx = DPR_STEPS.indexOf(Math.min(coarse ? 1.5 : 1.25, DPR_STEPS[dprMax]));   // adaptResolution steps down if a phone can't keep up
 if (dprIdx < 0) dprIdx = DPR_STEPS.length - 1;
 renderer.setPixelRatio(DPR_STEPS[dprIdx]);
 renderer.setClearColor(0xffffff, 0);
@@ -81,7 +81,7 @@ function addWall(normal, point) {
 const wallL = addWall(new CANNON.Vec3(1, 0, 0), new CANNON.Vec3(-BOUNDS.x, 0, 0));
 const wallR = addWall(new CANNON.Vec3(-1, 0, 0), new CANNON.Vec3(BOUNDS.x, 0, 0));
 addWall(new CANNON.Vec3(0, 0, 1), new CANNON.Vec3(0, 0, BOUNDS.zBack));
-addWall(new CANNON.Vec3(0, 0, -1), new CANNON.Vec3(0, 0, BOUNDS.zFront));
+const wallF = addWall(new CANNON.Vec3(0, 0, -1), new CANNON.Vec3(0, 0, BOUNDS.zFront));   // the glass (see smoosh)
 addWall(new CANNON.Vec3(0, -1, 0), new CANNON.Vec3(0, BOUNDS.top, 0));
 // a soft floor inside the clouds: thrown off the crest he lands in the fluff, then hops home
 const floorB = new CANNON.Body({ mass: 0, material: cloudPhys });
@@ -106,6 +106,11 @@ let grip = null;
 let tiltG = 0;
 world.addEventListener('preStep', () => {
   if (grip) return;
+  if (smoosh?.hit && performance.now() - smoosh.hit < SMOOSH_HOLD) {   // face on the glass: he sticks, then slowly slides
+    body.force.y += 22 * 0.93; body.force.z += 8;
+    body.angularVelocity.scale(0.8, body.angularVelocity);
+    return;
+  }
   if (tiltG) body.force.x += tiltG;               // a deliberate phone tilt lets him slide to the low side
   const p = body.position;
   if (Math.abs(p.x) > 1.8 || Math.abs(p.z) > 1.1 || p.y > LIFT + COM_Y + 0.9 || p.y < LIFT + COM_Y - 0.8) return;
@@ -119,14 +124,19 @@ world.addEventListener('preStep', () => {
   body.torque.z += _ax.z * 26 - w.z * 2.4;
   if (twirlSteps > 0 && --twirlSteps < 200) {
     body.quaternion.vmult(_fwd.set(0, 0, 1), _ax);
-    w.y += (-Math.atan2(_ax.x, _ax.z) * 4 - w.y) * 0.12;
+    const off = Math.atan2(_ax.x, _ax.z) - homeYaw(ring.f);
+    w.y += (-Math.atan2(Math.sin(off), Math.cos(off)) * 4 - w.y) * 0.12;   // settle back to his own angle
   }
 });
 const hand = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
 world.addBody(hand);
+// Jason's idea: each Grumpl in the line-up faces his own way, so you see every side of him before you touch anything
+const HOME_YAW = [-0.55, 1.15, -2.35, 0.6, 2.6, -1.3];
+const homeYaw = (i) => HOME_YAW[i % HOME_YAW.length];
+let standYaw = HOME_YAW[0];   // the focused one's own angle
 function standUp() {
   body.position.set(0, COM_Y + LIFT + 0.02, 0);
-  body.quaternion.set(0, 0, 0, 1);
+  body.quaternion.setFromAxisAngle(Y_UP, standYaw);
   body.velocity.setZero();
   body.angularVelocity.setZero();
   body.wakeUp();
@@ -150,6 +160,9 @@ const AO_GLSL = `
 const pressU = { value: new THREE.Vector4(0, CLOUD_TOP, 0, 0) };
 const skyU = { value: new THREE.Color(0x9fbcf0) };
 const tintU = { value: new THREE.Color(0x56c2dc) };
+// Lights out: the clouds go dark except for a warm pool under the lamp
+const nightU = { value: 0 };
+const lampU = { value: new THREE.Vector3(0, 0, 0) };
 const logoMaskU = { value: null };
 const logoRectU = { value: new THREE.Vector4(0, 0, 1, 1) };   // centre xy, size xy in the front cloud's own space
 function makeCloudMat({ fade = true, front = false } = {}) {
@@ -157,7 +170,7 @@ function makeCloudMat({ fade = true, front = false } = {}) {
     sheenColor: 0xffffff, envMapIntensity: 1.1, vertexColors: true, toneMapped: false });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uOcc = occU; sh.uniforms.uPress = pressU; sh.uniforms.uSky = skyU; sh.uniforms.uTint = tintU;
-    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU;
+    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU;
     const DENT = `
       uniform vec4 uPress; uniform sampler2D uMask; uniform vec4 uRect;
       float dentH( vec2 q ) {
@@ -172,7 +185,7 @@ function makeCloudMat({ fade = true, front = false } = {}) {
       float lIn = step( 0.0, lUv.x ) * step( lUv.x, 1.0 ) * step( 0.0, lUv.y ) * step( lUv.y, 1.0 );
       vLogo = texture2D( uMask, lUv ).r * lIn;
       vLogoUv = lUv;
-      transformed.z -= vLogo * 0.95 * smoothstep( -0.2, 0.5, objectNormal.z );` : '';
+      transformed.z -= vLogo * 0.2 * smoothstep( -0.2, 0.5, objectNormal.z );   // a soft cushion, like it landed on whipped cream` : '';
     sh.vertexShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv;\n' + DENT + '\n' + sh.vertexShader
       .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
         vec4 dW = modelMatrix * vec4( position, 1.0 );
@@ -188,7 +201,7 @@ function makeCloudMat({ fade = true, front = false } = {}) {
       .replace('#include <worldpos_vertex>',
         '#include <worldpos_vertex>\n vCW = (modelMatrix * vec4(transformed, 1.0)).xyz; vCN = normalize(mat3(modelMatrix) * objectNormal);')
       .replace('#include <project_vertex>', '#include <project_vertex>\n vSY = gl_Position.y / gl_Position.w;');
-    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint;\n' + AO_GLSL + `
+    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight;\n' + AO_GLSL + `
       float cHash( vec3 p ) { p = fract( p * 0.1031 ); p += dot( p, p.zyx + 31.32 ); return fract( ( p.x + p.y ) * p.z ); }
       float cloudNoise( vec3 p ) {
         vec3 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
@@ -208,7 +221,7 @@ function makeCloudMat({ fade = true, front = false } = {}) {
         shade *= 1.0 - clamp( fold, 0.0, 1.0 ) * 0.7;
         shade *= 1.0 - clamp( press * 1.3, 0.0, 1.0 ) * 0.7;
         ${front ? `shade = mix( shade, 1.0, 0.45 );                                    // it faces us and the key: brighter than the bank
-        shade *= 1.0 - smoothstep( 0.05, 0.6, vLogo ) * 0.55;                  // the walls of the hollow the logo sits in` : ''}
+        shade *= 1.0 - smoothstep( 0.05, 0.9, vLogo ) * 0.18;                  // the faint shade of the dip it rests in` : ''}
         vec3 shadowCol = mix( uSky, uSky * 0.55 + uTint * 0.6, clamp( press * 1.4, 0.0, 1.0 ) );
         vec3 lit = mix( mix( shadowCol, vec3( 1.0 ), 0.25 ), vec3( 1.0 ), smoothstep( 0.1, 0.9, shade ) );
         float wisp = cloudNoise( vCW * 3.1 ) * 0.6 + cloudNoise( vCW * 7.3 ) * 0.4;
@@ -216,9 +229,14 @@ function makeCloudMat({ fade = true, front = false } = {}) {
         lit = mix( lit, vec3( 1.0 ), edge * ( 1.0 - clamp( press * 1.5, 0.0, 1.0 ) ) ${front ? '* ( 1.0 - smoothstep( 0.05, 0.5, vLogo ) )' : ''} );
         lit = mix( lit, vec3( 1.0 ), smoothstep( 9.0, 22.0, length( cameraPosition - vCW ) ) * 0.85 );
         outgoingLight = lit;
+        if ( uNight > 0.0 ) {
+          vec2 lq = vCW.xz - uLamp.xz;
+          float pool = exp( - dot( lq, lq ) / 1.3 ) * ( 0.35 + 0.65 * smoothstep( -0.4, 0.6, cN.y ) );
+          outgoingLight = mix( lit, lit * ( vec3( 0.03, 0.026, 0.045 ) + vec3( 1.0, 0.72, 0.45 ) * pool * 0.7 ), uNight );
+        }
         #include <opaque_fragment>`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-        ${fade ? 'gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 1.0 ), smoothstep( -0.2, -0.75, vSY ) );' : ''}`);
+        ${fade ? 'gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( vec3( 1.0 ), vec3( 0.047, 0.039, 0.059 ), uNight ), smoothstep( -0.2, -0.75, vSY ) );' : ''}`);
   };
   m.customProgramCacheKey = () => `cloud-${fade}-${front}`;
   return m;
@@ -256,6 +274,25 @@ function slotPose(u, out) {
   return out;
 }
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+// Trading places is exciting: the one coming in and the one going out each do their own trick on the way.
+const MOVES = {
+  spin:      (t) => ({ y: Math.sin(Math.PI * t) * 0.9, yaw: Math.PI * 2 * ease(t) }),
+  flip:      (t) => ({ y: Math.sin(Math.PI * t) * 1.25, pitch: -Math.PI * 2 * ease(THREE.MathUtils.clamp((t - 0.1) / 0.75, 0, 1)) }),
+  hops:      (t) => ({ y: Math.abs(Math.sin(Math.PI * 3 * t)) * 0.45 * (1 - t * 0.3), yaw: Math.sin(Math.PI * 3 * t) * 0.5 }),
+  cartwheel: (t) => ({ y: Math.sin(Math.PI * t) * 1.0, roll: Math.PI * 2 * ease(t) }),
+  corkscrew: (t) => ({ y: Math.sin(Math.PI * t) * 1.4, yaw: -Math.PI * 4 * ease(t), roll: Math.sin(Math.PI * t) * 0.5 }),
+  wiggle:    (t) => ({ y: Math.sin(Math.PI * t) * 0.6, roll: Math.sin(Math.PI * 4 * t) * 0.4 * (1 - t), yaw: Math.PI * ease(t) * 2 }),
+};
+const MOVE_KEYS = Object.keys(MOVES);
+const swapMoves = { in: 'spin', out: 'hops' };
+const _mq = new THREE.Quaternion(), _me = new THREE.Euler();
+function applyMove(g, name, t) {
+  if (t <= 0 || t >= 1) return;
+  const m = MOVES[name](t);
+  g.position.y += m.y || 0;
+  _mq.setFromEuler(_me.set(m.pitch || 0, m.yaw || 0, m.roll || 0, 'YXZ'));
+  g.quaternion.multiply(_mq);
+}
 
 // the focused Grumpl hands over to physics; the one leaving keeps whatever pose he had and eases upright
 const leaving = { slot: -1, p: new THREE.Vector3(), q: new THREE.Quaternion() };
@@ -270,8 +307,11 @@ function focus(i, dir) {
   let target = ring.show + wrapU(i - ring.show);
   if (dir && Math.sign(target - ring.show) !== dir && Math.abs(wrapU(i - ring.show)) > 0.01) target += dir * N;
   ring.from = ring.show; ring.to = target; ring.t = 0;
-  ring.dur = reduceMotion ? 0.01 : 0.75 + 0.2 * Math.abs(target - ring.show);
+  ring.dur = reduceMotion ? 0.01 : 1.05 + 0.2 * Math.abs(target - ring.show);
+  swapMoves.in = MOVE_KEYS[(Math.random() * MOVE_KEYS.length) | 0];
+  do swapMoves.out = MOVE_KEYS[(Math.random() * MOVE_KEYS.length) | 0]; while (swapMoves.out === swapMoves.in);
   ring.f = i;
+  standYaw = homeYaw(i);
   onFocus(FLAVORS[i], i);
   poke(4);
 }
@@ -284,6 +324,7 @@ function updateRing(dt) {
       standUp();
       body.velocity.set(0, -1, 0);
       leaving.slot = -1;
+      sound.thump(5);
     }
     poke(2);
   }
@@ -294,15 +335,16 @@ function updateRing(dt) {
     s.cloud.position.copy(_slotP);
     if (i === ring.f && ring.t >= 1) return;                       // physics drives him
     // stand on his cloud, turned a little toward the middle so the line-up reads as a group
-    const yaw = -u * 0.32;
+    const yaw = homeYaw(i) - u * 0.25;
     _q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
     s.group.position.set(_slotP.x, _slotP.y + LIFT + COM_Y, _slotP.z);
     s.group.quaternion.copy(_q);
     if (i === leaving.slot && ring.t < 1) {                        // the one leaving lets go of his pose first
-      const k = ease(Math.min(1, ring.t / 0.55));
+      const k = ease(Math.min(1, ring.t / 0.35));
       s.group.position.lerpVectors(leaving.p, s.group.position, k);
       s.group.quaternion.slerpQuaternions(leaving.q, _q, k);
-    }
+      applyMove(s.group, swapMoves.out, (ring.t - 0.12) / 0.86);
+    } else if (i === ring.f && ring.t < 1) applyMove(s.group, swapMoves.in, ring.t / 0.97);
     const hide = THREE.MathUtils.smoothstep(Math.abs(u), 1.25, 1.5);
     s.group.visible = s.cloud.visible = hide < 0.999;
   });
@@ -323,14 +365,15 @@ async function buildLogo() {
   document.body.appendChild(holder);
   const svg = holder.querySelector('svg');
   const get = (id) => svg.querySelector('#' + id);
-  const P = (el) => ({ path: new Path2D(el.getAttribute('d')), fill: el.getAttribute('fill'), alpha: +(el.getAttribute('fill-opacity') || 1), rule: el.getAttribute('fill-rule') || 'nonzero' });
+  const P = (el) => ({ id: el.id, path: new Path2D(el.getAttribute('d')), fill: el.getAttribute('fill'), alpha: +(el.getAttribute('fill-opacity') || 1), rule: el.getAttribute('fill-rule') || 'nonzero' });
   const cloudParts = ['cloud-shadow', 'cloud-outline', 'cloud-fill', 'cloud-shade'].map((id) => P(get(id)));
   front.pieces = ['g', 'r', 'u', 'm', 'p', 'l'].map((k) => {
     const els = [...svg.querySelectorAll(`[id^="drop-${k}-"]`), get('letter-' + k)];
     const bb = get('letter-' + k).getBBox();
-    return { k, parts: els.map(P), cx: bb.x + bb.width / 2, cy: bb.y + bb.height * 0.62, t: -1 };
+    return { k, parts: els.map(P), cx: bb.x + bb.width / 2, cy: bb.y + bb.height * 0.62, y0: bb.y, y1: bb.y + bb.height, t: -1 };
   });
   const outline = get('cloud-outline').getAttribute('d');
+  front.fills = Object.fromEntries([...svg.querySelectorAll('path[id]')].map((el) => [el.id, el.getAttribute('fill')]));
   holder.remove();
 
   const S = 1536 / 1307, W = 1536, H = Math.round(758 * S);
@@ -342,25 +385,19 @@ async function buildLogo() {
     g.setTransform(S, 0, 0, S, 0, 0);
     for (const c of cloudParts.slice(1)) { g.globalAlpha = c.alpha; g.fillStyle = c.fill; g.fill(c.path, c.rule); }
     g.globalAlpha = 1;
-    const now = performance.now();
     let busy = false;
     for (const pc of front.pieces) {
-      let sc = 1, dy = 0, rot = 0;
-      if (pc.t > 0) {
-        const t = (now - pc.t) / 520;
-        if (t >= 1) pc.t = -1;
-        else {
-          busy = true;
-          // a puff: squash, pop up big, settle with a wobble (the brand-book letter jump)
-          const pop = Math.sin(Math.PI * Math.min(1, t * 1.6)) * (1 - t * 0.4);
-          sc = 1 + 0.16 * pop - 0.05 * Math.sin(t * 14) * (1 - t);
-          dy = -26 * pop;
-          rot = 0.05 * Math.sin(t * 11) * (1 - t);
-        }
-      }
+      busy = puffOf(pc) || busy;
+      if (logo3D.on) continue;                  // the 3D letters stand in for the flat ones
       g.save();
-      g.translate(pc.cx, pc.cy + dy); g.rotate(rot); g.scale(sc, sc); g.translate(-pc.cx, -pc.cy);
-      for (const c of pc.parts) { g.fillStyle = c.fill; g.fill(c.path, c.rule); }
+      g.translate(pc.cx, pc.cy + pc.dy); g.rotate(pc.rot); g.scale(pc.sc, pc.sc); g.translate(-pc.cx, -pc.cy);
+      let candy = null;
+      if (front.candy) {                        // Halloween: every letter is a candy corn, yellow base, orange middle, white tip
+        candy = g.createLinearGradient(0, pc.y1, 0, pc.y0);
+        candy.addColorStop(0, '#ffc21a'); candy.addColorStop(0.42, '#ffc21a'); candy.addColorStop(0.42, '#ff8a1c');
+        candy.addColorStop(0.74, '#ff8a1c'); candy.addColorStop(0.74, '#fff3dc'); candy.addColorStop(1, '#fff3dc');
+      }
+      for (const c of pc.parts) { g.fillStyle = candy || c.fill; g.fill(c.path, c.rule); }
       g.restore();
     }
     if (front.tex) front.tex.needsUpdate = true;
@@ -384,19 +421,20 @@ async function buildLogo() {
     t.flipY = true;
     return t;
   };
-  logoMaskU.value = mk(5, 0.9);
+  logoMaskU.value = mk(16, 1.02);
   const rimTex = mk(9, 0.96);
 
   const logoMat = new THREE.ShaderMaterial({
     transparent: true, toneMapped: false,
-    uniforms: { uTex: { value: front.tex }, uRim: { value: rimTex }, uSky: skyU },
+    uniforms: { uTex: { value: front.tex }, uRim: { value: rimTex }, uSky: skyU, uNight: nightU },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: `uniform sampler2D uTex, uRim; uniform vec3 uSky; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D uTex, uRim; uniform vec3 uSky; uniform float uNight; varying vec2 vUv;
       void main(){
         vec4 c = texture2D(uTex, vUv);
         // the cloud's lip shades the logo's upper-left edge (the key comes from there)
         float lip = texture2D(uRim, vUv + vec2(-0.012, 0.03)).r;
         c.rgb *= mix(mix(uSky, vec3(1.0), 0.45), vec3(1.0), smoothstep(0.35, 0.95, lip));
+        c.rgb *= mix(1.0, 0.62, uNight);
         gl_FragColor = c;
         #include <colorspace_fragment>
       }`
@@ -404,15 +442,106 @@ async function buildLogo() {
   front.logo = new THREE.Mesh(new THREE.PlaneGeometry(LOGO_W, LOGO_H), logoMat);
   front.logo.position.set(LOGO_C.x, LOGO_C.y, 0.42);
   front.logo.renderOrder = 2;
+  front.logo.visible = false;          // the flat logo is drawn by the page as a vector on top; this plane backs the 3D finishes
   front.group.add(front.logo);
   frontMat.needsUpdate = true;
   poke(10);
 }
+// a puff: squash, pop up big, settle with a wobble (the brand-book letter jump). Writes sc, dy, rot onto the piece.
+function puffOf(pc) {
+  pc.sc = 1; pc.dy = 0; pc.rot = 0;
+  if (pc.t <= 0) return false;
+  const t = (performance.now() - pc.t) / 520;
+  if (t >= 1) { pc.t = -1; return false; }
+  const pop = Math.sin(Math.PI * Math.min(1, t * 1.6)) * (1 - t * 0.4);
+  pc.sc = 1 + 0.16 * pop - 0.05 * Math.sin(t * 14) * (1 - t);
+  pc.dy = -26 * pop;
+  pc.rot = 0.05 * Math.sin(t * 11) * (1 - t);
+  return true;
+}
+
+// ---------- The 3D logo finishes (tap the logo): flat, gummy, chrome ----------
+// The inflated letters from the logo thread (grumpl/logo), quantized and loaded only when someone asks.
+const logo3D = { on: false, mode: 'flat', group: null, letters: {}, mats: {}, loading: null };
+const LOGO_MODES = ['flat', 'gummy', 'chrome'];
+const SVG_CX = 653.5, SVG_CY = 379;            // the 3D letters are centred on the SVG's middle, 100 px to a unit
+function logoMat(mode, hex) {
+  const c = new THREE.Color(hex);
+  if (mode === 'chrome') return new THREE.MeshPhysicalMaterial({ color: c, metalness: 1, roughness: 0.12,
+    clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.0 });
+  return new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.14, transmission: 0.92, thickness: 0.6, ior: 1.45,
+    attenuationColor: c, attenuationDistance: 0.06, clearcoat: 1, clearcoatRoughness: 0.12, specularIntensity: 1, envMapIntensity: 1.1,
+    sheen: 0.4, sheenColor: c.clone().lerp(new THREE.Color(0xffffff), 0.5), sheenRoughness: 0.4 });
+}
+async function buildLogo3D() {
+  const gltf = await loadGLB('assets/models/logo-letters.glb');
+  const k = LOGO_W / 13.07;
+  const g = new THREE.Group();
+  g.position.set(LOGO_C.x, LOGO_C.y, 0.4);
+  g.scale.set(k, k, k * 1.25);
+  front.pieces.forEach((pc) => {
+    const piv = new THREE.Group();
+    piv.position.set((pc.cx - SVG_CX) / 100, -(pc.cy - SVG_CY) / 100, 0);
+    g.add(piv);
+    logo3D.letters[pc.k] = { piv, meshes: [] };
+  });
+  gltf.scene.updateMatrixWorld(true);
+  gltf.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const letter = o.name.split('-')[1];
+    const L = logo3D.letters[letter]; if (!L) return;
+    const m = new THREE.Mesh(o.geometry, null);
+    m.applyMatrix4(o.matrixWorld);
+    m.position.sub(L.piv.position);
+    m.userData.fill = front.fills?.[o.name] || '#ff8a7a';
+    m.renderOrder = 3;
+    L.piv.add(m); L.meshes.push(m);
+  });
+  logo3D.group = g;
+  front.group.add(g);
+}
+async function setLogoFinish(mode) {
+  if (!front.logo) return;
+  logo3D.mode = mode;
+  if (mode !== 'flat' && !logo3D.group) {
+    if (!logo3D.loading) logo3D.loading = buildLogo3D().catch((e) => { console.error('logo 3D', e); logo3D.loading = null; });
+    document.body.classList.add('logo-loading');
+    await logo3D.loading;
+    document.body.classList.remove('logo-loading');
+    if (!logo3D.group || logo3D.mode !== mode) return;
+  }
+  const show3D = mode !== 'flat' && !night.on;
+  logo3D.on = show3D;
+  front.logo.visible = show3D && logoAllowed;
+  dispatchEvent(new CustomEvent('grumpl-logo-mode', { detail: { mode: show3D ? mode : 'flat' } }));
+  if (logo3D.group) {
+    logo3D.group.visible = show3D && logoAllowed;
+    if (show3D) {
+      logo3D.mats[mode] ||= {};
+      Object.values(logo3D.letters).forEach((L) => L.meshes.forEach((m) => {
+        m.material = logo3D.mats[mode][m.userData.fill] ||= logoMat(mode, m.userData.fill);
+      }));
+    }
+  }
+  front.draw?.(); poke(6);
+  puffRow();
+}
+function cycleLogo() { setLogoFinish(LOGO_MODES[(LOGO_MODES.indexOf(logo3D.mode) + 1) % LOGO_MODES.length]); }
+function pose3DLetters() {
+  if (!logo3D.on) return;
+  front.pieces.forEach((pc) => {
+    const L = logo3D.letters[pc.k]; if (!L) return;
+    L.piv.position.y = -(pc.cy + pc.dy - SVG_CY) / 100;
+    L.piv.rotation.z = -pc.rot;
+    L.piv.scale.setScalar(pc.sc);
+  });
+}
+
 function puffLetter(i, delay = 0) {
   const pc = front.pieces[i]; if (!pc) return;
   setTimeout(() => { pc.t = performance.now(); front.busy = true; poke(); }, delay);
 }
-function puffRow() { front.pieces.forEach((_, i) => puffLetter(i, i * 110)); }
+function puffRow() { front.pieces.forEach((_, i) => puffLetter(i, i * 110)); dispatchEvent(new Event('grumpl-puff')); }
 
 // ---------- Load everything ----------
 const ready = Promise.all([
@@ -437,6 +566,7 @@ const ready = Promise.all([
   });
   updateRing(0);
   resize();
+  if (night.on) setNight(true);
   document.body.classList.add('ready');
   poke(30);
 }).catch((e) => {
@@ -519,6 +649,15 @@ function handPoint() {
   handTarget.y = THREE.MathUtils.clamp(handTarget.y, -0.6, BOUNDS.top - 0.3);
   handTarget.z = THREE.MathUtils.clamp(handTarget.z, BOUNDS.zBack + 0.3, BOUNDS.zFront - 0.3);
 }
+function hitLogo() {
+  if (!front.logo || !front.logo.visible) return false;
+  raycaster.setFromCamera(ndc, camera);
+  const h = raycaster.intersectObject(front.logo, false)[0];
+  if (!h || !h.uv) return false;
+  // only the drawn logo counts, not the transparent corners of its plane
+  const px = Math.floor(h.uv.x * front.canvas.width), py = Math.floor((1 - h.uv.y) * front.canvas.height);
+  try { return front.ctx.getImageData(px, py, 1, 1).data[3] > 40; } catch { return true; }
+}
 function hitSlot() {
   raycaster.setFromCamera(ndc, camera);
   let best = null;
@@ -548,6 +687,8 @@ canvas.addEventListener('pointerdown', (e) => {
     ui.played();
   } else if (hit) {
     mode = 'tap'; mode_i = hit.i;
+  } else if (hitLogo()) {
+    mode = 'logo';
   } else {
     mode = 'swipe';
     canvas.setPointerCapture(e.pointerId);
@@ -564,7 +705,7 @@ canvas.addEventListener('pointermove', (e) => {
   }
   if (!mode && !coarse) {
     const h = hitSlot();
-    canvas.style.cursor = h ? (h.i === ring.f ? 'grab' : 'pointer') : 'default';
+    canvas.style.cursor = h ? (h.i === ring.f ? 'grab' : 'pointer') : hitLogo() ? 'pointer' : 'default';
   }
 });
 function release() {
@@ -577,10 +718,11 @@ canvas.addEventListener('pointerup', (e) => {
   const dx = e.clientX - sx, dy = e.clientY - sy;
   if (mode === 'swipe' && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) step(dx < 0 ? 1 : -1);
   else if (mode === 'tap' && Math.hypot(dx, dy) < 12) focus(mode_i);
+  else if (mode === 'logo' && Math.hypot(dx, dy) < 12) cycleLogo();
   mode = null; release();
 });
 canvas.addEventListener('pointercancel', () => { mode = null; release(); });
-canvas.addEventListener('dblclick', standUp);
+canvas.addEventListener('dblclick', (e) => { toNdc(e); const h = hitSlot(); if (h && h.i === ring.f) smooshAt(); else standUp(); });
 const step = (d) => focus(ring.f + d, d);
 addEventListener('keydown', (e) => {
   if (e.target.closest?.('input, textarea, [contenteditable]')) return;
@@ -619,12 +761,136 @@ const motion = createMotion({
     haptic([18, 30, 12]); poke();
   },
 });
-let lastWallHit = 0;
+let lastWallHit = 0, lastThump = 0;
 body.addEventListener('collide', (e) => {
-  if (!motion.on || e.body === crest || e.body === floorB || e.body === hand) return;
+  if (e.body === hand) return;
   const v = Math.abs(e.contact.getImpactVelocityAlongNormal()), now = performance.now();
-  if (v > 2 && now - lastWallHit > 90) { lastWallHit = now; haptic(Math.min(28, v * 2.2)); }
+  if (e.body === wallF && smoosh && !smoosh.hit && v > 1.5) { glassHit(v); return; }
+  if (e.body === crest || e.body === floorB) {
+    if (v > 2.5 && now - lastThump > 160) { lastThump = now; sound.thump(v); }
+    return;
+  }
+  // the box: every wall knock rattles, and buzzes the phone when shake is on
+  if (v > 1.6 && now - lastWallHit > 80) {
+    lastWallHit = now;
+    sound.rattle(v);
+    if (motion.on) haptic(Math.min(28, v * 2.2));
+  }
 });
+
+// ---------- Pressed against the glass ----------
+// Double-tap him (or toss him at the screen): he leaps at you, squashes flat on the glass, fogs it, and slides off.
+const SMOOSH_HOLD = 900;
+let smoosh = null;
+const squash = { a: 0, v: 0, want: 0 };
+const fog = document.createElement('div');
+fog.id = 'Fog';
+stage.after(fog);
+function smooshAt() {
+  if (ring.t < 1 || smoosh || night.on) return;
+  if (grip) release();
+  const glassZ = camBase.z - 2.35;
+  wallF.position.z = glassZ;
+  body.wakeUp();
+  body.quaternion.set(0, 0, 0, 1);
+  body.angularVelocity.setZero();
+  body.velocity.set(-body.position.x * 1.5, 5.8, (glassZ - 0.6 - body.position.z) / 0.42);
+  twirlSteps = 0;
+  smoosh = { at: performance.now(), hit: 0 };
+  ui.played();
+  poke(10);
+}
+const _fp = new THREE.Vector3();
+function glassHit(v) {
+  smoosh.hit = performance.now();
+  body.velocity.set(0, -0.2, 0);
+  body.quaternion.set(0, 0, 0, 1);
+  body.angularVelocity.setZero();
+  squash.v += 4 + v * 0.5; squash.want = 0.8;
+  sound.squeak(); haptic([10, 30, 22]);
+  // a fogged patch where his face meets the glass
+  _fp.set(body.position.x, body.position.y + 0.35, body.position.z + 0.6).project(camera);
+  const r = stage.getBoundingClientRect();
+  fog.style.left = `${(_fp.x + 1) / 2 * r.width}px`;
+  fog.style.top = `${(1 - _fp.y) / 2 * r.height}px`;
+  fog.style.setProperty('--s', `${Math.min(r.width, r.height) * 0.42}px`);
+  fog.classList.remove('on'); void fog.offsetWidth; fog.classList.add('on');
+}
+function updateSmoosh(dt) {
+  if (smoosh) {
+    const now = performance.now();
+    if (smoosh.hit && now - smoosh.hit > SMOOSH_HOLD && !smoosh.off) {     // peel off and drop back home
+      smoosh.off = now; squash.want = 0;
+      body.velocity.set(-body.position.x * 0.6, 3.2, -6.5);
+      body.angularVelocity.set(-3, (Math.random() - 0.5) * 4, 0);
+    }
+    if ((smoosh.off && body.position.z < BOUNDS.zFront - 0.4) || now - smoosh.at > 4000) {
+      wallF.position.z = BOUNDS.zFront;
+      if (body.position.z > BOUNDS.zFront - 0.3) body.position.z = 0;
+      smoosh = null;
+    }
+    poke(2);
+  }
+  if (squash.a !== 0 || squash.v !== 0 || squash.want) {
+    squash.v += (-90 * (squash.a - squash.want) - 9 * squash.v) * dt;
+    squash.a = THREE.MathUtils.clamp(squash.a + squash.v * dt, -0.3, 0.95);
+    if (!squash.want && Math.abs(squash.a) < 0.002 && Math.abs(squash.v) < 0.01) squash.a = squash.v = 0;
+    poke(2);
+  }
+}
+
+// ---------- Lights out (Halloween) ----------
+// Oct 31 (or the easter egg): the page goes dark, his studio lights go off, and one warm lamp follows your
+// finger or cursor. The logo turns to candy corn. Eyes blink in the dark behind him (page.js draws those).
+const night = { on: false, k: 0, aim: new THREE.Vector3(0, LIFT + 1, 0), want: new THREE.Vector3(0, LIFT + 1, 0), movedAt: 0, screen: { x: 0, y: 0, r: 0 } };
+const NIGHT_PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+function setNight(on) {
+  night.on = on;
+  front.candy = on;
+  if (on && smoosh) { wallF.position.z = BOUNDS.zFront; smoosh = null; squash.want = 0; }
+  key.color.set(on ? 0xffc890 : 0xfff1e2);
+  key.angle = on ? 0.42 : Math.PI / 4;
+  key.penumbra = on ? 0.9 : 1;
+  rims.forEach((r) => (r.visible = !on));
+  slots.forEach((s) => s.group.traverse((o) => {      // the studio's reflections go dark too; the eyes keep a glint
+    const m = o.material; if (!m || m.envMapIntensity == null) return;
+    m.userData.env ??= m.envMapIntensity;
+    m.envMapIntensity = on ? m.userData.env * (m === s.set?.eyes ? 0.5 : 0.05) : m.userData.env;
+  }));
+  setLogoFinish(logo3D.mode);
+  front.draw?.();
+  poke(10);
+}
+function updateNight(dt) {
+  const target = night.on ? 1 : 0;
+  if (night.k !== target) { night.k += Math.sign(target - night.k) * Math.min(Math.abs(target - night.k), dt * 1.6); nightU.value = night.k; poke(2); }
+  if (!night.on) return;
+  const now = performance.now();
+  if (now - night.movedAt > 4000) {                     // nobody's steering: the lamp wanders on its own
+    const t = now / 1000;
+    night.want.set(Math.sin(t * 0.37) * 1.4, LIFT + 1.0 + Math.sin(t * 0.61) * 0.5, 0);
+  }
+  night.aim.lerp(night.want, Math.min(1, dt * 2.6));     // trails behind, so it feels dragged
+  const flick = 1 + (Math.random() - 0.5) * 0.06;
+  key.intensity = 30 * flick;
+  key.position.set(night.aim.x + 0.5, night.aim.y + 3.0, night.aim.z + 2.2);
+  key.target.position.copy(night.aim);
+  lampU.value.copy(night.aim);
+  _fp.copy(night.aim).project(camera);
+  const r = stage.getBoundingClientRect();
+  night.screen.x = r.left + (_fp.x + 1) / 2 * r.width; night.screen.y = r.top + (1 - _fp.y) / 2 * r.height; night.screen.r = Math.min(r.width, r.height) * 0.22;
+  poke(2);
+}
+addEventListener('pointermove', (e) => {
+  if (!night.on || mode === 'grab') return;
+  toNdc(e);
+  raycaster.setFromCamera(ndc, camera);
+  if (raycaster.ray.intersectPlane(NIGHT_PLANE, _fp)) {
+    night.want.set(THREE.MathUtils.clamp(_fp.x, -3, 3), THREE.MathUtils.clamp(_fp.y, LIFT - 0.3, LIFT + 2.6), 0);
+    night.movedAt = performance.now();
+  }
+}, { passive: true });
+addEventListener('grumpl-night', (e) => setNight(!!e.detail?.on));
 
 // ---------- Layout ----------
 const _r = new THREE.Vector3(), _n = new THREE.Vector3();
@@ -667,8 +933,34 @@ function resize() {
   screenToPlaneZ(0, portrait ? -0.56 : -0.74, FRONT_Z, _r);
   front.group.position.set(_r.x - LOGO_C.x * front.s, _r.y - LOGO_C.y * front.s, FRONT_Z - 0.42 * front.s);
   ui.layout?.({ portrait });
+  sendLogoRect();
   poke(4);
 }
+// The sticky logo (page.js) takes over from the 3D one at the top of the screen: it needs to know where it is.
+const _lc = new THREE.Vector3();
+function sendLogoRect() {
+  if (!front.logo) return;
+  front.group.updateMatrixWorld(true);
+  const w = stage.clientWidth, h = stage.clientHeight;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    _lc.set(LOGO_C.x + sx * LOGO_W / 2, LOGO_C.y + sy * LOGO_H / 2, 0.42).applyMatrix4(front.group.matrixWorld).project(camera);
+    const px = (_lc.x + 1) / 2 * w, py = (1 - _lc.y) / 2 * h;
+    x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+  }
+  dispatchEvent(new CustomEvent('grumpl-logo', { detail: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } }));
+}
+let logoAllowed = true;
+addEventListener('grumpl-logo-3d', (e) => {
+  const show = logoAllowed = !!e.detail?.show;
+  if (front.logo) front.logo.visible = show && logo3D.on;
+  if (logo3D.group) logo3D.group.visible = show && logo3D.on;
+  poke(3);
+});
+
+// The hero stops drawing once it has scrolled away
+let heroOn = true;
+new IntersectionObserver(([e]) => { heroOn = e.isIntersecting; if (heroOn) poke(6); }).observe(document.getElementById('Hero'));
 addEventListener('resize', resize);
 
 // ---------- Frame loop ----------
@@ -685,14 +977,16 @@ function adaptResolution() {
   else if (frameAvg < 18) { if (++fastRun > 90 && dprIdx < dprMax) { dprIdx++; fastRun = 0; renderer.setPixelRatio(DPR_STEPS[dprIdx]); resize(); } }
   else fastRun = 0;
 }
-window.__grumpl = { renderer, scene, camera, ring, slots, focus: (i) => focus(i), jump, puffRow };
+window.__grumpl = { renderer, scene, camera, ring, slots, focus: (i) => focus(i), jump, puffRow, setNight, setLogoFinish, cycleLogo, smoosh: smooshAt, night };
+// the page's lamp-aware eyes read this
+window.__grumplLamp = night.screen;
 const ui = initUI({ DROP, FLAVORS, focus: (i) => focus(i), step, jump, motion, canMove });
 onFocus(FLAVORS[0], 0);
 resize();
 
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 1 / 20);
-  if (!slots[0].set) return;
+  if (!slots[0].set || !heroOn) return;
   if (grip && dt > 0) hand.velocity.set((handTarget.x - hand.position.x) / dt * 0.6, (handTarget.y - hand.position.y) / dt * 0.6, (handTarget.z - hand.position.z) / dt * 0.6);
   motion.tick();
   if (motion.on) {
@@ -708,20 +1002,26 @@ renderer.setAnimationLoop(() => {
     g.position.copy(body.position); g.position.y -= press.s;
     g.quaternion.copy(body.quaternion);
   }
-  // fixed key, aimed at the focused Grumpl
-  const flat = Math.cos(KEY.el) * KEY.r;
-  key.position.set(Math.sin(KEY.az) * flat, Math.sin(KEY.el) * KEY.r + 0.3 + LIFT, Math.cos(KEY.az) * flat);
-  key.target.position.set(g.position.x * 0.5, LIFT + 0.8, g.position.z * 0.5);
+  updateSmoosh(dt);
+  g.scale.set(1 + 0.32 * squash.a, 1 + 0.2 * squash.a, Math.max(0.2, 1 - 0.62 * squash.a));
+  updateNight(dt);
+  // fixed key, aimed at the focused Grumpl (at night the key is the lamp: see updateNight)
+  if (!night.on) {
+    const flat = Math.cos(KEY.el) * KEY.r;
+    key.position.set(Math.sin(KEY.az) * flat, Math.sin(KEY.el) * KEY.r + 0.3 + LIFT, Math.cos(KEY.az) * flat);
+    key.target.position.set(g.position.x * 0.5, LIFT + 0.8, g.position.z * 0.5);
+    key.intensity = 24;
+  }
   const vm = camera.matrixWorldInverse;
   lightU.uKeyPosV.value.copy(key.position).applyMatrix4(vm);
   rims.forEach((r, i) => lightU.uRimDirV.value[i].copy(_v.copy(r.position).sub(g.position).normalize().transformDirection(vm)));
   lightU.uBackDirV.value.copy(backDirW).transformDirection(vm);
   g.updateMatrixWorld(true);
   OCC_LOCAL.forEach(([p, r], i) => { _c3.copy(p).applyMatrix4(g.matrixWorld); occU.value[i].set(_c3.x, _c3.y, _c3.z, r); });
-  if (front.busy && front.draw) { front.busy = front.draw(); poke(2); }
+  if (front.busy && front.draw) { front.busy = front.draw(); pose3DLetters(); poke(2); }
 
   const p = g.position, q = g.quaternion;
-  const sig = [p.x, p.y, p.z, q.x, q.y, q.z, pressU.value.w, ring.show].map((v) => v.toFixed(4)).join();
+  const sig = [p.x, p.y, p.z, q.x, q.y, q.z, pressU.value.w, ring.show, squash.a].map((v) => v.toFixed(4)).join();
   if (sig !== lastSig || kick > 0 || grip) {
     adaptResolution();
     renderer.render(scene, camera);
