@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Grumpl Drops</title></head><body>
+<title>Grumpl Drops</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#f3faf5">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Fredoka:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: sticky column of drop cards on the left, the drop's flavor cards on the right,
+   a two-card popup (photos + details) for each flavor. Motion, card style and overlay
+   choreography follow Scott's Grumpl Artists site (2022). Single light look by design:
+   the page is a white ground tinted toward whichever Grumpl you're looking at. */
+@property --tint      { syntax: '<color>'; inherits: true; initial-value: #9fdcae; }
+@property --tint-edge { syntax: '<color>'; inherits: true; initial-value: #4fd2e0; }
+:root {
+	--ink: #0b0a0c;
+	--light: #eff4f3;
+	--paper: #ffffff;
+	--lemon: #ffee96;
+	--process: #00b7ee;
+	--muted: #5d5862;
+	--tint: #9fdcae;
+	--tint-edge: #4fd2e0;
+
+	--font-cute: caraque-melted, "Chewy", "Fredoka", ui-rounded, system-ui, sans-serif;
+	--font-solid: caraque-solid, "Fredoka", ui-rounded, system-ui, sans-serif;
+
+	--gap: 48px;
+	--radius: 12px 9px 7px 15px;
+	--radius-in: 8px 5px 3px 10px;
+	--tag-radius: 5px 4px 3px 6px;
+	--shadow: 2px 3px var(--ink), 6px 10px 0 rgba(0 0 0 / 0.15);
+	--ease: cubic-bezier(0.64, 1.5, 0.67, 1.125);
+	--trans: transform 0.5s var(--ease), opacity 0.5s var(--ease);
+	color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--paper); }
+body {
+	margin: 0;
+	min-height: 100vh;
+	color: var(--ink);
+	background: color-mix(in oklab, var(--tint) 10%, var(--paper));
+	font: 500 18px/1.5 var(--font-solid);
+	transition: --tint 0.9s ease, --tint-edge 0.9s ease;
+	overflow-x: hidden;
+}
+body.no-scroll { overflow: hidden; }
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* the tinted wash + grain, like the charcoal overlay on the artist site */
+#Wash { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+	background:
+		radial-gradient(120% 70% at 85% -10%, color-mix(in oklab, var(--tint-edge) 16%, transparent), transparent 60%),
+		linear-gradient(to bottom, color-mix(in oklab, var(--tint) 5%, var(--paper)), color-mix(in oklab, var(--tint) 20%, var(--paper)) 75%, color-mix(in oklab, var(--tint-edge) 24%, var(--paper)));
+}
+#Wash::after { content: ""; position: absolute; inset: 0; opacity: 0.09; mix-blend-mode: multiply;
+	background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- masthead ---------- */
+#Masthead, #Shell, footer { position: relative; z-index: 1;
+	padding-left: max(var(--gap), env(safe-area-inset-left, 0px));
+	padding-right: max(var(--gap), env(safe-area-inset-right, 0px)); }
+#Masthead { padding-block: 40px 8px; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; transition: var(--trans); }
+#Logo { width: min(250px, 52vw); display: block; transform-origin: 50% 100%; animation: squish 1.6s var(--ease) infinite; }
+#Logo img { width: 100%; display: block; }
+#Masthead p { max-width: 30ch; text-align: right; font-size: 17px; line-height: 1.35; color: var(--muted); margin: 0 0 6px; text-wrap: balance; }
+#Masthead p strong { color: var(--ink); font-weight: 600; }
+@keyframes squish {
+	0%, 64%, 100% { transform: scale(1, 1) translateY(0); }
+	10% { transform: scale(1.025, 0.95) translateY(0); }
+	30% { transform: scale(0.97, 1.02) translateY(-10px); }
+	50% { transform: scale(1.02, 0.98) translateY(0); }
+	57% { transform: translateY(-3px); }
+}
+@keyframes little-bounce {
+	0%, 64%, 100% { transform: var(--rest) scale(1, 1) translateY(0); }
+	10% { transform: var(--rest) scale(1.025, 0.95) translateY(0); box-shadow: 2px 3px var(--ink), 6px 7px 0 rgba(0 0 0 / 0.15); }
+	30% { transform: var(--rest) scale(0.95, 1.0125) translateY(-16px); box-shadow: 2px 3px var(--ink), 6px 16px 8px 2px rgba(0 0 0 / 0.15); }
+	50% { transform: var(--rest) scale(1.025, 0.975) translateY(0); }
+	57% { transform: var(--rest) translateY(-4px); }
+}
+@keyframes wiggle { 50% { transform: rotate(2deg) translateY(-6px); } }
+
+/* ---------- shell ---------- */
+#Shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: var(--gap); padding-block: 32px 64px; align-items: start; }
+
+/* ---------- card: the shared object ---------- */
+.card {
+	position: relative;
+	background: var(--light);
+	border: 4px solid var(--ink);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	--rest: rotate(var(--r, 0deg));
+	transform: var(--rest);
+	transition: var(--trans), background-color 0.6s ease;
+	transition-delay: var(--d, 0s);
+}
+.card.pre { opacity: 0; transform: translateY(var(--fy, -80px)) rotate(var(--fr, 8deg)); transition: none; }
+.card.leaving { opacity: 0; transform: translateX(40px) rotate(-6deg) scale(1.15); transition-duration: 0.45s; transition-timing-function: cubic-bezier(0.5, 0, 0.75, 0); }
+
+/* the black name tag that sits on cards */
+.tag { position: absolute; z-index: 3; color: var(--paper); isolation: isolate; max-width: calc(100% - 32px);
+	font: 400 26px/1.05 var(--font-cute); letter-spacing: 0.01em; transition: var(--trans), color 0.5s var(--ease); }
+.tag::before { content: ""; position: absolute; inset: -3px -9px; z-index: -1; background: var(--ink);
+	border-radius: var(--tag-radius); transform: rotate(-0.6deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15); }
+
+/* ---------- drop rail ---------- */
+#Rail { position: sticky; top: calc(24px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 20px; padding-top: 4px; }
+#Rail h2 { margin: 0 0 -4px 4px; font: 600 13px/1 var(--font-solid); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.drop { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 12px; row-gap: 6px;
+	text-align: left; padding: 12px 14px 12px 12px; overflow: hidden; isolation: isolate;
+	background: color-mix(in oklab, var(--hue) 22%, var(--light)); }
+.drop::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius-in); opacity: 0.25; transition: opacity 0.5s var(--ease); pointer-events: none; }
+.drop-num { font: 400 46px/0.8 var(--font-cute); grid-row: span 2; min-width: 1.15em; }
+.drop-name { font: 600 17px/1.1 var(--font-solid); }
+.drop-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.dots { grid-column: 1 / -1; display: flex; gap: 5px; margin-top: 2px; }
+.dots i { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--c); transition: transform 0.4s var(--ease); transition-delay: calc(var(--k) * 40ms); }
+.chip { display: inline-block; padding: 2px 7px 1px; border-radius: 4px 3px 4px 5px; background: var(--ink); color: var(--paper); font-size: 11px; letter-spacing: 0.08em; }
+.chip.soon { background: var(--lemon); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+.drop:not(.empty):hover { transform: var(--rest) scale(1.04) translateX(4px); }
+.drop:not(.empty):hover::after { opacity: 1; }
+.drop:not(.empty):hover .dots i { transform: translateY(-3px); }
+.drop.active { background: color-mix(in oklab, var(--hue) 55%, var(--light)); --rest: rotate(calc(var(--r) * -1.5)) translateX(10px) scale(1.06); }
+.drop.active::after { opacity: 1; }
+.drop.active.bounce { animation: little-bounce 0.9s var(--ease) 1; }
+.drop.empty { background: transparent; border: 3px dashed color-mix(in oklab, var(--ink) 32%, transparent); box-shadow: none; cursor: default; color: color-mix(in oklab, var(--ink) 42%, transparent); }
+.drop.empty .drop-name { font-weight: 500; }
+.drop.empty svg { grid-row: span 2; width: 40px; height: 40px; opacity: 0.55; animation: wiggle 3.2s ease-in-out infinite; animation-delay: calc(var(--k) * -0.8s); }
+
+/* ---------- stage ---------- */
+#Stage { min-width: 0; display: flex; flex-direction: column; gap: 28px; }
+.drop-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px 32px; }
+.drop-head > * { transition: var(--trans); }
+.drop-head.pre > * { opacity: 0; transform: translateX(-40px); transition: none; }
+.drop-head.leaving > * { opacity: 0; transform: translateX(-60px) rotate(-2deg); transition-duration: 0.35s; }
+.eyebrow { font: 600 13px/1 var(--font-solid); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.drop-head h1 { margin: 10px 0 0; font: 400 clamp(44px, 6vw, 84px)/0.95 var(--font-cute); letter-spacing: 0.01em; text-wrap: balance; }
+.drop-head p { grid-column: 1 / -1; margin: 0; max-width: 56ch; font-size: clamp(18px, 1.6vw, 22px); line-height: 1.4; text-wrap: pretty; }
+.drop-head .count { font: 400 22px/1 var(--font-cute); padding-bottom: 8px; white-space: nowrap; }
+
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px; }
+
+/* flavor card, after the artist cards */
+.flavor { aspect-ratio: 1; max-width: 100%; overflow: hidden; background: var(--ink); cursor: pointer; padding: 0; text-align: left; display: block; width: 100%; }
+.flavor img, .flavor .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* DYLI renders are cut out, so the card behind them glows in the flavor's own colors */
+.flavor.cut { background: radial-gradient(circle at 50% 40%, #fff 0 12%, color-mix(in oklab, var(--belly) 35%, #fff) 38%, color-mix(in oklab, var(--base) 42%, #fff) 72%, color-mix(in oklab, var(--edge) 45%, #fff) 125%); }
+.slide.cut { background: radial-gradient(circle at 50% 42%, #fff 0 12%, color-mix(in oklab, var(--o-belly) 35%, #fff) 40%, color-mix(in oklab, var(--o-base) 42%, #fff) 74%, color-mix(in oklab, var(--o-edge) 45%, #fff) 130%); }
+.slide.cut img { object-fit: contain; }
+.flavor .art.blob { background: radial-gradient(circle at 50% 42%, var(--belly) 0 18%, var(--base) 42%, var(--edge)); }
+.flavor .rep { opacity: 0; transform: scale(1.1) rotate(-6deg); transition: var(--trans); background: var(--soft); }
+.flavor .tag { left: 21px; bottom: 18px; }
+.flavor .flav-sub { position: absolute; z-index: 3; left: 21px; bottom: 18px; color: var(--paper); font: 600 15px/1 var(--font-solid);
+	opacity: 0; transform: scale(0.6); transform-origin: left bottom; transition: var(--trans); isolation: isolate; }
+.flavor .flav-sub::before { content: ""; position: absolute; inset: -5px -9px; z-index: -1; background: var(--ink); border-radius: var(--tag-radius); transform: rotate(0.6deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15); }
+.flavor .acts { position: absolute; z-index: 3; top: 14px; left: 14px; display: flex; align-items: center; gap: 4px; padding: 7px 10px;
+	background: var(--ink); border-radius: var(--tag-radius); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15);
+	transform: translateY(-48px); opacity: 0; transition: var(--trans), gap 0.5s var(--ease); }
+.trigger { color: var(--ink); display: grid; place-items: center; width: 30px; height: 26px; background: var(--light); border-radius: 2px 3px 2px 4px; transform: rotate(-1deg) scale(0.9); transition: var(--trans), background-color 0.5s var(--ease); }
+.trigger svg { width: 18px; height: 18px; }
+.acts .trigger:hover, .trigger:hover { transform: rotate(1deg) scale(1.1); background: var(--lemon); }
+.acts .say { color: var(--paper); font-size: 14px; font-weight: 600; padding: 0 4px 0 2px; white-space: nowrap; }
+.flavor::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border: 4px solid var(--paper); border-radius: var(--radius-in); opacity: 0.25; transition: var(--trans); }
+.flavor .sticker { position: absolute; z-index: 3; top: 14px; right: 12px; padding: 4px 10px 3px; background: var(--lemon); border: 3px solid var(--ink); border-radius: 6px 4px 7px 5px; font: 400 18px/1 var(--font-cute); transform: rotate(5deg); box-shadow: 2px 3px 0 var(--ink); transition: var(--trans); }
+.flavor:hover, .flavor:focus-visible { transform: scale(1.025); }
+.flavor:hover::after, .flavor:focus-visible::after { opacity: 1; }
+.flavor:hover .rep, .flavor:focus-visible .rep { opacity: 1; transform: none; }
+.flavor:hover .tag, .flavor:focus-visible .tag { opacity: 0; transform: scale(0.5); }
+.flavor:hover .flav-sub, .flavor:focus-visible .flav-sub { opacity: 1; transform: none; }
+.flavor:hover .acts, .flavor:focus-visible .acts { opacity: 1; transform: none; gap: 10px; }
+.flavor:hover .sticker { transform: rotate(-4deg) scale(1.08); }
+
+/* intro card: black, like "Generative Artists" */
+.intro { aspect-ratio: 1; max-width: 100%; overflow: hidden; background: var(--ink); color: var(--paper); padding: 26px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; isolation: isolate; }
+.intro::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--img) center / cover; mix-blend-mode: luminosity; opacity: 0.28; }
+.intro::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius); pointer-events: none; }
+.intro .big { font: 400 clamp(64px, 8vw, 112px)/0.8 var(--font-cute); }
+.intro .lbl { font: 400 clamp(24px, 2.4vw, 32px)/1 var(--font-cute); }
+.intro .sm { font-size: 15px; opacity: 0.8; }
+
+/* ---------- overlay ---------- */
+#Overlays { position: fixed; inset: 0; z-index: 20; overflow-y: auto; transition: var(--trans);
+	padding: max(var(--gap), env(safe-area-inset-top, 0px)) max(var(--gap), env(safe-area-inset-right, 0px)) max(var(--gap), env(safe-area-inset-bottom, 0px)) max(var(--gap), env(safe-area-inset-left, 0px));
+	display: grid; place-items: center; }
+#Overlays:not(.active) { opacity: 0; pointer-events: none; transition-delay: 0.3s; }
+.overlay-bg { position: fixed; inset: 0; transition: opacity 0.5s var(--ease);
+	background: radial-gradient(circle at 50% 50%, var(--o-belly) 10%, var(--o-base) 52%, var(--o-edge)); }
+#Overlays:not(.active) .overlay-bg { opacity: 0; transition-delay: 0.3s; }
+.sheet { position: relative; display: flex; align-items: center; justify-content: center; width: min(1000px, 100%); }
+.sheet .card { transition: var(--trans); transition-delay: 0.22s; }
+.sheet .art { width: min(520px, 100%); padding: 4px; background: var(--ink); --rest: rotate(-2.5deg); flex: none; }
+.sheet .info { width: min(420px, 100%); margin-left: -56px; margin-top: 64px; padding: 54px 28px 34px; z-index: 2; --rest: translateY(6px) rotate(2deg); background: var(--light); }
+.sheet .info::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius-in); pointer-events: none; }
+#Overlays:not(.active) .art, .sheet.swap .art { opacity: 0; transform: rotate(4deg) translateX(-80px) scale(1.125); transition-delay: 0s; transition-duration: 0.6s; }
+#Overlays:not(.active) .info, .sheet.swap .info { opacity: 0; transform: translateX(40px) rotate(-6deg) scale(1.2); transition-delay: 0s; transition-duration: 0.6s; }
+.sheet.arrive .art { opacity: 0; transform: rotate(-10deg) translateX(-40px) translateY(60px) scale(0.9); transition: none; }
+.sheet.arrive .info { opacity: 0; transform: translateX(80px) rotate(8deg) translateY(40px) scale(0.9); transition: none; }
+
+.info .tag { top: -22px; left: 24px; font-size: 36px; }
+.sheet .info.long { padding-top: 92px; }
+.info .eyebrow { margin-bottom: 10px; }
+.info p.desc { margin: 0 0 18px; font-size: 19px; line-height: 1.38; text-wrap: pretty; }
+.specs { margin: 0 0 22px; display: grid; grid-template-columns: auto 1fr; font-size: 16px; }
+.specs dt, .specs dd { margin: 0; padding: 7px 0; border-bottom: 2.5px dotted color-mix(in oklab, var(--ink) 30%, transparent); }
+.specs dt { font-weight: 600; padding-right: 18px; }
+.specs dd { text-align: right; font-variant-numeric: tabular-nums; }
+.specs dd small { color: var(--muted); font-size: 13px; margin-left: 6px; }
+.specs .swatch { display: inline-flex; gap: 4px; vertical-align: -3px; margin-right: 8px; }
+.specs .swatch i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--ink); background: var(--c); }
+.cta { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 16px 14px 20px;
+	background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); font: 400 26px/1 var(--font-cute); letter-spacing: 0.01em;
+	box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18); transform: rotate(-0.6deg); transition: var(--trans), color 0.4s var(--ease); text-decoration: none; }
+.cta .trigger { width: 38px; height: 32px; color: var(--ink); }
+.cta:hover { transform: rotate(0.6deg) scale(1.03); color: var(--lemon); }
+.cta:hover .trigger { background: var(--lemon); transform: rotate(3deg) scale(1.1); }
+.cta-note { margin: 10px 2px 0; font-size: 13px; color: var(--muted); }
+.remind label { display: block; font: 400 24px/1.05 var(--font-cute); margin-bottom: 10px; }
+.remind .row { display: flex; gap: 8px; padding: 6px; background: var(--ink); border-radius: var(--tag-radius); transform: rotate(-0.6deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18); }
+.remind input { flex: 1; min-width: 0; padding: 10px 12px; border: 0; border-radius: 3px 2px 3px 4px; background: var(--paper); font-size: 17px; }
+.remind input:focus-visible { outline: 3px solid var(--lemon); outline-offset: 0; }
+.remind button.go { padding: 0 14px; border-radius: 3px 2px 4px 3px; background: var(--lemon); color: var(--ink); font: 400 21px/1 var(--font-cute); transition: var(--trans), background-color 0.4s; }
+.remind button.go:hover { transform: rotate(2deg) scale(1.06); background: var(--paper); }
+.remind .err { min-height: 1.3em; margin: 8px 2px 0; font-size: 14px; color: #b3123b; }
+.remind .done { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 3px solid var(--ink); border-radius: var(--radius); background: var(--lemon); font-size: 17px; line-height: 1.3; transform: rotate(-1deg); animation: little-bounce 0.9s var(--ease) 1; --rest: rotate(-1deg); }
+.remind .done b { font: 400 24px/1 var(--font-cute); display: block; font-weight: 400; }
+
+.info .acts { position: absolute; bottom: -26px; left: 28px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); transform: rotate(-0.8deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15); font-size: 14px; font-weight: 600; }
+.info .acts span { min-width: 7ch; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* carousel */
+.car { position: relative; aspect-ratio: 1; max-width: 100%; overflow: hidden; border-radius: var(--radius-in); background: var(--o-soft); touch-action: pan-y; }
+.track { display: flex; height: 100%; transition: transform 0.7s var(--ease); will-change: transform; }
+.slide { flex: 0 0 100%; height: 100%; position: relative; overflow: hidden; }
+.slide img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.06) rotate(1.5deg); transition: transform 0.9s var(--ease); user-select: none; -webkit-user-drag: none; }
+.slide.on img { transform: none; }
+.slide.three { background: var(--o-soft); cursor: grab; touch-action: none; }
+.slide.three:active { cursor: grabbing; }
+.slide.three canvas { width: 100% !important; height: 100% !important; display: block; }
+.slide.three .wait { position: absolute; inset: 0; display: grid; place-items: center; font: 400 22px var(--font-cute); color: color-mix(in oklab, var(--ink) 55%, transparent); }
+.slide.soon { display: grid; place-content: center; text-align: center; gap: 6px; background: repeating-linear-gradient(-45deg, var(--o-soft) 0 18px, color-mix(in oklab, var(--o-base) 30%, var(--o-soft)) 18px 36px); }
+.slide.soon b { font: 400 34px/1 var(--font-cute); font-weight: 400; }
+.car .tag { top: 18px; left: 22px; font: 600 14px/1 var(--font-solid); letter-spacing: 0.04em; }
+.car-nav { position: absolute; z-index: 3; bottom: 14px; left: 50%; transform: translateX(-50%) rotate(-0.8deg); display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--ink); border-radius: var(--tag-radius); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18); }
+.car-nav .pips { display: flex; gap: 5px; align-items: center; }
+.car-nav .pips button { width: 9px; height: 9px; border-radius: 2px 3px 2px 3px; background: color-mix(in oklab, var(--light) 45%, transparent); transition: width 0.45s var(--ease), background-color 0.3s; }
+.car-nav .pips button.on { width: 22px; background: var(--lemon); }
+.car-nav .pips button.is3d { border-radius: 50%; }
+.tilt { position: absolute; z-index: 3; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px 8px 9px;
+	background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18);
+	font: 400 18px/1 var(--font-cute); transform: rotate(1.5deg); animation: nudge 2.6s var(--ease) infinite; }
+.tilt svg { width: 22px; height: 22px; color: var(--lemon); }
+.tilt:disabled { opacity: 0.6; animation: none; }
+@keyframes nudge { 0%, 70%, 100% { transform: rotate(1.5deg); } 78% { transform: rotate(-5deg) scale(1.06); } 86% { transform: rotate(5deg) scale(1.06); } 93% { transform: rotate(-2deg); } }
+.slide .hint { position: absolute; z-index: 3; left: 50%; top: 56px; width: max-content; max-width: calc(100% - 32px); padding: 8px 12px;
+	background: var(--lemon); border: 3px solid var(--ink); border-radius: 6px 4px 7px 5px; box-shadow: 2px 3px 0 var(--ink);
+	font: 600 14px/1.25 var(--font-solid); text-align: center; opacity: 0; transform: translateX(-50%) translateY(-8px) rotate(-1deg); transition: var(--trans); pointer-events: none; }
+.slide .hint.show { opacity: 1; transform: translateX(-50%) rotate(-1deg); }
+.slide .hint.stay { pointer-events: auto; }
+.slide .hint .full { text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
+
+#Close { position: fixed; z-index: 30; top: max(28px, calc(env(safe-area-inset-top, 0px) + 16px)); right: max(28px, calc(env(safe-area-inset-right, 0px) + 16px));
+	width: 44px; height: 44px; display: grid; place-items: center; transform: rotate(-4deg); transition: var(--trans); }
+#Close::before, #Close::after { content: ""; position: absolute; width: 34px; height: 8px; background: var(--light); border: 2.5px solid var(--ink); border-radius: 1px 2px 1px 3px; transition: transform 0.5s var(--ease); }
+#Close::before { transform: rotate(-45deg); }
+#Close::after { transform: rotate(45deg); }
+#Close:hover { transform: rotate(2deg) scale(1.25); }
+#Close:hover::before { transform: rotate(-46deg); }
+#Close:hover::after { transform: rotate(48deg); }
+#Close:not(.active) { opacity: 0; transform: translateY(-12px); pointer-events: none; }
+
+body.hidden #Masthead { opacity: 0; transform: translateY(-40px); }
+body.hidden #Shell { opacity: 0.0; transform: translateY(60px); }
+#Shell { transition: var(--trans); }
+body:not(.hidden) #Shell, body:not(.hidden) #Masthead { transition-delay: 0.35s; }
+
+footer { padding-block: 0 48px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1180px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+	:root { --gap: 22px; }
+	#Masthead p { display: none; }
+	#Shell { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 18px; }
+	#Rail { position: relative; top: 0; flex-direction: row; overflow-x: auto; gap: 14px; padding: 12px 6px 18px; margin: 0 -6px; scroll-snap-type: x proximity; scrollbar-width: none; }
+	#Rail::-webkit-scrollbar { display: none; }
+	#Rail h2 { display: none; }
+	.drop { flex: 0 0 196px; scroll-snap-align: start; }
+	.drop-meta { white-space: nowrap; }
+	.drop-name { white-space: nowrap; }
+	.drop.active { --rest: rotate(calc(var(--r) * -1.5)) translateY(-4px) scale(1.04); }
+	.drop.empty { flex-basis: 150px; }
+	.sheet { flex-direction: column; }
+	.sheet .info { margin: 22px 0 40px; width: min(520px, 100%); }
+}
+@media (max-width: 560px) {
+	.drop-head { grid-template-columns: minmax(0, 1fr); }
+	.drop-head .count { display: none; }
+	.intro { aspect-ratio: auto; min-height: 150px; }
+}
+/* touch screens: no sticky hover states, a press squish instead */
+@media (hover: none) {
+	.flavor:hover, .drop:not(.empty):hover { transform: var(--rest); }
+	.flavor:hover .rep { opacity: 0; transform: scale(1.1) rotate(-6deg); }
+	.flavor:hover .tag { opacity: 1; transform: none; }
+	.flavor:hover .flav-sub, .flavor:hover .acts { opacity: 0; }
+	.flavor:active, .drop:not(.empty):active { transform: var(--rest) scale(0.96); transition-duration: 0.15s; }
+	.cta:active { transform: rotate(0.6deg) scale(0.97); }
+}
+/* phones first: most people arrive from TikTok and friends */
+@media (max-width: 560px) {
+	:root { --gap: 16px; }
+	#Masthead { padding-block: calc(14px + env(safe-area-inset-top, 0px)) 0; }
+	#Logo { width: 150px; }
+	#Shell { padding-top: 6px; gap: 14px; }
+	#Rail { position: sticky; top: 0; z-index: 6; margin: 0 -16px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 14px; gap: 10px; scroll-padding-inline: 16px;
+		background: color-mix(in oklab, color-mix(in oklab, var(--tint) 10%, var(--paper)) 82%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+	.drop { flex: 0 0 auto; grid-template-columns: auto auto; padding: 8px 12px 8px 9px; border-width: 3px; column-gap: 8px; row-gap: 3px; }
+	.drop-num { font-size: 34px; }
+	.drop-name { font-size: 15px; }
+	.drop-meta { font-size: 10px; gap: 5px; }
+	.drop .dots { display: none; }
+	.drop.empty { flex-basis: auto; }
+	.drop.empty svg { width: 28px; height: 28px; }
+	.drop-head h1 { font-size: 46px; margin-top: 6px; }
+	.drop-head p { font-size: 16px; }
+	.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+	.intro { grid-column: 1 / -1; aspect-ratio: auto; min-height: 0; padding: 18px; flex-direction: row; align-items: flex-end; gap: 14px; }
+	.intro .big { font-size: 64px; }
+	.intro .lbl { font-size: 24px; }
+	.intro .sm { display: none; }
+	.card { border-width: 3px; }
+	.flavor .tag { left: 12px; right: 12px; bottom: 10px; font-size: 18px; }
+	.flavor .flav-sub, .flavor .acts { display: none; }
+	.flavor .sticker { top: 8px; right: 8px; font-size: 14px; padding: 3px 7px 2px; border-width: 2.5px; }
+	.flavor::after { border-width: 3px; }
+	#Overlays { padding: calc(64px + env(safe-area-inset-top, 0px)) 12px calc(28px + env(safe-area-inset-bottom, 0px)); place-items: start center; overscroll-behavior: contain; }
+	.sheet .art { --rest: rotate(-1.2deg); }
+	.car { aspect-ratio: 4 / 5; }
+	.sheet .info { margin: 18px 0 36px; padding: 34px 18px 28px; --rest: rotate(1deg); }
+	.info .tag { font-size: 30px; left: 16px; }
+	.info p.desc { font-size: 17px; }
+	.info .acts { left: 18px; }
+	#Close { top: calc(14px + env(safe-area-inset-top, 0px)); right: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after { animation: none !important; transition-duration: 0.01s !important; transition-delay: 0s !important; }
+	.track { transition: none; }
+}
+</style>
+
+<div id="Wash" aria-hidden="true"></div>
+<header id="Masthead">
+	<a id="Logo" href="#" aria-label="Grumpl home"><img src="img/logo.svg" alt="Grumpl"></a>
+	<p><strong>Small, grumpy, soft vinyl.</strong> Released in drops. Pick a drop, then tap a flavor to meet it.</p>
+</header>
+
+<div id="Shell">
+	<nav id="Rail" aria-label="Drops"></nav>
+	<main id="Stage" aria-live="polite">
+		<header class="drop-head" id="Head"></header>
+		<div class="grid" id="Grid"></div>
+	</main>
+</div>
+<footer>
+	<span>grumpl by goblintown</span>
+	<span>Drops 01&ndash;02 from DYLI, Oct 2026. Drops 00 and 03 are stand-ins.</span>
+</footer>
+
+<div id="Overlays" aria-hidden="true">
+	<div class="overlay-bg"></div>
+	<div class="sheet" id="Sheet" role="dialog" aria-modal="true" aria-labelledby="FlavorName"></div>
+</div>
+<button id="Close" aria-label="Close"></button>
+
+<script>
+/* ======================= data =======================
+   Drops 01 and 02 are real, from DYLI (dyli.io/profile/goblintown, crawled Oct 14 2026).
+   Drops 00 and 03 are stand-ins built from studio photos until real data exists. */
+const SIZE = { h: ['4.75 in', '12.1 cm'], w: ['3.4 in', '8.6 cm'], d: ['2.9 in', '7.4 cm'] }; // stand-in dimensions
+const DYLI = (slug) => `https://www.dyli.io/drop/${slug}`;
+const BOX = 'Blind box, Process Grey \u00d7 BigShotToyWorks';
+const FLAVORS = {
+	canvas:      { name: 'Blank Canvas',     finish: 'Unpainted matte vinyl', kind: 'vinyl',  base: '#ece9e3', edge: '#c3cdf0', belly: '#fbfaf7', photos: ['g7719', 'g7721', 'g7688'], weight: '205 g', edition: 300, stand: true,
+		desc: 'The raw pull, straight off the mold with no paint. Stand-in card until the studio pull has real details.' },
+	chrome:      { name: 'Rose Chrome',      finish: 'Mirror-plated vinyl',   kind: 'chrome', base: '#e7b3a2', edge: '#f39ab8', belly: '#f6d3c6', photos: ['g7690', 'g7692', 'g7685'], weight: '226 g', edition: 50, stand: true,
+		desc: 'A mirror-plated oddball from a test run. Stand-in card until the studio pull has real details.' },
+
+	fleshberry:  { name: 'Fleshberry', finish: BOX, kind: 'vinyl', base: '#eeaa9c', edge: '#ff6f8e', belly: '#f6cbbd', photos: ['d2253', 'g5729', 'g5730', 'g5733'],
+		url: DYLI('2253-grumpl-fleshberry'), size: '4"', edition: 313, minted: 313, odds: '29%', price: '$42.69', floor: '$40', last: '$10',
+		desc: 'The most common pull in the box at 29%. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
+	moss:        { name: 'Mosssnootfruit', finish: BOX, kind: 'vinyl', base: '#9fd6a0', edge: '#4fb8e0', belly: '#cdeec2', photos: ['d2254', 'g5709', 'g5711', 'g5712', 'g5713', 'g5710'],
+		url: DYLI('2254-grumpl-mosssnootfruit'), size: '4"', edition: 273, minted: 273, odds: '25%', price: '$42.69', last: '$33',
+		desc: 'Moss green with blue pooled in the creases. One in four boxes. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
+	obo:         { name: 'Color That Tastes Like Obo\u2019s Foot', short: 'Obo\u2019s Foot', finish: BOX, kind: 'vinyl', base: '#a9a6e6', edge: '#7f8cff', belly: '#cac8f2', photos: ['d2255', 'g5717', 'g5718', 'g5719', 'g5720', 'g5721', 'g5722', 'g5723'],
+		url: DYLI('2255-grumpl-color-that-tastes-like-obo-s-foot'), size: '4"', edition: 213, minted: 213, odds: '20%', price: '$42.69', last: '$20',
+		desc: 'Periwinkle that leans violet at the ears and toes. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
+	lunchbutter: { name: 'Lunchbutter', finish: BOX, kind: 'vinyl', base: '#d8b862', edge: '#ff9fb0', belly: '#efd9a0', photos: ['d2256', 'g5716'],
+		url: DYLI('2256-grumpl-lunchbutter'), size: '4"', edition: 163, minted: 163, odds: '15%', price: '$42.69', last: '$37.90',
+		desc: 'Mustard butter with pink ears. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
+	cement:      { name: 'Cement Juice', finish: BOX, kind: 'vinyl', base: '#c9c7c4', edge: '#ff9fb8', belly: '#e6e4e1', photos: ['d2257', 'g5726', 'g5725', 'g5727'],
+		url: DYLI('2257-grumpl-cement-juice'), size: '4"', edition: 107, minted: 107, odds: '10%', price: '$42.69', last: '$6',
+		desc: 'Sidewalk gray with pink in the crevices. One in ten boxes. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
+	speshul:     { name: 'Bagfasehed Speshul', finish: 'Hand-painted by Process Grey', kind: 'vinyl', base: '#d9d4cc', edge: '#b48cff', belly: '#efebe5', photos: ['d2258'],
+		url: DYLI('2258-grumpl-bagfasehed-speshul'), size: '4"', edition: 1000, minted: 17, odds: '1%', price: '$42.69', last: '$250', chase: true,
+		desc: 'The chase. Hand-painted by Process Grey, pulled from 1% of boxes, and only 17 exist. DYLI shows him as a mystery outline.' },
+
+	gift:        { name: '8" Collector\u2019s Gift', finish: 'Airdrop to holders of 5+ colors', kind: 'vinyl', base: '#e0d6c6', edge: '#ffb36b', belly: '#f2ece2', photos: ['d2312'],
+		url: DYLI('2312-8-grumpl-collector-s-gift'), size: '8"', edition: 50, odds: 'Holders of 5+ colors', price: '$0', floor: '$100', last: '$6.90', chase: true,
+		desc: 'An 8" Grumpl airdropped to anyone holding five or more colors from the blind drop. The colorway is still being finalized.' },
+
+	blueraz:     { name: 'Blue Raspberry',   finish: 'Matte vinyl, airbrushed', kind: 'vinyl', base: '#56c2dc', edge: '#6d72ff', belly: '#9fe0ea', photos: ['g7716', 'g7717', 'g5754', 'g5753', 'g5750'], weight: '210 g', edition: 300, stand: true,
+		desc: 'Slushie blue with a violet glow in every crease. Stand-in flavor shot from a pre-production sample.' },
+	strawberry:  { name: 'Strawberry Gummy', finish: 'Sugar-coated translucent resin', kind: 'gummy', base: '#ff5a50', edge: '#ff2d6a', belly: '#ff8a78', photos: [], weight: '240 g', edition: 100, stand: true,
+		desc: 'Translucent red resin rolled in sugar crystals. Stand-in flavor; no samples or photos yet.' },
+};
+const DROPS = [
+	{ n: '00', name: 'Studio Pull',  when: 'Stand-in', status: 'released', flavors: ['canvas', 'chrome'], stand: true,
+		blurb: 'Stand-in drop. Raw white vinyl and one mirror-chrome oddball from the studio photos, until there is a real drop 00 to show.' },
+	{ n: '01', name: 'Blind Box',    when: 'Feb 2025', status: 'released', flavors: ['fleshberry', 'moss', 'obo', 'lunchbutter', 'cement', 'speshul'],
+		blurb: 'Six 4" flavors in sealed collector boxes by Process Grey with BigShotToyWorks, $42.69 a box, Feb 12\u201314 2025. Sold out; every flavor trades on DYLI now.' },
+	{ n: '02', name: 'Collector\u2019s Gift', when: 'Feb 2025', status: 'released', flavors: ['gift'],
+		blurb: 'Fifty 8" Grumpls airdropped Feb 20\u201321 2025 to holders of five or more blind box colors.' },
+	{ n: '03', name: 'Sugar Rush',   when: 'Stand-in', status: 'upcoming', flavors: ['blueraz', 'strawberry'], stand: true,
+		blurb: 'Stand-in for the next drop. Leave your email on a flavor to see how the remind-me flow works.' },
+];
+const RESERVED = ['04', '05', '06'];
+const SECONDARY_URL = '#secondary'; // stand-in flavors have no listing
+
+/* ======================= helpers ======================= */
+const $ = (s, el = document) => el.querySelector(s);
+const img = (id) => `img/${id}.webp`;
+const cut = (id) => id?.[0] === 'd'; // DYLI renders have transparent backgrounds
+const rnd = (seed) => { const x = Math.sin(seed * 999.13) * 43758.5453; return x - Math.floor(x); };
+const hexMix = (a, b, t) => {
+	const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+	const A = p(a), B = p(b);
+	return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+};
+for (const [id, f] of Object.entries(FLAVORS)) { f.id = id; f.soft = hexMix(f.belly, '#ffffff', 0.62); }
+for (const d of DROPS) d.flavors.forEach((id) => (FLAVORS[id].drop = d));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
+const two = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+const ICON = {
+	eye: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 4C4.5 4 1.6 8.6 1 10c.6 1.4 3.5 6 9 6s8.4-4.6 9-6c-.6-1.4-3.5-6-9-6zm0 9.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2zm0-5.4a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6z"/></svg>',
+	out: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M7 4h9v9M16 4 5 15"/></svg>',
+	share: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M10 12.5V2.5M6 6l4-4 4 4M4 10v6.5h12V10"/></svg>',
+	bell: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 2a5 5 0 0 0-5 5v3.6L3.3 13.8c-.3.6.1 1.2.7 1.2h12c.6 0 1-.6.7-1.2L15 10.6V7a5 5 0 0 0-5-5zm-2 14a2 2 0 0 0 4 0z"/></svg>',
+	prev: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" d="M12.5 4 6.5 10l6 6"/></svg>',
+	next: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" d="M7.5 4l6 6-6 6"/></svg>',
+	sleepy: '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" d="M12 18 10 8l9 6c3-1 7-1 10 0l9-6-2 10c2 3 3 6 3 10 0 9-7 14-15 14S9 37 9 28c0-4 1-7 3-10z"/><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M17 26q2.5 2 5 0M26 26q2.5 2 5 0M19 33q5 3 10 0"/></svg>',
+};
+
+/* ======================= tint ======================= */
+const root = document.documentElement;
+const themeMeta = document.querySelector('meta[name=theme-color]');
+function tint(f) { document.body.style.setProperty('--tint', f.base); document.body.style.setProperty('--tint-edge', f.edge); themeMeta?.setAttribute('content', hexMix(f.base, '#ffffff', 0.85)); }
+let current = 1;
+const dropTint = () => tint(FLAVORS[DROPS[current].flavors[0]]);
+
+/* ======================= rail ======================= */
+const rail = $('#Rail');
+rail.innerHTML = '<h2>Drops</h2>' + DROPS.map((d, i) => {
+	const lead = FLAVORS[d.flavors[0]];
+	return `<button class="drop card" data-i="${i}" style="--r:${(rnd(i + 3) * 3 - 1.5).toFixed(2)}deg;--hue:${lead.base}" aria-pressed="false">
+		<span class="drop-num">${d.n}</span>
+		<span class="drop-name">${d.name}</span>
+		<span class="drop-meta">${d.status === 'upcoming' ? '<span class="chip soon">Soon</span>' : '<span class="chip">Out</span>'}${d.when}</span>
+		<span class="dots">${d.flavors.map((id, k) => `<i style="--c:${FLAVORS[id].base};--k:${k}"></i>`).join('')}</span>
+	</button>`;
+}).join('') + RESERVED.map((n, k) => `<div class="drop card empty" style="--r:${(rnd(k + 9) * 3 - 1.5).toFixed(2)}deg;--k:${k}" aria-label="Drop ${n}, reserved">
+		${ICON.sleepy}<span class="drop-name">Drop ${n}</span><span class="drop-meta">Reserved</span></div>`).join('');
+
+rail.addEventListener('click', (e) => {
+	const b = e.target.closest('.drop[data-i]');
+	if (b) { haptic(8); selectDrop(+b.dataset.i); }
+});
+
+/* ======================= stage ======================= */
+const grid = $('#Grid'), head = $('#Head');
+const renders = {}; // flavor id -> 3D still (data URL) once the model is ready
+
+function flavorCard(f, i) {
+	const up = f.drop.status === 'upcoming';
+	const main = f.photos[0] ? `<img class="art" src="${img(f.photos[0])}" alt="" draggable="false">`
+		: renders[f.id] ? `<img class="art" src="${renders[f.id]}" alt="">` : `<span class="art blob"></span>`;
+	const repSrc = renders[f.id] || (f.photos[1] && img(f.photos[1]));
+	const rep = repSrc ? `<img class="rep" src="${repSrc}" alt="" draggable="false">` : '';
+	return `<button class="flavor card${cut(f.photos[0]) ? ' cut' : ''}" data-id="${f.id}" aria-label="${f.name}, ${up ? 'coming soon' : 'released'}. Open details"
+		style="--base:${f.base};--edge:${f.edge};--belly:${f.belly};--soft:${f.soft}">
+		${main}${rep}
+		<span class="acts"><span class="trigger">${ICON.eye}</span><span class="say">${up ? 'Remind me' : 'On secondary'}</span></span>
+		${up ? '<span class="sticker">Soon</span>' : f.chase ? '<span class="sticker">Chase</span>' : ''}
+		<span class="tag">${f.short || f.name}</span>
+		<span class="flav-sub">${f.finish}</span>
+	</button>`;
+}
+function introCard(d) {
+	const lead = FLAVORS[d.flavors[0]];
+	const bg = lead.photos[0] ? img(lead.photos[0]) : '';
+	return `<div class="intro card" style="--img:url('${bg}')">
+		<span class="big">${d.n}</span><span class="lbl">${d.name}</span>
+		<span class="sm">${d.flavors.length} ${d.flavors.length === 1 ? 'piece' : 'flavors'} \u00b7 ${d.status === 'upcoming' ? 'coming ' + d.when : 'out ' + d.when}</span></div>`;
+}
+function headHTML(d) {
+	return `<div><div class="eyebrow"><span>Drop ${d.n}</span>${d.status === 'upcoming' ? '<span class="chip soon">Coming soon</span>' : '<span class="chip">Released</span>'}<span>${d.when}</span></div>
+		<h1>${d.name}</h1></div><span class="count">${d.flavors.length} ${d.flavors.length === 1 ? 'piece' : 'flavors'}</span><p>${d.blurb}</p>`;
+}
+
+let busy = false, pending = null;
+async function selectDrop(i, first = false) {
+	if (i === current && !first) return;
+	if (busy) { pending = i; return; }
+	busy = true;
+	current = i;
+	const d = DROPS[i];
+	rail.querySelectorAll('.drop[data-i]').forEach((b) => {
+		const on = +b.dataset.i === i;
+		b.classList.toggle('active', on);
+		b.setAttribute('aria-pressed', on);
+		if (on && !first) { b.classList.remove('bounce'); void b.offsetWidth; b.classList.add('bounce'); }
+	});
+	dropTint();
+	if (!first) {
+		// departure: cards fly off one by one, the way the artist overlays leave
+		head.classList.add('leaving');
+		[...grid.children].forEach((c, k) => { c.style.setProperty('--d', `${k * 45}ms`); c.classList.add('leaving'); });
+		await wait(380 + grid.children.length * 45);
+	}
+	head.className = 'drop-head pre';
+	head.innerHTML = headHTML(d);
+	grid.innerHTML = introCard(d) + d.flavors.map((id, k) => flavorCard(FLAVORS[id], k)).join('');
+	// arrival: each card drops in from a random tilt and settles onto its own slight angle
+	[...grid.children].forEach((c, k) => {
+		const s = i * 10 + k;
+		c.style.setProperty('--r', `${(rnd(s + 1) * 4 - 2).toFixed(2)}deg`);
+		c.style.setProperty('--fy', `${Math.round(rnd(s + 2) * 160 - 120)}px`);
+		c.style.setProperty('--fr', `${Math.round(rnd(s + 3) * 32 - 16)}deg`);
+		c.style.setProperty('--d', `${k * 70}ms`);
+		c.classList.add('pre');
+	});
+	await two();
+	head.classList.remove('pre');
+	[...grid.children].forEach((c) => c.classList.remove('pre'));
+	setTimeout(() => [...grid.children].forEach((c) => c.style.setProperty('--d', '0s')), 600 + grid.children.length * 70);
+	busy = false;
+	if (pending !== null) { const p = pending; pending = null; selectDrop(p); }
+}
+
+grid.addEventListener('pointerover', (e) => { const c = e.target.closest('.flavor'); if (c) tint(FLAVORS[c.dataset.id]); });
+grid.addEventListener('pointerleave', dropTint);
+grid.addEventListener('click', (e) => { const c = e.target.closest('.flavor'); if (c) { haptic(10); openFlavor(c.dataset.id); } });
+
+/* ======================= overlay ======================= */
+const overlays = $('#Overlays'), sheet = $('#Sheet'), closeX = $('#Close');
+let openId = null, slide = 0, slides = 0, lastFocus = null;
+
+function setOverlayColors(f) {
+	overlays.style.setProperty('--o-base', hexMix(f.base, '#ffffff', 0.25));
+	overlays.style.setProperty('--o-edge', f.edge);
+	overlays.style.setProperty('--o-belly', hexMix(f.belly, '#ffffff', 0.5));
+	overlays.style.setProperty('--o-soft', f.soft);
+}
+function specRows(f) {
+	const sw = `<span class="swatch"><i style="--c:${f.base}"></i><i style="--c:${f.edge}"></i></span>`;
+	if (!f.url) return `
+			<dt>Height</dt><dd>${SIZE.h[0]}<small>${SIZE.h[1]}</small></dd>
+			<dt>Width</dt><dd>${SIZE.w[0]}<small>${SIZE.w[1]}</small></dd>
+			<dt>Depth</dt><dd>${SIZE.d[0]}<small>${SIZE.d[1]}</small></dd>
+			<dt>Weight</dt><dd>${f.weight}</dd>
+			<dt>Finish</dt><dd>${sw}${f.finish}</dd>
+			<dt>Edition</dt><dd>${f.edition} pieces<small>stand-in</small></dd>`;
+	const ed = f.minted && f.minted !== f.edition ? `${f.minted} of ${f.edition}<small>minted</small>` : `${f.edition}<small>pieces</small>`;
+	return `
+			<dt>Size</dt><dd>${f.size} vinyl art figure</dd>
+			<dt>Finish</dt><dd>${sw}${f.finish}</dd>
+			<dt>Edition</dt><dd>${ed}</dd>
+			<dt>${f.id === 'gift' ? 'Who got one' : 'Pull odds'}</dt><dd>${f.odds}</dd>
+			<dt>Drop price</dt><dd>${f.price}</dd>
+			<dt>${f.floor ? 'Floor' : 'Last sale'}</dt><dd>${f.floor || f.last}${f.floor ? `<small>last sale ${f.last}</small>` : ''}</dd>`;
+}
+const COARSE = matchMedia('(pointer: coarse)').matches;
+const CAN_MOVE = COARSE && 'DeviceMotionEvent' in window;
+const MOTION_UI = `<button class="tilt" id="Tilt" type="button" ${CAN_MOVE ? '' : 'hidden'}>${'<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="2" width="9" height="16" rx="2.2" fill="none" stroke="currentColor" stroke-width="2.2" transform="rotate(-14 10 10)"/><path d="M2 7q-1.6 3 0 6M18 7q1.6 3 0 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'}<span>Tilt &amp; shake</span></button>
+	<span class="hint" id="Hint" hidden></span>`;
+const haptic = (ms) => { try { navigator.vibrate?.(ms); } catch {} };
+function hint(text, ms = 3200) {
+	const h = $('#Hint'); if (!h) return;
+	h.textContent = text; h.hidden = false; h.classList.remove('show'); void h.offsetWidth; h.classList.add('show');
+	clearTimeout(hint.t); hint.t = setTimeout(() => h.classList.remove('show'), ms);
+}
+// The page is being shown inside someone else's frame (like the Claude preview), and the phone won't
+// hand motion to a framed page. Opening the page on its own fixes it.
+function offerFullPage() {
+	const h = $('#Hint'); if (!h) return;
+	clearTimeout(hint.t);
+	h.innerHTML = 'Your phone blocks motion inside this preview. <button type="button" class="full">Open the page on its own</button> to shake him, or flick him with your finger.';
+	h.hidden = false; h.classList.add('show', 'stay');
+	$('.full', h).addEventListener('click', () => {
+		const w = window.open(location.href, '_blank', 'noopener');
+		if (!w) h.textContent = 'Couldn\u2019t open a new tab from here. Flick him with your finger instead.';
+	});
+}
+function wireMotion() {
+	const b = $('#Tilt'); if (!b) return;
+	if (window.Grumpl3D?.motionOn) { b.hidden = true; return; }
+	if (!CAN_MOVE) { if (!wireMotion.told) { wireMotion.told = true; setTimeout(() => hint('Drag to spin him. Flick to toss him.'), 1400); } return; }
+	b.addEventListener('click', async () => {
+		b.disabled = true; haptic(10);
+		const r = await window.Grumpl3D?.enableMotion();
+		b.hidden = true;
+		if (r === 'on') { hint('Tilt to look around his box. Shake hard to toss him.'); haptic([12, 40, 12]); }
+		else if (r === 'framed') offerFullPage();
+		else if (r === 'denied') hint('Motion was turned down. Flick him with your finger instead. (Safari asks again after you reload.)', 5200);
+		else hint('Motion isn\u2019t available here. Flick him with your finger instead.');
+	});
+}
+function sheetHTML(f) {
+	const d = f.drop, up = d.status === 'upcoming';
+	const list = d.flavors, idx = list.indexOf(f.id);
+	const photoSlides = f.photos.length
+		? f.photos.map((p, k) => `<div class="slide${cut(p) ? ' cut' : ''}" data-k="${k + 1}"><img src="${img(p)}" alt="${f.name} Grumpl, photo ${k + 1}" draggable="false"></div>`).join('')
+		: `<div class="slide soon" data-k="1"><b>Photos soon</b><span>Samples are on their way.</span></div>`;
+	const n = 1 + Math.max(1, f.photos.length);
+	const pips = Array.from({ length: n }, (_, k) => `<button class="${k === 0 ? 'is3d' : ''}" data-go="${k}" aria-label="${k === 0 ? '3D view' : 'Photo ' + k}"></button>`).join('');
+	const cta = up
+		? `<form class="remind" novalidate>
+				<label for="RemindEmail">Remind me when ${f.name} drops</label>
+				<div class="row"><input id="RemindEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" required><button class="go" type="submit">Remind me</button></div>
+				<p class="err" aria-live="polite"></p>
+			</form>`
+		: `<a class="cta" href="${f.url || SECONDARY_URL}" target="_blank" rel="noopener">Buy on secondary <span class="trigger">${ICON.out}</span></a>
+			<p class="cta-note">${f.url ? `Sold out. Listings and sales are on DYLI.` : 'Stand-in flavor, so this button has no listing yet.'}</p>`;
+	return `
+	<div class="art card"><div class="car" id="Car">
+		<div class="track" id="Track">
+			<div class="slide three on" data-k="0" id="ThreeSlot"><span class="wait">Waking the Grumpl\u2026</span>${MOTION_UI}</div>
+			${photoSlides}
+		</div>
+		<span class="tag" id="SlideTag">3D \u00b7 drag to spin</span>
+		<div class="car-nav">
+			<button class="trigger" data-step="-1" aria-label="Previous photo">${ICON.prev}</button>
+			<span class="pips">${pips}</span>
+			<button class="trigger" data-step="1" aria-label="Next photo">${ICON.next}</button>
+		</div>
+	</div></div>
+	<div class="info card${f.name.length > 22 ? ' long' : ''}">
+		<h2 class="tag" id="FlavorName">${f.name}</h2>
+		<div class="eyebrow"><span>Drop ${d.n} \u00b7 ${d.name}</span>${up ? '<span class="chip soon">Coming ' + d.when + '</span>' : '<span class="chip">Released ' + d.when + '</span>'}</div>
+		<p class="desc">${f.desc}</p>
+		<dl class="specs">${specRows(f)}</dl>
+		${cta}
+		<div class="acts">
+			<button class="trigger" data-flav="-1" aria-label="Previous flavor">${ICON.prev}</button>
+			<span>${idx + 1} of ${list.length}</span>
+			<button class="trigger" data-flav="1" aria-label="Next flavor">${ICON.next}</button>
+			${navigator.share ? `<button class="trigger" data-share aria-label="Share ${f.short || f.name}">${ICON.share}</button>` : ''}
+		</div>
+	</div>`;
+}
+function fillSheet(f) {
+	openId = f.id;
+	setOverlayColors(f);
+	tint(f);
+	sheet.innerHTML = sheetHTML(f);
+	slide = 0;
+	slides = sheet.querySelectorAll('.slide').length;
+	goSlide(0, true);
+	window.Grumpl3D?.mount($('#ThreeSlot'), f);
+	wireMotion();
+	const form = $('.remind', sheet);
+	if (form) form.addEventListener('submit', (e) => {
+		e.preventDefault();
+		const v = $('#RemindEmail').value.trim();
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { $('.err', form).textContent = 'That email looks off. Check it and try again.'; return; }
+		form.outerHTML = `<div class="remind"><div class="done">${ICON.bell.replace('<svg', '<svg width="30" height="30"')}<div><b>You\u2019re on the list</b>We\u2019ll email ${v.replace(/[<>&"]/g, '')} when ${f.name} opens.</div></div></div>`;
+	});
+}
+async function openFlavor(id) {
+	lastFocus = document.activeElement;
+	const f = FLAVORS[id];
+	fillSheet(f);
+	sheet.classList.add('arrive');
+	document.body.classList.add('hidden', 'no-scroll');
+	overlays.classList.add('active');
+	overlays.setAttribute('aria-hidden', 'false');
+	closeX.classList.add('active');
+	await two();
+	sheet.classList.remove('arrive');
+	setTimeout(() => closeX.focus({ preventScroll: true }), 300);
+}
+function closeOverlay() {
+	if (!overlays.classList.contains('active')) return;
+	overlays.classList.remove('active');
+	overlays.setAttribute('aria-hidden', 'true');
+	closeX.classList.remove('active');
+	document.body.classList.remove('hidden', 'no-scroll');
+	dropTint();
+	setTimeout(() => { if (!overlays.classList.contains('active')) { window.Grumpl3D?.unmount(); sheet.innerHTML = ''; openId = null; } }, 700);
+	lastFocus?.focus?.({ preventScroll: true });
+}
+async function stepFlavor(dir) {
+	const list = FLAVORS[openId].drop.flavors;
+	const next = list[(list.indexOf(openId) + dir + list.length) % list.length];
+	sheet.classList.add('swap');
+	await wait(420);
+	fillSheet(FLAVORS[next]);
+	sheet.classList.remove('swap');
+	sheet.classList.add('arrive');
+	await two();
+	sheet.classList.remove('arrive');
+}
+function goSlide(k, instant = false) {
+	slide = (k + slides) % slides;
+	const track = $('#Track'); if (!track) return;
+	if (instant) track.style.transition = 'none';
+	track.style.transform = `translateX(${-100 * slide}%)`;
+	if (instant) { void track.offsetWidth; track.style.transition = ''; }
+	track.querySelectorAll('.slide').forEach((s, i) => s.classList.toggle('on', i === slide));
+	sheet.querySelectorAll('.pips button').forEach((b, i) => b.classList.toggle('on', i === slide));
+	const f = FLAVORS[openId];
+	$('#SlideTag').textContent = slide === 0 ? (COARSE ? '3D \u00b7 drag or flick him' : '3D \u00b7 drag to spin, flick to toss') : f.photos.length ? `Photo ${slide} of ${f.photos.length}` : 'Photos soon';
+	window.Grumpl3D?.setActive(slide === 0);
+}
+sheet.addEventListener('click', (e) => {
+	const s = e.target.closest('[data-step]'), g = e.target.closest('[data-go]'), fl = e.target.closest('[data-flav]');
+	if (s) goSlide(slide + +s.dataset.step);
+	if (g) goSlide(+g.dataset.go);
+	if (fl) { haptic(8); stepFlavor(+fl.dataset.flav); }
+	if (e.target.closest('[data-share]')) {
+		const f = FLAVORS[openId];
+		navigator.share({ title: `${f.name} Grumpl`, text: `${f.name}, a Grumpl from drop ${f.drop.n}`, url: f.url || location.href }).catch(() => {});
+	}
+});
+// swipe photos (the 3D slide uses drag to spin instead)
+let sx = null;
+sheet.addEventListener('pointerdown', (e) => { if (e.target.closest('.slide:not(.three)')) sx = e.clientX; });
+addEventListener('pointerup', (e) => { if (sx === null) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 40) goSlide(slide + (dx < 0 ? 1 : -1)); });
+overlays.addEventListener('click', (e) => { if (e.target === overlays || e.target.classList.contains('overlay-bg') || e.target === sheet) closeOverlay(); });
+closeX.addEventListener('click', closeOverlay);
+// phones: pull the popup down from the top to dismiss it
+let pull = null;
+overlays.addEventListener('touchstart', (e) => {
+	if (overlays.scrollTop > 0 || e.touches.length > 1 || e.target.closest('.slide.three, input, .car')) return;
+	pull = { y: e.touches[0].clientY, dy: 0 };
+}, { passive: true });
+overlays.addEventListener('touchmove', (e) => {
+	if (!pull) return;
+	pull.dy = Math.max(0, e.touches[0].clientY - pull.y);
+	if (overlays.scrollTop > 0) { pull = null; sheet.style.transform = ''; return; }
+	sheet.style.transition = 'none';
+	sheet.style.transform = `translateY(${pull.dy * 0.6}px) rotate(${pull.dy * 0.012}deg)`;
+}, { passive: true });
+overlays.addEventListener('touchend', () => {
+	if (!pull) return;
+	const go = pull.dy > 120; pull = null;
+	sheet.style.transition = 'transform 0.5s var(--ease)'; sheet.style.transform = '';
+	if (go) { haptic(12); closeOverlay(); }
+});
+addEventListener('keydown', (e) => {
+	if (!overlays.classList.contains('active')) return;
+	if (e.key === 'Escape') closeOverlay();
+	if (e.target.tagName === 'INPUT') return;
+	if (e.key === 'ArrowRight') goSlide(slide + 1);
+	if (e.key === 'ArrowLeft') goSlide(slide - 1);
+});
+$('#Logo').addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: 'smooth' }); });
+
+/* when the 3D model is ready it renders a studio still of each flavor; those become the hover images */
+addEventListener('grumpl3d-ready', async () => {
+	for (const f of Object.values(FLAVORS)) {
+		if (COARSE && f.photos.length) continue;
+		renders[f.id] = await window.Grumpl3D.still(f, f.photos.length ? 0.55 : 0.35);
+		grid.querySelectorAll(`.flavor[data-id="${f.id}"]`).forEach((c) => {
+			let rep = $('.rep', c);
+			if (!rep) { rep = document.createElement('img'); rep.className = 'rep'; rep.alt = ''; c.insertBefore(rep, $('.acts', c)); }
+			rep.src = renders[f.id];
+			const blob = $('.art.blob', c);
+			if (blob) { const im = document.createElement('img'); im.className = 'art'; im.alt = ''; im.src = renders[f.id]; blob.replaceWith(im); }
+		});
+	}
+});
+
+
+/* boot: the masthead and first drop slide in, then everything rests visible */
+document.body.classList.add('hidden');
+selectDrop(1, true);
+setTimeout(() => document.body.classList.remove('hidden'), 60);
+</script>
+
+<script src="model.js"></script>
+<script type="importmap">
+{ "imports": {
+	"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+	"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
+
+// One renderer, carried into whichever flavor popup is open. Lighting and the airbrushed
+// body shader come from the Grumpl light study prototype, trimmed for a card-sized view.
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
+const DPR = Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 1.75);
+renderer.setPixelRatio(DPR);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const canvas = renderer.domElement;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffffff);
+const camera = new THREE.PerspectiveCamera(24, 1, 0.1, 50);
+const LOOK = new THREE.Vector3(0, 0.98, 0);
+camera.position.set(0, 1.35, 6.6);
+camera.lookAt(LOOK);
+
+function studioEnv(eyesOnly = false) {
+	const env = new THREE.Scene();
+	if (!eyesOnly) env.add(new THREE.Mesh(new THREE.BoxGeometry(24, 24, 24), new THREE.ShaderMaterial({
+		side: THREE.BackSide, toneMapped: false,
+		vertexShader: 'varying float vY; void main(){ vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+		fragmentShader: 'varying float vY; void main(){ gl_FragColor = vec4(vec3(mix(0.45, 0.30, smoothstep(-2.0, 2.0, vY))), 1.0); }'
+	})));
+	const panel = (w, h, pos, L, hex) => {
+		const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false });
+		m.color.set(hex).multiplyScalar(L);
+		const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+		p.position.set(...pos); p.lookAt(0, 1, 0); env.add(p);
+	};
+	if (eyesOnly) { panel(2.2, 1.4, [0, 7, 1], 4.0, 0xffffff); panel(1.2, 1.2, [-5, 4, 4], 3.0, 0xffffff); }
+	else {
+		panel(6, 4, [0, 7, 1], 3.0, 0xfff4e8);
+		panel(3, 3, [-5, 4, 4], 2.5, 0xfff4e8);
+		panel(0.8, 5, [-4.5, 2.5, -3.5], 12, 0xf2f6ff);
+		panel(0.8, 5, [4.5, 2.5, -3.5], 10, 0xf2f6ff);
+		panel(5, 2.5, [0, 0.4, 4.5], 0.5, 0xffffff);
+		panel(3, 3, [5, 1.5, 2], 0.35, 0xffffff);
+		panel(4, 3, [0, 1.5, -6], 3.0, 0xfff8f0);
+	}
+	const pm = new THREE.PMREMGenerator(renderer);
+	const tex = pm.fromScene(env, 0.035).texture; pm.dispose(); return tex;
+}
+scene.environment = studioEnv();
+const eyeEnv = studioEnv(true);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xf3ece6, 0.05));
+const key = new THREE.DirectionalLight(0xfff1e0, 1.5);
+scene.add(key, key.target);
+key.target.position.copy(LOOK);
+RectAreaLightUniformsLib.init();
+[[-3.2, 20], [3.2, 16]].forEach(([x, p]) => { const r = new THREE.RectAreaLight(0xf2f6ff, p, 0.5, 3); r.position.set(x, 2, -2.6); r.lookAt(0, 1.1, 0); scene.add(r); });
+
+const EYES = { color: 0x080809, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.02, specularIntensity: 1, envMapIntensity: 1 };
+const TEETH = { color: 0xf6f0e3, roughness: 0.5, envMapIntensity: 0.9 };
+const BODY = {
+	vinyl:  { roughness: 0.62, specularIntensity: 0.5, sheen: 0.6, sheenRoughness: 0.5, sheenColor: 0xffe0d4, envMapIntensity: 0.6 },
+	chrome: { roughness: 0.14, metalness: 1, envMapIntensity: 1.25 },
+	gummy:  { roughness: 0.3, transmission: 0.55, thickness: 1.4, ior: 1.47, attenuationColor: 0xff3347, attenuationDistance: 0.8,
+		specularIntensity: 1, envMapIntensity: 1.3, sheen: 0.5, sheenRoughness: 0.7, sheenColor: 0xffffff },
+};
+const BASE = { color: 0xffffff, roughness: 0.5, metalness: 0, sheen: 0, sheenRoughness: 1, sheenColor: 0x000000, clearcoat: 0, clearcoatRoughness: 0,
+	specularIntensity: 1, transmission: 0, thickness: 0, ior: 1.5, attenuationColor: 0xffffff, attenuationDistance: Infinity, envMapIntensity: 1 };
+const mats = { body: new THREE.MeshPhysicalMaterial(), eyes: new THREE.MeshPhysicalMaterial(), teeth: new THREE.MeshPhysicalMaterial() };
+mats.eyes.envMap = eyeEnv;
+mats.eyes.onBeforeCompile = (sh) => {
+	sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_begin>',
+		THREE.ShaderChunk.lights_fragment_begin.replace('defined( RE_Direct_RectArea )', 'defined( RE_Direct_RectArea ) && 0'));
+};
+mats.eyes.customProgramCacheKey = () => 'grumpl-eyes';
+
+// airbrush: the secondary hue pools in the crevices (baked AO in COLOR_0.g) and dusts ears, hands, feet (COLOR_0.r = thinness)
+const U = { uBase: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() }, uBelly: { value: new THREE.Color() },
+	uAir: { value: 1 }, uGlow: { value: 0 }, uLocal: { value: new THREE.Matrix4() } };
+mats.body.onBeforeCompile = (sh) => {
+	Object.assign(sh.uniforms, U);
+	sh.vertexShader = sh.vertexShader
+		.replace('#include <common>', `#include <common>
+			attribute vec4 color; uniform mat4 uLocal;
+			varying float vThin; varying float vAo; varying vec3 vObj; varying vec3 vObjN;`)
+		.replace('#include <begin_vertex>', `#include <begin_vertex>
+			vThin = color.r; vAo = color.g;
+			vObj = (uLocal * vec4(position, 1.0)).xyz; vObjN = normalize(mat3(uLocal) * objectNormal);`);
+	sh.fragmentShader = sh.fragmentShader
+		.replace('#include <common>', `#include <common>
+			uniform vec3 uBase, uEdge, uBelly; uniform float uAir, uGlow;
+			varying float vThin; varying float vAo; varying vec3 vObj; varying vec3 vObjN; float crevice;`)
+		.replace('#include <color_fragment>', `
+			float thin = smoothstep(0.03, 0.55, vThin);
+			float feet = 1.0 - smoothstep(0.05, 0.35, vObj.y);
+			float crown = smoothstep(1.55, 2.0, vObj.y);
+			float edgeAmt = clamp(max(thin, max(feet * 0.8, crown * 0.6)), 0.0, 1.0);
+			float belly = smoothstep(0.2, 0.9, vObjN.z) * (1.0 - smoothstep(0.25, 0.7, abs(vObj.x)))
+				* smoothstep(0.15, 0.5, vObj.y) * (1.0 - smoothstep(1.05, 1.3, vObj.y));
+			crevice = (1.0 - smoothstep(0.3, 0.95, vAo)) * uAir;
+			float airbrush = clamp(max(crevice, edgeAmt * 0.45 * uAir), 0.0, 1.0);
+			diffuseColor.rgb = mix(mix(uBase, uEdge, airbrush), uBelly, belly * 0.6 * uAir);`)
+		.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+			{
+				float through = mix(0.3, 1.0, smoothstep(0.0, 0.6, vThin));
+				totalEmissiveRadiance += uBase * uGlow * through;
+				totalEmissiveRadiance += uEdge * crevice * 0.12;
+				float occ = mix(0.55, 1.0, smoothstep(0.0, 0.9, vAo));
+				reflectedLight.indirectDiffuse *= occ;
+				reflectedLight.indirectSpecular *= mix(0.6, 1.0, occ);
+			}`);
+};
+mats.body.customProgramCacheKey = () => 'grumpl-body';
+
+// rig = where physics puts him (position + tumble); spin = the drag / idle turn inside it
+const rig = new THREE.Group(), spin = new THREE.Group();
+rig.add(spin); scene.add(rig);
+let sugar = null;
+
+// the inside of his box: five walls, the open side is your screen. No ground shadow by design;
+// all the shading budget goes to the light on his body.
+const BOX = { x: 1.55, z: 1.25, top: 3.0 };
+// unlit, so each face is just a soft tone of the flavor: sides a touch deeper than the back, floor brightest
+const wallMats = [0.93, 0.93, 0.96, 1.0, 1, 0.97].map((l) => { const m = new THREE.MeshBasicMaterial({ side: THREE.BackSide, toneMapped: false }); m.userData.l = l; return m; });
+wallMats[4].visible = false; // +z face: the window you look through
+const box = new THREE.Mesh(new THREE.BoxGeometry(BOX.x * 2, BOX.top, BOX.z * 2), wallMats);
+box.position.y = BOX.top / 2;
+scene.add(box);
+
+function applyFlavor(f) {
+	const body = BODY[f.kind] || BODY.vinyl;
+	for (const [part, spec0] of [['body', body], ['eyes', EYES], ['teeth', TEETH]]) {
+		const spec = { ...BASE, ...spec0 }, m = mats[part];
+		for (const [k, v] of Object.entries(spec)) { if (m[k] && m[k].isColor) m[k].set(v); else m[k] = v; }
+		m.needsUpdate = true;
+	}
+	U.uBase.value.set(f.base); U.uEdge.value.set(f.edge); U.uBelly.value.set(f.belly);
+	U.uAir.value = f.kind === 'chrome' ? 0.35 : 1;
+	U.uGlow.value = f.kind === 'gummy' ? 0.28 : f.kind === 'vinyl' ? 0.04 : 0;
+	if (f.kind === 'chrome') mats.body.color.set(f.base);
+	if (sugar) sugar.visible = f.kind === 'gummy';
+	scene.background.set(f.soft);
+	const wall = new THREE.Color(f.soft).lerp(new THREE.Color(0xffffff), 0.2);
+	wallMats.forEach((m) => m.color.copy(wall).multiplyScalar(m.userData.l));
+	kick = 3;
+}
+
+function sugarCoat(mesh, count = 16000) {
+	const sampler = new MeshSurfaceSampler(mesh).build();
+	const s = new THREE.Vector3(); mesh.getWorldScale(s); const unit = 1 / s.x;
+	const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.12, envMapIntensity: 2.5 }), count);
+	const p = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), m4 = new THREE.Matrix4();
+	for (let i = 0; i < count; i++) {
+		sampler.sample(p, n);
+		const size = (0.003 + Math.random() * 0.005) * unit;
+		p.addScaledVector(n, size * 0.25);
+		q.setFromEuler(e.set(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3));
+		sc.set(size, size * (0.7 + Math.random() * 0.5), size * (0.7 + Math.random() * 0.5));
+		inst.setMatrixAt(i, m4.compose(p, q, sc));
+	}
+	mesh.add(inst); sugar = inst; sugar.visible = false;
+}
+
+// light: steer with the pointer, kept in a flattering range (front, ±60° az, 30–60° el)
+const lightT = { az: 0.6, el: 0.9 }, lightC = { az: 0.6, el: 0.9 };
+function placeKey() {
+	const r = 6;
+	key.position.set(Math.sin(lightC.az) * Math.cos(lightC.el) * r, Math.sin(lightC.el) * r + 0.5, Math.cos(lightC.az) * Math.cos(lightC.el) * r);
+}
+placeKey();
+
+/* ---------- physics: a weeble in a box ----------
+   p = his middle (1 unit above the feet), v = velocity, w = tumble (angular velocity).
+   He is treated as a stubby capsule: 1.0 tall from the middle, 0.62 wide. Gravity pulls him down,
+   a strong righting spring pops him back up on the floor, and the floor is a shallow bowl
+   so he always wanders back to the middle of the box. */
+const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1), t2 = new THREE.Vector3();
+const P = { g: 22, rest: 0.34, half: 1.0, wide: 0.62 };
+const p = new THREE.Vector3(0, P.half, 0), v = new THREE.Vector3(), w = new THREE.Vector3();
+const tmp = new THREE.Vector3(), up = new THREE.Vector3(), dq = new THREE.Quaternion(), ID = new THREE.Quaternion();
+let grounded = true, tiltG = 0, lastBump = 0;
+const ext = (n) => { const c = Math.abs(up.dot(n)); return P.half * c + P.wide * Math.sqrt(Math.max(0, 1 - c * c)); };
+function bump(n, sign, axisLimit, k) {
+	// keep him inside one pair of walls along axis n; returns impact speed
+	const e = ext(n), pos = p.dot(n);
+	const lim = sign > 0 ? axisLimit - e : axisLimit + e;
+	if (sign > 0 ? pos <= lim : pos >= lim) return 0;
+	p.addScaledVector(n, lim - pos);
+	const vn = v.dot(n);
+	if (sign > 0 ? vn <= 0 : vn >= 0) return 0;
+	const hit = Math.abs(vn);
+	v.addScaledVector(n, -vn * (1 + (hit < 1.4 ? 0 : P.rest)));
+	w.add(t2.copy(n).multiplyScalar(-sign).cross(v).multiplyScalar(0.35 * k)); // glancing hits roll him
+	return hit;
+}
+function step(dt) {
+	up.copy(Y).applyQuaternion(rig.quaternion);
+	v.y -= P.g * dt;
+	v.x += tiltG * dt;
+	p.addScaledVector(v, dt);
+	let hit = 0;
+	const floorHit = bump(Y, -1, 0, 1);
+	grounded = p.y - ext(Y) < 0.02;
+	hit = Math.max(hit, floorHit, bump(Y, 1, BOX.top, 1),
+		bump(X, 1, BOX.x, 1), bump(X, -1, -BOX.x, 1),
+		bump(Z, 1, BOX.z, 1), bump(Z, -1, -BOX.z, 1));
+	if (grounded) {
+		const f = Math.min(1, dt * 7); v.x -= v.x * f; v.z -= v.z * f;     // floor friction
+		v.x -= p.x * 5 * dt; v.z -= p.z * 5 * dt;                           // the bowl
+		w.add(tmp.copy(up).cross(Y).multiplyScalar(46 * dt));             // weeble righting
+		w.multiplyScalar(Math.exp(-dt * 5.5));
+		if (w.lengthSq() < 2.5 && v.lengthSq() < 1.5) rig.quaternion.slerp(ID, 1 - Math.exp(-dt * 3.2)); // face front again
+	} else {
+		w.add(tmp.copy(up).cross(Y).multiplyScalar(5 * dt));
+		w.multiplyScalar(Math.exp(-dt * 0.5));
+	}
+	const a = w.length();
+	if (a > 1e-5) rig.quaternion.premultiply(dq.setFromAxisAngle(tmp.copy(w).divideScalar(a), a * dt)).normalize();
+	up.copy(Y).applyQuaternion(rig.quaternion);
+	rig.position.copy(p).addScaledVector(up, -P.half);
+	if (hit > 3 && motion.on && performance.now() - lastBump > 90) { navigator.vibrate?.(Math.min(28, hit * 2.2) | 0); lastBump = performance.now(); }
+}
+function throwHim(dx, dy, dz, spinAmt = 1) {
+	v.add(tmp.set(dx, dy, dz));
+	w.add(tmp.set(dz * 0.6 + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 3, -dx * 0.8).multiplyScalar(0.55 * spinAmt));
+	idle = 0; kick = 3;
+}
+const awake = () => v.lengthSq() > 4e-4 || w.lengthSq() > 4e-4 || !grounded || 1 - Math.abs(rig.quaternion.dot(ID)) > 1e-6 || Math.abs(p.x) + Math.abs(p.z) > 2e-3;
+function resetBody() { p.set(0, P.half, 0); v.set(0, 0, 0); w.set(0, 0, 0); rig.quaternion.identity(); rig.position.set(0, 0, 0); }
+
+/* ---------- motion: tilt = look around inside the box, a real shake = jostle / throw ---------- */
+const motion = { on: false, heard: false, base: null, beta: 0, gamma: 0, peak: 0, peakVec: new THREE.Vector3(), peakAt: 0 };
+const camT = new THREE.Vector2(), camC = new THREE.Vector2();
+function onOrient(e) {
+	if (e.beta == null) return;
+	motion.heard = true;
+	const b = e.beta, gm = e.gamma;
+	if (!motion.base) motion.base = { beta: b, gamma: gm };
+	// the rest pose slowly follows how you hold the phone, so only the change reads as parallax
+	motion.base.beta += (b - motion.base.beta) * 0.012;
+	motion.base.gamma += (gm - motion.base.gamma) * 0.012;
+	motion.beta = THREE.MathUtils.clamp(b - motion.base.beta, -35, 35);
+	motion.gamma = THREE.MathUtils.clamp(gm - motion.base.gamma, -35, 35);
+	camT.set(-Math.sin(motion.gamma * Math.PI / 180) * 2.0, Math.sin(motion.beta * Math.PI / 180) * 1.3);
+	// a deliberate tilt (past 12°) lets him slide toward the low side
+	const g = Math.abs(motion.gamma) > 12 ? Math.sign(motion.gamma) * (Math.abs(motion.gamma) - 12) : 0;
+	tiltG = g * 0.45;
+}
+const SHAKE = { wobble: 7, toss: 14 }; // m/s² of the phone's own acceleration (gravity removed)
+function onMotion(e) {
+	const a = e.acceleration;
+	if (!a || a.x == null) return;
+	motion.heard = true;
+	const m = Math.hypot(a.x, a.y, a.z);
+	if (m > SHAKE.wobble && m > motion.peak) { motion.peak = m; motion.peakVec.set(a.x, a.y, a.z); motion.peakAt = performance.now(); }
+}
+function applyShake(now) {
+	// act on the strongest sample of each burst, once the burst has peaked
+	if (!motion.peak || now - motion.peakAt < 45) return;
+	const m = motion.peak, d = motion.peakVec.divideScalar(m);
+	motion.peak = 0;
+	if (m < SHAKE.toss) { w.add(tmp.set(-d.z, (Math.random() - 0.5), d.x).multiplyScalar((m - SHAKE.wobble) * 0.5)); kick = 3; return; }
+	const s = Math.min(16, (m - SHAKE.toss) * 1.1 + 4);
+	// the box moves, he stays put: he flies the opposite way to the phone
+	throwHim(-d.x * s, -d.y * s + 2, -d.z * s * 0.6, 1.4);
+}
+async function enableMotion() {
+	if (motion.on) return 'on';
+	if (!('DeviceMotionEvent' in window)) return 'none';
+	const framed = window.self !== window.top;
+	// Chrome can say up front when the embedding frame doesn't allow sensors
+	if (framed && document.featurePolicy && !document.featurePolicy.allowsFeature('accelerometer')) return 'framed';
+	try {
+		if (typeof DeviceMotionEvent.requestPermission === 'function') {
+			// both asks must start inside the same tap, so they run side by side
+			const [a, b] = await Promise.all([DeviceMotionEvent.requestPermission(), DeviceOrientationEvent.requestPermission?.() ?? 'granted']);
+			// inside an embedded frame iOS answers "denied" without ever showing its prompt
+			if (a !== 'granted' || b !== 'granted') return framed ? 'framed' : 'denied';
+		}
+	} catch { return framed ? 'framed' : 'denied'; }
+	addEventListener('devicemotion', onMotion);
+	addEventListener('deviceorientation', onOrient);
+	motion.on = true;
+	// some hosts (an embedded frame, a desktop) never send readings even with permission
+	await new Promise((r) => setTimeout(r, 1200));
+	if (!motion.heard) { removeEventListener('devicemotion', onMotion); removeEventListener('deviceorientation', onOrient); motion.on = false; return 'silent'; }
+	return 'on';
+}
+
+let slot = null, active = false, ready = false, flavor = null, vel = 0.0, drag = null, idle = 0, kick = 3;
+const autoSpin = 0.35;
+function resize() {
+	if (!slot) return;
+	const w = slot.clientWidth, h = slot.clientHeight;
+	if (!w || !h) return;
+	renderer.setSize(w, h, false);
+	camera.aspect = w / h;
+	// keep the box filling a tall phone frame as well as a square desktop one
+	camera.fov = camera.aspect < 0.95 ? 24 / Math.max(0.72, camera.aspect) : 24;
+	// a tall phone frame gets a narrower box so its side walls stay in view
+	BOX.x = camera.aspect < 0.95 ? 1.2 : 1.55; box.scale.x = BOX.x / 1.55;
+	camera.updateProjectionMatrix(); kick = 3;
+}
+const ro = new ResizeObserver(resize);
+
+// drag sideways to spin him; flick fast to throw him (works without motion sensors too)
+const trail = [];
+canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX }; trail.length = 0; trail.push([e.clientX, e.clientY, e.timeStamp]); canvas.setPointerCapture(e.pointerId); vel = 0; });
+canvas.addEventListener('pointermove', (e) => {
+	const r = canvas.getBoundingClientRect();
+	const nx = (e.clientX - r.left) / r.width * 2 - 1, ny = (e.clientY - r.top) / r.height * 2 - 1;
+	lightT.az = THREE.MathUtils.clamp(-nx * 1.05, -1.05, 1.05);
+	lightT.el = THREE.MathUtils.clamp(0.79 - ny * 0.26, 0.52, 1.05);
+	if (e.pointerType === 'mouse' && !motion.on) camT.set(-nx * 0.35, -ny * 0.2);
+	kick = 3;
+	if (!drag) return;
+	trail.push([e.clientX, e.clientY, e.timeStamp]); if (trail.length > 6) trail.shift();
+	const dx = e.clientX - drag.x; drag.x = e.clientX;
+	spin.rotation.y += dx * 0.012; vel = dx * 0.012 * 60; idle = 0;
+});
+const endDrag = (e) => {
+	if (!drag) return;
+	drag = null;
+	const a = trail[0], b = trail[trail.length - 1];
+	if (!a || b === a) return;
+	const ms = Math.max(8, b[2] - a[2]);
+	if (e.timeStamp - b[2] > 80) return; // stopped before letting go
+	const vx = (b[0] - a[0]) / ms, vy = (b[1] - a[1]) / ms; // px per ms
+	const sp = Math.hypot(vx, vy);
+	if (sp > 1.1) { const s = Math.min(1.8, sp) * 7; throwHim(vx / sp * s, -vy / sp * s + 3, -2, 1); vel *= 0.3; }
+};
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', () => { drag = null; });
+
+let last = performance.now();
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function frame(now) {
+	requestAnimationFrame(frame);
+	const dt = Math.min(1 / 30, (now - last) / 1000); last = now;
+	if (!ready || !slot || !active) return;
+	if (motion.on) applyShake(now);
+	const phys = awake();
+	if (phys) { const n = dt > 1 / 70 ? 2 : 1; for (let i = 0; i < n; i++) step(dt / n); }
+	let moving = phys || drag || kick > 0;
+	if (!drag) {
+		idle += dt;
+		const target = reduce ? 0 : autoSpin;
+		vel += (target - vel) * Math.min(1, dt * (idle > 1.2 ? 1.5 : 0.4));
+		spin.rotation.y += vel * dt;
+		if (Math.abs(vel) > 1e-3) moving = true;
+	}
+	const ease = Math.min(1, dt * 4), ec = Math.min(1, dt * 6);
+	if (Math.abs(lightT.az - lightC.az) + Math.abs(lightT.el - lightC.el) > 1e-4) moving = true;
+	lightC.az += (lightT.az - lightC.az) * ease;
+	lightC.el += (lightT.el - lightC.el) * ease;
+	if (camT.distanceTo(camC) > 1e-4) moving = true;
+	camC.lerp(camT, ec);
+	if (!moving) return; // nothing changed: skip the frame entirely
+	kick = Math.max(0, kick - 1);
+	placeKey();
+	camera.position.set(camC.x, 1.35 + camC.y, 7.2);
+	camera.lookAt(LOOK);
+	renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+
+window.Grumpl3D = {
+	mount(el, f) {
+		slot = el; flavor = f;
+		el.querySelector('.wait')?.toggleAttribute('hidden', ready);
+		el.appendChild(canvas);
+		ro.disconnect(); ro.observe(el);
+		resize();
+		if (ready) { applyFlavor(f); arrive(); }
+	},
+	unmount() { slot = null; ro.disconnect(); canvas.remove(); },
+	setActive(on) { active = on; kick = 3; },
+	enableMotion,
+	get motionOn() { return motion.on; },
+	async still(f, angle) {
+		const keep = { rot: spin.rotation.y, az: lightC.az, el: lightC.el, q: rig.quaternion.clone(), pos: rig.position.clone(), aspect: camera.aspect, fov: camera.fov };
+		renderer.setPixelRatio(1); renderer.setSize(640, 640, false);
+		camera.aspect = 1; camera.fov = 24; camera.updateProjectionMatrix();
+		camera.position.set(0, 1.35, 6.6); camera.lookAt(LOOK);
+		box.visible = false; rig.quaternion.identity(); rig.position.set(0, 0, 0);
+		applyFlavor(f); spin.rotation.y = angle; lightC.az = 0.6; lightC.el = 0.9; placeKey();
+		renderer.render(scene, camera);
+		const url = canvas.toDataURL('image/webp', 0.9);
+		box.visible = true; rig.quaternion.copy(keep.q); rig.position.copy(keep.pos);
+		renderer.setPixelRatio(DPR);
+		spin.rotation.y = keep.rot; lightC.az = keep.az; lightC.el = keep.el;
+		if (flavor) applyFlavor(flavor);
+		resize();
+		await new Promise((r) => setTimeout(r, 30));
+		return url;
+	},
+};
+// a new flavor drops in from the top of the box and lands with a little bounce
+function arrive() { resetBody(); spin.rotation.y = -1.6; vel = 3.2; idle = 0; p.y = BOX.top - 1.1; v.set(0, -2, 0); w.set(0, 0, 1.2); kick = 3; }
+active = true;
+
+
+async function unpack() {
+	const bytes = Uint8Array.from(atob(window.GRUMPL_GLB_GZ), (c) => c.charCodeAt(0));
+	return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+}
+unpack().then((buf) => new GLTFLoader().parse(buf, '', (gltf) => {
+	gltf.scene.updateMatrixWorld(true);
+	const rootInv = gltf.scene.matrixWorld.clone().invert();
+	const found = [];
+	gltf.scene.traverse((o) => { if (o.isMesh) found.push(o); });
+	found.forEach((o) => {
+		if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+		if (o.name === 'body') U.uLocal.value.copy(rootInv).multiply(o.matrixWorld);
+		o.material = mats[o.name] || mats.body;
+		if (o.material === mats.body) sugarCoat(o);
+	});
+	spin.add(gltf.scene);
+	ready = true;
+	if (slot) { slot.querySelector('.wait')?.setAttribute('hidden', ''); applyFlavor(flavor); arrive(); }
+	dispatchEvent(new Event('grumpl3d-ready'));
+}, (err) => console.error(err))).catch((err) => {
+	console.error(err);
+	if (slot) slot.querySelector('.wait').textContent = 'The 3D view could not load.';
+});
+</script>
+
+</body></html>
