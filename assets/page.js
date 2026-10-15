@@ -128,6 +128,19 @@ function flyFrom(el) {
   el.style.setProperty('--fx', `${dx}px`); el.style.setProperty('--fy', `${dy}px`);
   el.style.setProperty('--fs', (b.width / Math.max(40, r.width)).toFixed(3));
 }
+// The burger itself is gummy: a 3D candy per layer (assets/gummy-burger.js), loaded the first time the menu
+// opens. The drawings stay underneath as the layout (and as the fallback when WebGL isn't there).
+let gummy = null;
+function gummyBurger() {
+  if (!gummy) {
+    if (!window.WebGLRenderingContext) return;
+    menu.classList.add('g3d');
+    gummy = import('./gummy-burger.js')
+      .then((m) => m.createGummyBurger({ stack: $('.stack', menu), slots: $$('.layer .part', menu), rows: $$('.layer', menu), keys: LAYERS.map((l) => l.k), from: burger }))
+      .catch((e) => { console.warn('gummy burger', e); menu.classList.remove('g3d'); return null; });
+  }
+  gummy.then((g) => { if (g && menuOpen) g.open(); });
+}
 function openMenu() {
   if (menuOpen) return;
   menuOpen = true;
@@ -137,6 +150,7 @@ function openMenu() {
   $$('.part, .mdrop', menu).forEach(flyFrom);
   menu.classList.remove('open'); void menu.offsetWidth;
   menu.classList.add('open');
+  gummyBurger();
   navigator.vibrate?.(10); sound.boop();
   setTimeout(() => $('.layer', menu)?.focus({ preventScroll: true }), 400);
 }
@@ -144,6 +158,7 @@ function closeMenu(then) {
   if (!menuOpen) return;
   menuOpen = false;
   $$('.part, .mdrop', menu).forEach(flyFrom);
+  gummy?.then((g) => g?.close());
   menu.classList.remove('open');
   menu.classList.add('closing');
   burger.setAttribute('aria-expanded', 'false');

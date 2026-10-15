@@ -76,6 +76,10 @@ body.menu-open #Mark { opacity: 0; }
 #Menu .layer:focus-visible { outline: none; }
 #Menu .layer.small { margin: -4px 0; }
 #Menu .layer.small .part { width: 70%; justify-self: center; }
+/* the gummy burger: one canvas behind the rows; the drawings keep the layout but hide */
+#Menu .gummy-burger { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; transform-origin: 50% 50%; }
+#Menu.g3d .layer { z-index: 1; }
+#Menu.g3d .layer .part { visibility: hidden; transform: none !important; transition: none; }
 #Menu .menu-drops { position: relative; display: flex; gap: 12px; padding: 10px var(--gut) 18px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
 #Menu .menu-drops::-webkit-scrollbar { display: none; }
 #Menu .mdrop { flex: none; position: relative; width: 128px; aspect-ratio: 4/5; scroll-snap-align: start; border: 3px solid var(--ink); border-radius: var(--radius); overflow: hidden; text-decoration: none; color: var(--ink);
