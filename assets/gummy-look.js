@@ -13,17 +13,22 @@ import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 
 export const WARM_ROOM = { url: new URL('./hdri/warm-room-512.hdr', import.meta.url).href, exposure: 1.1, rotation: 4 * Math.PI / 3 };
 
-let roomPromise = null;
-// Loads the room once per page and prefilters it for the given renderer.
+let hdrPromise = null;
+const rooms = new WeakMap();
+// Loads the room once per page and prefilters it once per renderer (a prefiltered texture belongs to one
+// WebGL context, so two canvases each get their own).
 export function warmRoom(renderer) {
-  if (!roomPromise) roomPromise = new RGBELoader().setDataType(THREE.HalfFloatType).loadAsync(WARM_ROOM.url).then((t) => {
+  if (!hdrPromise) hdrPromise = new RGBELoader().setDataType(THREE.HalfFloatType).loadAsync(WARM_ROOM.url).then((t) => {
     t.mapping = THREE.EquirectangularReflectionMapping;
+    return t;
+  });
+  if (!rooms.has(renderer)) rooms.set(renderer, hdrPromise.then((t) => {
     const pm = new THREE.PMREMGenerator(renderer);
     const texture = pm.fromEquirectangular(t).texture;
-    pm.dispose(); t.dispose();
+    pm.dispose();
     return { texture, exposure: WARM_ROOM.exposure, rotation: WARM_ROOM.rotation };
-  });
-  return roomPromise;
+  }));
+  return rooms.get(renderer);
 }
 
 // Khronos PBR Neutral, the tone mapping the experiment used (three added it in r162; this page runs r160).
@@ -125,4 +130,70 @@ export function sugarCoat(mesh, { count = 600, size = 0.02, seed = 1 } = {}) {
   inst.instanceMatrix.needsUpdate = true;
   mesh.add(inst);
   return inst;
+}
+
+// ---------- The fast finish ----------
+// One cheap opaque material for every finish at once, for things that must run at 60 fps on a phone (the
+// menu burger). No transmission pass: the jelly is faked on top of MeshStandardMaterial's room lighting.
+// Per vertex: color (vertex colours, linear) and aMat = (jelly, sour, gloss), each 0..1.
+//   jelly: saturated, deeper edges, a light glow through the middle, and the cursor lamp shining through it.
+//   sour:  frosted, with sugar grains as a procedural sparkle (fades to an even frost when grains get
+//          smaller than a pixel, so tiny copies don't shimmer).
+//   gloss: roughness 0.65 -> 0.1 and a tighter lamp highlight.
+// The lamp is analytic: a point above the screen at uniforms.uLamp.value = (x, y, height) in framebuffer
+// pixels (gl_FragCoord space); uniforms.uLampOn scales it (0 = off).
+export function fastGummyUniforms() {
+  return { uLamp: { value: new THREE.Vector3(0, 0, 300) }, uLampOn: { value: 1 }, uLampColor: { value: new THREE.Color('#fff2de') } };
+}
+export function fastGummyMaterial(uniforms = fastGummyUniforms()) {
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.65, metalness: 0 });
+  m.userData.uniforms = uniforms;
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, uniforms);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec3 aMat; varying vec3 vMat; varying vec3 vObj;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvMat = aMat; vObj = position;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying vec3 vMat; varying vec3 vObj;
+uniform vec3 uLamp; uniform float uLampOn; uniform vec3 uLampColor;
+float gHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }`)
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(roughness, 0.1, vMat.z);')
+      .replace('#include <opaque_fragment>', `{
+  vec3 base = diffuseColor.rgb;
+  float jelly = vMat.x, sour = vMat.y, gloss = vMat.z;
+  vec3 V = geometryViewDir;
+  float ndv = saturate(dot(normal, V));
+  float fres = pow(1.0 - ndv, 2.0);
+  // jelly: the edges go deep and saturated, the middle glows as if lit through
+  outgoingLight *= mix(vec3(1.0), base * 1.4 + 0.08, fres * jelly * 0.85);
+  outgoingLight += base * (0.42 * pow(ndv, 1.4) * jelly);
+  // the lamp
+  vec2 d = uLamp.xy - gl_FragCoord.xy;
+  vec3 L = normalize(vec3(d, uLamp.z));
+  vec3 H = normalize(L + V);
+  float wrap = saturate((dot(normal, L) + 0.6) / 1.6);
+  float near = exp(-dot(d, d) / (uLamp.z * uLamp.z * 2.0));
+  outgoingLight += uLampOn * base * (wrap * 0.22 + near * jelly * 0.5);
+  float spec = pow(saturate(dot(normal, H)), mix(18.0, 140.0, gloss)) * (0.12 + 1.1 * gloss);
+  outgoingLight += uLampOn * uLampColor * spec;
+  // soft rim
+  outgoingLight += mix(vec3(1.0), base, 0.5) * fres * (0.1 + 0.18 * jelly);
+  // sugar
+  if (sour > 0.01) {
+    vec3 q = vObj * 30.0, c = floor(q);
+    vec3 o = vec3(gHash(c + 3.1), gHash(c + 7.7), gHash(c + 11.3));
+    float dd = length(fract(q) - (0.2 + 0.6 * o));
+    float crisp = 1.0 - smoothstep(0.3, 0.8, length(fwidth(q)));
+    float grain = (1.0 - smoothstep(0.17, 0.3, dd)) * step(0.3, gHash(c));
+    vec3 cn = normalize(normal + (o - 0.5) * 1.8);
+    float glint = pow(saturate(dot(cn, H)), 30.0) * uLampOn + pow(saturate(dot(cn, normalize(V + vec3(-0.5, 0.7, 0.4)))), 24.0);
+    outgoingLight += sour * (0.035 + fres * 0.16);
+    outgoingLight += sour * mix(0.06, grain * (0.45 + 1.8 * glint), crisp);
+  }
+}
+#include <opaque_fragment>`);
+  };
+  m.customProgramCacheKey = () => 'gummy-fast-1';
+  return m;
 }

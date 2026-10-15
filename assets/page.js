@@ -128,19 +128,23 @@ function flyFrom(el) {
   el.style.setProperty('--fx', `${dx}px`); el.style.setProperty('--fy', `${dy}px`);
   el.style.setProperty('--fs', (b.width / Math.max(40, r.width)).toFixed(3));
 }
-// The burger itself is gummy: a 3D candy per layer (assets/gummy-burger.js), loaded the first time the menu
-// opens. The drawings stay underneath as the layout (and as the fallback when WebGL isn't there).
+// The burger is gummy and 3D (assets/gummy-burger.js): the same seven candies are the header button
+// (stacked, small) and the menu (pulled apart, one per row), on one canvas, so the thing you tap is the thing
+// that opens. Loaded once the page is up; until then, and wherever WebGL isn't there, the drawings stay.
 let gummy = null;
 function gummyBurger() {
-  if (!gummy) {
-    if (!window.WebGLRenderingContext) return;
-    menu.classList.add('g3d');
-    gummy = import('./gummy-burger.js')
-      .then((m) => m.createGummyBurger({ stack: $('.stack', menu), slots: $$('.layer .part', menu), rows: $$('.layer', menu), keys: LAYERS.map((l) => l.k), from: burger }))
-      .catch((e) => { console.warn('gummy burger', e); menu.classList.remove('g3d'); return null; });
-  }
-  gummy.then((g) => { if (g && menuOpen) g.open(); });
+  if (gummy || !window.WebGLRenderingContext) return;
+  gummy = import('./gummy-burger.js')
+    .then((m) => m.createGummyBurger({ button: burger, menu, slots: $$('.layer .part', menu), rows: $$('.layer', menu), keys: LAYERS.map((l) => l.k) }))
+    .then((g) => {
+      document.body.classList.add('burger3d'); menu.classList.add('g3d');
+      if (menuOpen) g.open();
+      return g;
+    })
+    .catch((e) => { console.warn('gummy burger', e); return null; });
 }
+if (document.readyState === 'complete') setTimeout(gummyBurger, 200);
+else addEventListener('load', () => (window.requestIdleCallback || setTimeout)(gummyBurger, { timeout: 1500 }));
 function openMenu() {
   if (menuOpen) return;
   menuOpen = true;
@@ -150,7 +154,7 @@ function openMenu() {
   $$('.part, .mdrop', menu).forEach(flyFrom);
   menu.classList.remove('open'); void menu.offsetWidth;
   menu.classList.add('open');
-  gummyBurger();
+  gummy?.then((g) => g?.open());
   navigator.vibrate?.(10); sound.boop();
   setTimeout(() => $('.layer', menu)?.focus({ preventScroll: true }), 400);
 }

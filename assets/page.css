@@ -76,8 +76,11 @@ body.menu-open #Mark { opacity: 0; }
 #Menu .layer:focus-visible { outline: none; }
 #Menu .layer.small { margin: -4px 0; }
 #Menu .layer.small .part { width: 70%; justify-self: center; }
-/* the gummy burger: one canvas behind the rows; the drawings keep the layout but hide */
-#Menu .gummy-burger { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; transform-origin: 50% 50%; }
+/* the gummy burger: one fixed canvas draws it in the header button (closed) and over the rows (open);
+   the drawings keep the menu's layout but hide, and the button's own drawing stays as its hit area */
+.gummy-burger { position: fixed; left: 0; top: 0; z-index: 12; pointer-events: none; }
+body.burger3d #Burger, body.burger3d #Burger:hover, body.burger3d #Burger[aria-expanded="true"] { transform: none; opacity: 1; }
+body.burger3d #Burger svg { visibility: hidden; }
 #Menu.g3d .layer { z-index: 1; }
 #Menu.g3d .layer .part { visibility: hidden; transform: none !important; transition: none; }
 #Menu .menu-drops { position: relative; display: flex; gap: 12px; padding: 10px var(--gut) 18px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
