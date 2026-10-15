@@ -7,10 +7,12 @@ import * as THREE from 'three';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { buildStudioEnv, makeLightU, buildFigure, paintSet, loadGLB } from './grumpl-look.js';
+import { mountPicker, deriveTones, parseHex, STARTERS } from './colors.js';
 
 const MODEL_URL = new URL('./models/grumpl.glb', import.meta.url).href;
 const LOGO_URL = new URL('./logo.svg', import.meta.url).href;
 const LINE_URL = new URL('./studio/line-drawing.png', import.meta.url).href;
+const COLORS_CSS = new URL('./colors.css', import.meta.url).href;
 
 const INK = '#1b1620', LEMON = '#ffee96', PAPER = '#ffffff', WASH = '#eef3fb';
 const coarse = matchMedia('(pointer: coarse)').matches;
@@ -27,30 +29,11 @@ const CLASSICS = [
 const toInt = (v) => typeof v === 'number' ? v : parseInt(String(v).replace('#', ''), 16);
 const hex = (n) => '#' + (n & 0xffffff).toString(16).padStart(6, '0');
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-function rgb2hsl(n) {
-  const r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
-  let h = 0, s = 0;
-  if (d) {
-    s = d / (1 - Math.abs(2 * l - 1));
-    h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    h *= 60; if (h < 0) h += 360;
-  }
-  return [h, s, l];
-}
-function hsl2rgb(h, s, l) {
-  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2;
-  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
-  return (Math.round((r + m) * 255) << 16) | (Math.round((g + m) * 255) << 8) | Math.round((b + m) * 255);
-}
-// one picked color -> an airbrushed flavor: edge is the neighbouring hue, a bit louder; belly is lighter
+// one picked color -> an airbrushed flavor (same tones as the color picker): edge is the neighbouring hue, belly is lighter
 export function deriveFlavor(name, hexStr) {
-  const base = toInt(hexStr);
-  const [h, s, l] = rgb2hsl(base);
-  const edge = hsl2rgb((h + 25) % 360, clamp(s * 1.25 + 0.08, 0, 1), clamp(l * 0.98, 0.25, 0.72));
-  const belly = hsl2rgb(h, clamp(s * 0.85, 0, 1), clamp(l + (1 - l) * 0.45, 0, 0.95));
+  const h = parseHex(hexStr) || '#9fd6a0', t = deriveTones(h);
   const slug = String(name || 'custom').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
-  return { id: 'c-' + slug, name: name || 'Your color', kind: 'vinyl', base, edge, belly, custom: true };
+  return { id: 'c-' + slug, name: name || 'Your color', kind: 'vinyl', base: toInt(h), edge: toInt(t.edge), belly: toInt(t.belly), custom: true };
 }
 const mixHex = (a, b, t) => {
   const A = [a >> 16 & 255, a >> 8 & 255, a & 255], B = [b >> 16 & 255, b >> 8 & 255, b & 255];
@@ -207,22 +190,29 @@ const TEMPLATE = `
         <div class="st-gl" role="img" aria-label="A 3D Grumpl you can turn, zoom and decorate"></div>
         <div class="st-ring" hidden></div>
         <span class="st-tag"></span>
+        <span class="st-hexs" hidden></span>
         <p class="st-wait">Waking the Grumpl…</p>
         <p class="st-hint"></p>
       </div>
     </div>
     <div class="st-panel">
-      <div class="st-flav">
-        <div class="st-dots" role="group" aria-label="Flavor"></div>
-      </div>
       <div class="st-tabs" role="tablist" aria-label="Studio tools">
-        <button type="button" role="tab" data-tab="pose" aria-selected="true">Pose</button>
+        <button type="button" role="tab" data-tab="color" aria-selected="true">Color</button>
+        <button type="button" role="tab" data-tab="pose" aria-selected="false">Pose</button>
         <button type="button" role="tab" data-tab="stick" aria-selected="false">Stickers</button>
-        <button type="button" role="tab" data-tab="bg" aria-selected="false">Background</button>
+        <button type="button" role="tab" data-tab="bg" aria-selected="false">Scene</button>
         <button type="button" role="tab" data-tab="save" aria-selected="false">Save</button>
       </div>
 
-      <div class="st-pane" data-pane="pose" role="tabpanel">
+      <div class="st-pane st-color" data-pane="color" role="tabpanel">
+        <div class="st-picker"></div>
+        <div class="st-flav">
+          <div class="st-sub">Quick picks</div>
+          <div class="st-dots" role="group" aria-label="Flavors and colors"></div>
+        </div>
+      </div>
+
+      <div class="st-pane" data-pane="pose" role="tabpanel" hidden>
         <div class="st-chips st-angles" aria-label="Angles"></div>
         <label class="st-fld"><span>Turn</span><input type="range" data-k="ry" min="-3.1416" max="3.1416" step="0.01"></label>
         <label class="st-fld"><span>Tilt</span><input type="range" data-k="rx" min="-0.35" max="0.45" step="0.005"></label>
@@ -602,40 +592,66 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
     return S.decals.indexOf(h.object.userData.d);
   }
 
-  // ---------- UI: flavors ----------
+  // ---------- UI: color picker (colors.js) + quick picks ----------
+  // The picker recolors him live: every change only repaints uniforms (paintSet), at most once a frame.
+  const EXTRA = STARTERS.filter(([n]) => !flavors.some((f) => f.name === n));
   const dotsEl = $('.st-dots');
+  const picker = mountPicker($('.st-picker'), { starters: [], hex: hex(flavor()?.base ?? 0x56c2dc), onChange: onPick });
+  picker.el.querySelector('.cl-slot')?.append($('.st-flav'));
   function buildDots() {
     dotsEl.innerHTML = flavors.map((f) => `<button type="button" class="st-dot" data-id="${f.id}" aria-label="${f.name}" title="${f.name}" aria-pressed="${f.id === S.flavor}"
       style="--b:${hex(f.base)};--e:${hex(f.edge)};--l:${hex(f.belly)}"></button>`).join('')
-      + `<label class="st-dot st-custom" title="Custom color"><input type="color" value="${hex(flavor()?.base ?? 0x9fd6a0)}" aria-label="Custom color"></label>`;
+      + EXTRA.map(([n, h]) => { const t = deriveTones(h); return `<button type="button" class="st-dot" data-hex="${h}" data-name="${n}" aria-label="${n}" title="${n}" style="--b:${h};--e:${t.edge};--l:${t.belly}"></button>`; }).join('');
   }
-  dotsEl.addEventListener('click', (e) => { const b = e.target.closest('button[data-id]'); if (b) setFlavor(b.dataset.id); });
-  dotsEl.addEventListener('input', (e) => { if (e.target.type === 'color') addCustom('Your color', e.target.value, true); });
-  function addCustom(name, hexStr, fromPicker = false) {
-    if (!/^#?[0-9a-f]{6}$/i.test(String(hexStr || '').trim())) return;
-    const f = deriveFlavor(name, String(hexStr).trim().replace(/^#?/, '#'));
-    const i = flavors.findIndex((x) => x.id === f.id);
-    if (i >= 0) flavors[i] = f; else flavors.push(f);
-    if (fromPicker && i >= 0) { S.flavor = f.id; refreshFlavor(false); return; }
-    buildDots();
-    setFlavor(f.id);
+  dotsEl.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.id) setFlavor(b.dataset.id);
+    else if (b.dataset.hex) { picker.setName(b.dataset.name, { silent: true }); picker.setHex(b.dataset.hex); }
+  });
+  let pickPending = null, pickRaf = 0, bgT = 0;
+  function onPick(d) {
+    pickPending = d;
+    if (!pickRaf) pickRaf = requestAnimationFrame(applyPick);
   }
-  function refreshFlavor(rebuild = true) {
+  function applyPick() {
+    pickRaf = 0;
+    const d = pickPending; pickPending = null;
+    if (!d || destroyed) return;
+    const vals = { id: 'pick', name: d.name || 'Your color', kind: 'vinyl', base: toInt(d.hex), edge: toInt(d.edge), belly: toInt(d.belly), custom: true };
+    const f = flavors.find((x) => x.id === 'pick');
+    S.flavor = 'pick';
+    if (f) Object.assign(f, vals); else { flavors.push(vals); buildDots(); }
+    liveFlavor();
+  }
+  // the cheap path, run on every picker move: uniforms, a few styles, the flat background
+  function liveFlavor() {
     const f = flavor();
-    if (rebuild) buildDots();
-    else $$('.st-dot[data-id]').forEach((b) => { if (b.dataset.id === f.id) { b.style.setProperty('--b', hex(f.base)); b.style.setProperty('--e', hex(f.edge)); b.style.setProperty('--l', hex(f.belly)); } });
-    $$('.st-dot[data-id]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === f.id)));
+    $$('.st-dot[data-id]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.id === f.id));
+      if (b.dataset.id === f.id) { b.style.setProperty('--b', hex(f.base)); b.style.setProperty('--e', hex(f.edge)); b.style.setProperty('--l', hex(f.belly)); b.title = f.name; b.setAttribute('aria-label', f.name); }
+    });
     $('.st-tag').textContent = f.name;
+    const hs = $('.st-hexs'); hs.hidden = f.id !== 'pick'; hs.textContent = hex(f.base);
     el.style.setProperty('--st-base', hex(f.base)); el.style.setProperty('--st-edge', hex(f.edge)); el.style.setProperty('--st-belly', hex(f.belly));
     if (G) showFigure();
+    if (!['solid', 'none', 'photo', 'clouds'].includes(S.bg.type)) paintPreviewBg();
+    clearTimeout(bgT); bgT = setTimeout(buildBgUI, 250);
+    if (G && near) { cancelAnimationFrame(raf); raf = 0; draw(); }
+  }
+  function refreshFlavor() {
+    liveFlavor();
     paintPreviewBg();
-    buildBgUI();
-    invalidate();
   }
   function setFlavor(id) {
-    if (!flavors.some((f) => f.id === id)) return;
+    const f = flavors.find((x) => x.id === id); if (!f) return;
     S.flavor = id;
-    refreshFlavor(false);
+    if (id !== 'pick') picker.setHex(hex(f.base), { silent: true });
+    refreshFlavor();
+  }
+  function addCustom(name, hexStr) {
+    if (!parseHex(hexStr)) return;
+    picker.setName(name || '', { silent: true });
+    picker.setHex(hexStr);
   }
   const onColor = (e) => { const d = e.detail || {}; addCustom(d.name || 'Your color', d.hex); };
   window.addEventListener('grumpl-color', onColor);
@@ -909,10 +925,14 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
   ro.observe(stage);
 
   // ---------- first paint ----------
+  // the picker's styles live in colors.css; load them if the page didn't
+  if (![...document.styleSheets].some((ss) => ss.href && ss.href.split('?')[0].endsWith('/colors.css')) && !document.querySelector('link[data-studio-colors]')) {
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = COLORS_CSS; l.dataset.studioColors = ''; document.head.append(l);
+  }
   buildDots();
   syncSliders();
   stage.dataset.state = 'sleep';
-  refreshFlavor(false);
+  refreshFlavor();
   hint('Drag to turn him. Pinch to zoom.');
 
   return {
@@ -920,10 +940,13 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
     flavors,
     setFlavor,
     addColor: (name, hexStr) => addCustom(name, hexStr),
+    picker,
+    get _three() { return G; },
     exportBlob,
     ready: () => ensure3D(),
     destroy() {
       destroyed = true;
+      cancelAnimationFrame(pickRaf); clearTimeout(bgT);
       ioNear.disconnect(); ioFar.disconnect(); ro.disconnect();
       window.removeEventListener('grumpl-color', onColor);
       teardown3D();

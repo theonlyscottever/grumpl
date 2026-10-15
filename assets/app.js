@@ -124,16 +124,24 @@ world.addEventListener('preStep', () => {
   body.torque.z += _ax.z * 26 - w.z * 2.4;
   if (twirlSteps > 0 && --twirlSteps < 200) {
     body.quaternion.vmult(_fwd.set(0, 0, 1), _ax);
-    const off = Math.atan2(_ax.x, _ax.z) - homeYaw(ring.f);
-    w.y += (-Math.atan2(Math.sin(off), Math.cos(off)) * 4 - w.y) * 0.12;   // settle back to his own angle
-  }
+    const off = Math.atan2(_ax.x, _ax.z);
+    w.y += (-Math.atan2(Math.sin(off), Math.cos(off)) * 4 - w.y) * 0.12;   // settle back to facing you
+  } else if (turntable()) w.y += (TURNTABLE - w.y) * 0.04;                // left alone, he turns slowly to show off
 });
+// Scott: the one in front faces you when he arrives, then, if nobody touches him, turns slowly on the spot
+// like a figure on a turntable. Any touch, key, swipe or shake stops it until he's been left alone again.
+const TURNTABLE = 0.4, CALM_MS = 1600;
+let calmAt = performance.now();
+const calm = () => { calmAt = performance.now(); };
+const turntable = () => !reduceMotion && twirlSteps === 0 && ring.t >= 1 && !grip && !smoosh && performance.now() - calmAt >= CALM_MS;
+// a sleeping body ignores forces, so wake him when it's time to turn
+world.addEventListener('postStep', () => { if (body.sleepState === CANNON.Body.SLEEPING && turntable()) body.wakeUp(); });
 const hand = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
 world.addBody(hand);
 // Jason's idea: each Grumpl in the line-up faces his own way, so you see every side of him before you touch anything
 const HOME_YAW = [-0.55, 1.15, -2.35, 0.6, 2.6, -1.3];
 const homeYaw = (i) => HOME_YAW[i % HOME_YAW.length];
-let standYaw = HOME_YAW[0];   // the focused one's own angle
+let standYaw = 0;             // the one in front faces the camera; his neighbours keep their own angles
 function standUp() {
   body.position.set(0, COM_Y + LIFT + 0.02, 0);
   body.quaternion.setFromAxisAngle(Y_UP, standYaw);
@@ -311,7 +319,8 @@ function focus(i, dir) {
   swapMoves.in = MOVE_KEYS[(Math.random() * MOVE_KEYS.length) | 0];
   do swapMoves.out = MOVE_KEYS[(Math.random() * MOVE_KEYS.length) | 0]; while (swapMoves.out === swapMoves.in);
   ring.f = i;
-  standYaw = homeYaw(i);
+  standYaw = 0;
+  calm();
   onFocus(FLAVORS[i], i);
   poke(4);
 }
@@ -335,7 +344,8 @@ function updateRing(dt) {
     s.cloud.position.copy(_slotP);
     if (i === ring.f && ring.t >= 1) return;                       // physics drives him
     // stand on his cloud, turned a little toward the middle so the line-up reads as a group
-    const yaw = homeYaw(i) - u * 0.25;
+    let yaw = homeYaw(i) - u * 0.25;
+    if (i === ring.f && ring.t < 1) yaw *= 1 - ease(ring.t);       // the one arriving turns to face you as he lands
     _q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
     s.group.position.set(_slotP.x, _slotP.y + LIFT + COM_Y, _slotP.z);
     s.group.quaternion.copy(_q);
@@ -730,7 +740,7 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') step(1);
   else if (e.code === 'Space' && scrollY < innerHeight * 0.6) { e.preventDefault(); jump(); }
 });
-['pointerdown', 'keydown', 'resize'].forEach((ev) => addEventListener(ev, () => { poke(); idleAt = performance.now(); }, true));
+['pointerdown', 'keydown', 'resize'].forEach((ev) => addEventListener(ev, () => { poke(); idleAt = performance.now(); calm(); }, true));
 
 // idle: the letters puff one after another, like on the brand book
 let idleAt = performance.now();
@@ -747,6 +757,7 @@ const motion = createMotion({
   onTilt({ x, y, slide }) { par.want.set(x * 0.9, y * 0.6, 0); tiltG = slide * 0.45; },
   onWobble({ dir, strength }) {
     if (ring.t < 1 || grip) return;
+    calm();
     body.wakeUp();
     body.angularVelocity.x += -dir[2] * strength; body.angularVelocity.y += (Math.random() - 0.5) * strength; body.angularVelocity.z += dir[0] * strength;
     body.velocity.y = Math.max(body.velocity.y, 1.5);
@@ -754,6 +765,7 @@ const motion = createMotion({
   },
   onToss({ velocity }) {
     if (ring.t < 1 || grip) return;
+    calm();
     body.wakeUp();
     body.velocity.set(velocity[0], Math.max(velocity[1], 3), velocity[2]);
     body.angularVelocity.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 10);
@@ -930,14 +942,38 @@ function resize() {
   const logoW = portrait ? halfWf * 2 * 0.8 : Math.min(halfWf * 2 * 0.24, tanH * depth * 2 * 0.3 * 1.72);
   front.s = logoW / LOGO_W;
   front.group.scale.setScalar(front.s);
-  screenToPlaneZ(0, portrait ? -0.56 : -0.74, FRONT_Z, _r);
-  front.group.position.set(_r.x - LOGO_C.x * front.s, _r.y - LOGO_C.y * front.s, FRONT_Z - 0.42 * front.s);
+  // the logo sits low, but never under the flavor dock: if they'd touch, the cloud rises until there's a gap
+  const dockTop = dockEdge(), gapPx = portrait ? 14 : 18;
+  let ny = portrait ? -0.56 : -0.74;
+  for (let k = 0; k < 3; k++) {
+    screenToPlaneZ(0, ny, FRONT_Z, _r);
+    front.group.position.set(_r.x - LOGO_C.x * front.s, _r.y - LOGO_C.y * front.s, FRONT_Z - 0.42 * front.s);
+    const over = logoRect().y1 - (dockTop - gapPx);
+    if (over <= 0.5) break;
+    ny += over / h * 2;
+  }
   ui.layout?.({ portrait });
   sendLogoRect();
   poke(4);
 }
 // The sticky logo (page.js) takes over from the 3D one at the top of the screen: it needs to know where it is.
 const _lc = new THREE.Vector3();
+function dockEdge() {
+  const d = document.getElementById('Dock'), st = stage.getBoundingClientRect();
+  if (!d || !d.offsetParent) return stage.clientHeight || innerHeight;
+  return d.getBoundingClientRect().top - st.top;
+}
+function logoRect() {
+  front.group.updateMatrixWorld(true);
+  const w = stage.clientWidth, h = stage.clientHeight;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    _lc.set(LOGO_C.x + sx * LOGO_W / 2, LOGO_C.y + sy * LOGO_H / 2, 0.42).applyMatrix4(front.group.matrixWorld).project(camera);
+    const px = (_lc.x + 1) / 2 * w, py = (1 - _lc.y) / 2 * h;
+    x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+  }
+  return { x0, y0, x1, y1 };
+}
 function sendLogoRect() {
   if (!front.logo) return;
   front.group.updateMatrixWorld(true);
@@ -977,7 +1013,7 @@ function adaptResolution() {
   else if (frameAvg < 18) { if (++fastRun > 90 && dprIdx < dprMax) { dprIdx++; fastRun = 0; renderer.setPixelRatio(DPR_STEPS[dprIdx]); resize(); } }
   else fastRun = 0;
 }
-window.__grumpl = { renderer, scene, camera, ring, slots, focus: (i) => focus(i), jump, puffRow, setNight, setLogoFinish, cycleLogo, smoosh: smooshAt, night };
+window.__grumpl = { renderer, scene, camera, ring, slots, body, focus: (i) => focus(i), jump, puffRow, setNight, setLogoFinish, cycleLogo, smoosh: smooshAt, night };
 // the page's lamp-aware eyes read this
 window.__grumplLamp = night.screen;
 const ui = initUI({ DROP, FLAVORS, focus: (i) => focus(i), step, jump, motion, canMove });

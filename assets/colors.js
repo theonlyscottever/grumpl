@@ -1,6 +1,6 @@
-// "Request a color": a picker, a live Grumpl preview, a name generator and the shared list.
-// Usage: import { mountColors } from './colors.js'; mountColors(document.getElementById('Colors'));
-// Styles live in colors.css (everything scoped under #Colors).
+// "Request a color": a picker, a name generator and the shared list. It lives in the studio's Color tab
+// (studio.js calls mountPicker); the 3D Grumpl there is the preview.
+// Styles live in colors.css (scoped under .cl-root inside #Studio or #Colors).
 
 // Set to a form endpoint, e.g. Formspree (https://formspree.io/f/xxxx) or a Google Apps Script web app URL.
 // Requests are POSTed as JSON: {name, hex, at}. Empty means local-only (saved in this browser + "Post it on X").
@@ -13,7 +13,7 @@ const LS_MINE = 'grumpl-colors';        // [{name, hex, at}] the visitor's own r
 const LS_VOTES = 'grumpl-color-votes';  // [id] the requests this visitor has +1'd
 const SEED_URL = new URL('./color-requests.json', import.meta.url);
 
-const STARTERS = [
+export const STARTERS = [
   ['Blue Raspberry', '#56c2dc'], ['Strawberry Gummy', '#ff5a50'], ['Clover', '#4ca63e'],
   ['Lunchbutter', '#e3c45c'], ['Fleshberry', '#f0a99a'], ['Mosssnootfruit', '#8f9d38'],
   ['Cement Juice', '#9b9a93'], ['Grape Bruise', '#7350a8'], ['Gravy', '#8a5634'],
@@ -160,131 +160,71 @@ const ICON = {
   plus: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M10 4v12M4 10h12"/></svg>',
 };
 
-function grumplSVG(u) {
-  // limbs first, body last; each part gets its flat base and its own airbrushed edge, so the body covers the limb roots
-  const limbs = [
-    'ellipse cx="80" cy="62" rx="17" ry="23" transform="rotate(-24 80 62)"',
-    'ellipse cx="160" cy="62" rx="17" ry="23" transform="rotate(24 160 62)"',
-    'ellipse cx="40" cy="148" rx="14" ry="24" transform="rotate(28 40 148)"',
-    'ellipse cx="200" cy="148" rx="14" ry="24" transform="rotate(-28 200 148)"',
-    'ellipse cx="92" cy="214" rx="27" ry="15"',
-    'ellipse cx="148" cy="214" rx="27" ry="15"',
-  ];
-  const body = 'path d="M120 50C172 50 200 86 202 132C205 182 182 216 120 216C58 216 35 182 38 132C40 86 68 50 120 50Z"';
-  const all = limbs.concat(body);
-  const paint = (p) => `<${p} style="fill:var(--cl-c)"/><${p} fill="url(#${u}-glow)"/>`;
+function pickerMarkup(u, { starters, tryButton }) {
   return `
-<svg class="cl-guy" viewBox="0 0 240 250" role="img" aria-labelledby="${u}-t">
-  <title id="${u}-t">A Grumpl in your color</title>
-  <defs>
-    <radialGradient id="${u}-glow" cx="50%" cy="46%" r="58%">
-      <stop offset="0" style="stop-color:var(--cl-edge);stop-opacity:0"/>
-      <stop offset="0.55" style="stop-color:var(--cl-edge);stop-opacity:0"/>
-      <stop offset="0.86" style="stop-color:var(--cl-edge);stop-opacity:0.6"/>
-      <stop offset="1" style="stop-color:var(--cl-edge);stop-opacity:0.95"/>
-    </radialGradient>
-    <radialGradient id="${u}-belly" gradientUnits="userSpaceOnUse" cx="120" cy="158" r="62" gradientTransform="translate(120 158) scale(1 .9) translate(-120 -158)">
-      <stop offset="0" style="stop-color:var(--cl-belly);stop-opacity:0.95"/>
-      <stop offset="0.55" style="stop-color:var(--cl-belly);stop-opacity:0.5"/>
-      <stop offset="1" style="stop-color:var(--cl-belly);stop-opacity:0"/>
-    </radialGradient>
-    <radialGradient id="${u}-sheen" gradientUnits="userSpaceOnUse" cx="92" cy="86" r="70">
-      <stop offset="0" style="stop-color:#fff;stop-opacity:.22"/>
-      <stop offset="1" style="stop-color:#fff;stop-opacity:0"/>
-    </radialGradient>
-  </defs>
-  <ellipse class="cl-floor" cx="120" cy="234" rx="78" ry="9"/>
-  <g style="fill:none;stroke:var(--ink);stroke-width:7;stroke-linejoin:round">${all.map((p) => `<${p}/>`).join('')}</g>
-  ${limbs.map(paint).join('')}
-  ${paint(body)}
-  <${body} fill="url(#${u}-belly)"/>
-  <${body} fill="url(#${u}-sheen)"/>
-  <g class="cl-eyes">
-    <ellipse cx="100" cy="114" rx="10.5" ry="12"/>
-    <ellipse cx="140" cy="114" rx="10.5" ry="12"/>
-    <circle cx="96.5" cy="109.5" r="3.4" fill="#fff"/><circle cx="136.5" cy="109.5" r="3.4" fill="#fff"/>
-    <circle cx="103" cy="119" r="1.4" fill="#fff" opacity=".7"/><circle cx="143" cy="119" r="1.4" fill="#fff" opacity=".7"/>
-  </g>
-</svg>`;
-}
-
-function template(u) {
-  return `
-<div class="cl-wrap">
-  <header class="cl-head">
-    <h2>Request a color</h2>
-    <p>Pick a color, name it, put it on the list. We look at the list.</p>
-  </header>
-  <div class="cl-grid">
-    <div class="cl-card cl-preview">
-      <div class="cl-stage">${grumplSVG(u)}
-        <span class="cl-tag" aria-live="polite"></span>
-        <span class="cl-hexsticker"></span>
-      </div>
-    </div>
-
-    <div class="cl-card cl-picker">
-      <div class="cl-sv" role="slider" tabindex="0" aria-label="Saturation and brightness. Left and right for saturation, up and down for brightness"
-        aria-valuemin="0" aria-valuemax="100">
-        <span class="cl-sv-thumb"></span>
-      </div>
-      <div class="cl-hue" role="slider" tabindex="0" aria-label="Hue" aria-valuemin="0" aria-valuemax="360">
-        <span class="cl-hue-thumb"></span>
-      </div>
-      <div class="cl-hexrow">
-        <span class="cl-chip" aria-hidden="true"></span>
-        <label class="cl-hexfield"><span>#</span>
-          <input type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="7" aria-label="Hex color, 3 or 6 digits">
-        </label>
-        <button class="cl-btn cl-eye" type="button" hidden aria-label="Pick a color from the screen">${ICON.drop}<span>Eyedropper</span></button>
-      </div>
-      <div class="cl-starters" role="group" aria-label="Start from a color"></div>
-    </div>
-
-    <form class="cl-card cl-namecard" novalidate>
-      <label class="cl-lbl" for="${u}-name">What's it called</label>
-      <div class="cl-namerow">
-        <input id="${u}-name" class="cl-name" type="text" maxlength="48" autocomplete="off" placeholder="Lunchbutter">
-        <button class="cl-btn cl-gen" type="button">${ICON.dice}<span>Name it for me</span></button>
-      </div>
-      <div class="cl-actions">
-        <button class="cl-go" type="submit">Put it on the list</button>
-        <button class="cl-btn cl-try" type="button">Try it on a Grumpl</button>
-        <a class="cl-btn cl-x" target="_blank" rel="noopener">${ICON.x}<span>Post it on X</span></a>
-      </div>
-      <p class="cl-status" role="status"></p>
-    </form>
+<div class="cl-card cl-picker">
+  <div class="cl-sv" role="slider" tabindex="0" aria-label="Saturation and brightness. Left and right for saturation, up and down for brightness"
+    aria-valuemin="0" aria-valuemax="100">
+    <span class="cl-sv-thumb"></span>
   </div>
-
-  <div class="cl-listwrap">
-    <div class="cl-listhead">
-      <h3>The list</h3>
-      <p>Tap one to load it. +1 the ones you'd put on a shelf.</p>
-    </div>
-    <ul class="cl-list"></ul>
-    <button class="cl-more cl-btn" type="button" hidden></button>
+  <div class="cl-hue" role="slider" tabindex="0" aria-label="Hue" aria-valuemin="0" aria-valuemax="360">
+    <span class="cl-hue-thumb"></span>
   </div>
+  <div class="cl-hexrow">
+    <span class="cl-chip" aria-hidden="true"></span>
+    <label class="cl-hexfield"><span>#</span>
+      <input type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="7" aria-label="Hex color, 3 or 6 digits">
+    </label>
+    <button class="cl-btn cl-eye" type="button" hidden aria-label="Pick a color from the screen">${ICON.drop}<span>Eyedropper</span></button>
+  </div>
+  ${starters.length ? '<div class="cl-starters" role="group" aria-label="Start from a color"></div>' : ''}
+</div>
+<div class="cl-slot" data-slot="after-picker"></div>
+<form class="cl-card cl-namecard" novalidate>
+  <label class="cl-lbl" for="${u}-name">What's it called</label>
+  <div class="cl-namerow">
+    <input id="${u}-name" class="cl-name" type="text" maxlength="48" autocomplete="off" placeholder="Lunchbutter">
+    <button class="cl-btn cl-gen" type="button">${ICON.dice}<span>Name it for me</span></button>
+  </div>
+  <div class="cl-actions">
+    <button class="cl-go" type="submit">Put it on the list</button>
+    ${tryButton ? '<button class="cl-btn cl-try" type="button">Try it on a Grumpl</button>' : ''}
+    <a class="cl-btn cl-x" target="_blank" rel="noopener">${ICON.x}<span>Post it on X</span></a>
+  </div>
+  <p class="cl-status" role="status"></p>
+</form>
+<div class="cl-listwrap">
+  <div class="cl-listhead">
+    <h3>The list</h3>
+    <p>Tap one to put it on him. +1 the ones you'd put on a shelf.</p>
+  </div>
+  <ul class="cl-list"></ul>
+  <button class="cl-more cl-btn" type="button" hidden></button>
 </div>`;
 }
 
 /* ---------------- mount ---------------- */
-export function mountColors(el) {
+// The picker, the name card and the list, without any preview: the caller shows the color (the studio's 3D Grumpl).
+// opts.onChange({ hex, name, edge, belly, why }) fires on every color or name change ('color' | 'name' | 'load').
+// opts.starters: [[name, hex]] swatches under the picker ([] for none). opts.tryButton: show "Try it on a Grumpl".
+// Returns { setHex(hex, {silent}), setName(name, {silent}), hex, name, el }.
+export function mountPicker(el, { onChange = () => {}, starters = STARTERS, tryButton = false, hex: hex0 = '#56c2dc' } = {}) {
   if (!el) return null;
   const u = 'cl' + Math.random().toString(36).slice(2, 7);
-  el.innerHTML = template(u);
-  el.classList.add('cl-on');
+  el.classList.add('cl-root');
+  el.innerHTML = pickerMarkup(u, { starters, tryButton });
   const $ = (s) => el.querySelector(s);
   const sv = $('.cl-sv'), svThumb = $('.cl-sv-thumb'), hue = $('.cl-hue'), hueThumb = $('.cl-hue-thumb');
-  const hexIn = $('.cl-hexfield input'), nameIn = $('.cl-name'), tag = $('.cl-tag'), sticker = $('.cl-hexsticker');
+  const hexIn = $('.cl-hexfield input'), nameIn = $('.cl-name');
   const status = $('.cl-status'), xLink = $('.cl-x'), list = $('.cl-list'), more = $('.cl-more');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  el.querySelectorAll('.cl-card').forEach((c) => c.style.setProperty('--tilt', (Math.random() * 2.2 - 1.1).toFixed(2) + 'deg'));
-
-  const state = { h: 200, s: 0.6, v: 0.86, hex: '#56c2dc' };
+  const state = { h: 200, s: 0.6, v: 0.86, hex: parseHex(hex0) || '#56c2dc' };
   const name = () => nameIn.value.trim().replace(/\s+/g, ' ');
+  let silent = false;
+  const tell = (why) => { if (silent) return; const t = deriveTones(state.hex); onChange({ hex: state.hex, name: name(), edge: t.edge, belly: t.belly, why }); };
 
-  function paint({ fromInput = false } = {}) {
+  function paint({ fromInput = false, why = 'color' } = {}) {
     const hex = state.hex;
     const t = deriveTones(hex);
     const darkText = luminance(hex) > 0.36;
@@ -302,14 +242,13 @@ export function mountColors(el) {
     hue.setAttribute('aria-valuenow', Math.round(state.h));
     hue.setAttribute('aria-valuetext', `Hue ${Math.round(state.h)} degrees, ${hex}`);
     if (!fromInput) { hexIn.value = hex.slice(1); hexIn.removeAttribute('aria-invalid'); }
-    sticker.textContent = hex;
     el.querySelectorAll('.cl-starters button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.hex === hex)));
-    paintName();
+    xLink.href = xUrl(name(), state.hex);
+    tell(why);
   }
   function paintName() {
-    tag.textContent = name() || 'Needs a name';
-    tag.classList.toggle('empty', !name());
     xLink.href = xUrl(name(), state.hex);
+    tell('name');
   }
   const fromHsv = () => { state.hex = rgbToHex(hsvToRgb(state)); paint(); };
   function setHex(hex, opts = {}) {
@@ -321,7 +260,9 @@ export function mountColors(el) {
     state.s = hsv.v ? hsv.s : state.s;
     state.v = hsv.v;
     state.hex = hex;
+    const was = silent; silent = was || !!opts.silent;
     paint(opts);
+    silent = was;
     return true;
   }
 
@@ -374,9 +315,11 @@ export function mountColors(el) {
     if (t && parseHex(t)) { e.preventDefault(); setHex(t); }
   });
 
-  const starters = $('.cl-starters');
-  starters.innerHTML = STARTERS.map(([n, h]) => `<button type="button" data-hex="${h}" style="--sw:${h}" aria-label="${n} ${h}" title="${n}"></button>`).join('');
-  starters.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { setHex(b.dataset.hex); bounce(b); } });
+  const startersEl = $('.cl-starters');
+  if (startersEl) {
+    startersEl.innerHTML = starters.map(([n, h]) => `<button type="button" data-hex="${h}" style="--sw:${h}" aria-label="${n} ${h}" title="${n}"></button>`).join('');
+    startersEl.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { setHex(b.dataset.hex); bounce(b); } });
+  }
 
   const eye = $('.cl-eye');
   if ('EyeDropper' in window) {
@@ -396,14 +339,13 @@ export function mountColors(el) {
     paintName();
     if (status.dataset.kind === 'warn') say('');
     bounce(e.currentTarget);
-    bounce(tag);
   });
   nameIn.addEventListener('input', () => { paintName(); if (status.dataset.kind === 'warn') say(''); });
 
-  function bounce(node) { if (reduced) return; node.classList.remove('bump'); void node.offsetWidth; node.classList.add('bump'); }
+  function bounce(node) { if (reduced || !node) return; node.classList.remove('bump'); void node.offsetWidth; node.classList.add('bump'); }
   function say(msg, kind = '') { status.textContent = msg; status.dataset.kind = kind; bounce(status); }
 
-  $('.cl-try').addEventListener('click', () => {
+  $('.cl-try')?.addEventListener('click', () => {
     const t = deriveTones(state.hex);
     window.dispatchEvent(new CustomEvent('grumpl-color', { detail: { name: name() || 'Unnamed', hex: state.hex, edge: t.edge, belly: t.belly } }));
     const studio = document.getElementById('Studio');
@@ -467,13 +409,10 @@ export function mountColors(el) {
   list.addEventListener('click', (e) => {
     const ld = e.target.closest('.cl-load');
     if (ld) {
-      setHex(ld.dataset.hex);
       nameIn.value = ld.dataset.name;
-      paintName();
+      setHex(ld.dataset.hex, { why: 'load' });
       say('');
-      bounce(tag);
-      const p = $('.cl-preview');
-      if (p.getBoundingClientRect().top < 0) p.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+      bounce(ld);
       return;
     }
     const vt = e.target.closest('.cl-vote');
@@ -499,10 +438,25 @@ export function mountColors(el) {
   });
 
   render();
-  setHex(state.hex);
-  return { setHex, get hex() { return state.hex; }, get name() { return name(); } };
+  setHex(state.hex, { silent: true });
+  return {
+    el,
+    setHex,
+    setName(n, { silent: quiet = false } = {}) { nameIn.value = String(n || '').slice(0, 48); const was = silent; silent = was || quiet; paintName(); silent = was; },
+    get hex() { return state.hex; },
+    get name() { return name(); },
+  };
 }
 
+// The old standalone "Request a color" section, kept so a page that still mounts it works.
+// The live preview is the studio's 3D Grumpl now; this version shows the picker and "Try it on a Grumpl".
+export function mountColors(el) {
+  if (!el) return null;
+  el.innerHTML = `<div class="cl-wrap"><header class="cl-head"><h2>Request a color</h2>
+    <p>Pick a color, name it, put it on the list. We look at the list.</p></header><div class="cl-body"></div></div>`;
+  el.classList.add('cl-on');
+  return mountPicker(el.querySelector('.cl-body'), { tryButton: true });
+}
 function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 export function xUrl(name, hex) {

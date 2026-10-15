@@ -1,7 +1,7 @@
 // Everything below the hero: the sticky logo, the exploding burger menu, every drop, the storybook,
 // the make-your-own sections, the artists, the butt-hill footer, sound, and Lights out (Halloween).
-import { DROPS, SKETCHES } from './drops.js';
-import { openFlavorSheet } from './ui.js';
+import { DROPS } from './drops.js';
+import './drops-site.js';
 import { sound } from './sound.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -165,52 +165,12 @@ menu.addEventListener('click', (e) => {
   closeMenu(() => goTo(href));
 });
 function goTo(hash) {
+  if (hash.startsWith('#drop-')) { dispatchEvent(new CustomEvent('grumpl-drop', { detail: { n: hash.slice(6) } })); hash = '#Drops'; }
   const el = $(hash); if (!el) return;
   if (hash === '#Hero') scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
   else el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
   history.replaceState(null, '', hash === '#Hero' ? location.pathname + location.search : hash);
 }
-
-/* ======================= every drop ======================= */
-const STATUS = { upcoming: ['Soon', 'soon'], live: ['On sale', 'live'], soldout: ['Sold out', 'out'], studio: ['Studio only', 'studio'] };
-function flavorCard(f, d, i, j) {
-  const pic = f.cut || f.photos?.[0];
-  const alt = f.photos?.find((p) => p !== pic);
-  const meta = f.odds ? `${f.odds} of boxes` : f.edition ? `Edition of ${f.edition}` : f.finish;
-  return `<button class="fcard${f.cut ? ' cut' : ''}" type="button" data-d="${i}" data-f="${j}"
-    style="--r:${(rnd(i * 7 + j) * 4 - 2).toFixed(2)}deg;--base:${hex(f.base)};--edge:${hex(f.edge)};--belly:${hex(f.belly)}">
-    <span class="art">${pic ? `<img class="a1" src="${img(pic)}" alt="" loading="lazy">` : ''}${alt ? `<img class="a2" src="${img(alt)}" alt="" loading="lazy">` : ''}</span>
-    <span class="tag">${f.short || f.name}</span>
-    <span class="meta">${meta}${f.chase ? ' · <em>chase</em>' : ''}</span>
-  </button>`;
-}
-$('#DropList').innerHTML = DROPS.map((d, i) => `
-  <article class="drop${d.current ? ' current' : ''}${d.concept ? ' concept' : ''}" id="drop-${d.n}" style="--lead:${hex(d.flavors[0].edge)}">
-    <header class="drop-head">
-      <span class="num">${d.n}</span>
-      <div>
-        <p class="when"><span class="chip ${STATUS[d.status][1]}">${STATUS[d.status][0]}</span>${d.when}</p>
-        <h3>${d.name}</h3>
-        <p class="blurb">${d.blurb}</p>
-        ${d.current ? '<a class="back" href="#Hero">Back to the clouds <svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M10 16V4M5 9l5-5 5 5"/></svg></a>' : ''}
-      </div>
-    </header>
-    <div class="flavors">${d.flavors.map((f, j) => flavorCard(f, d, i, j)).join('')}</div>
-    ${d.concept ? `<div class="sketches">${SKETCHES.map((s, k) => `<figure style="--r:${(rnd(k + 40) * 8 - 4).toFixed(1)}deg"${s.line ? ' class="line"' : ''}><img src="${img(s.img)}" alt="${s.cap}" loading="lazy"><figcaption>${s.cap}</figcaption></figure>`).join('')}</div>` : ''}
-  </article>`).join('');
-$('#DropList').addEventListener('click', (e) => {
-  const c = e.target.closest('.fcard');
-  if (c) {
-    const d = DROPS[+c.dataset.d], f = d.flavors[+c.dataset.f];
-    if (d.current && f.heroIndex != null) window.__grumpl?.focus(f.heroIndex);
-    openFlavorSheet(f, d);
-    return;
-  }
-  const b = e.target.closest('.back');
-  if (b) { e.preventDefault(); goTo('#Hero'); }
-});
-// renders for flavors that have no photo yet come from the hero once it has loaded them
-$$('.fcard img').forEach((im) => im.addEventListener('error', () => { im.closest('.fcard')?.classList.add('noimg'); im.remove(); }, { once: true }));
 
 /* ======================= the storybook ======================= */
 // A first draft of the lore for Jason to rewrite. Pages pile up like a book as you scroll.
@@ -273,7 +233,6 @@ function lazyMount(sel, load) {
   io.observe(el);
 }
 const FL = () => import('./drop.js').then((m) => m.FLAVORS);
-lazyMount('#Colors', async (el) => (await import('./colors.js')).mountColors(el));
 lazyMount('#Studio', async (el) => (await import('./studio.js')).mountStudio(el, { FLAVORS: await FL() }));
 lazyMount('#Artists', async (el) => (await import('./artists.js')).mountArtists(el));
 lazyMount('#Butt', async (el) => (await import('./butt.js')).mountButt(el, { FLAVORS: await FL() }));

@@ -23,53 +23,12 @@ const ICON = {
   x: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg>',
 };
 
-// The details sheet: everything the drop page knows about a flavor, plus its photos. Used by the hero's (i)
-// and by every card in the drops section.
-let sheetFlavor = null;
-function fillFlavorSheet(f, d) {
-  const sheet = $('#Sheet');
-  sheetFlavor = f;
-  const st = f.status || d.status;
-  const row = (k, v) => (v != null && v !== '' ? `<div><dt>${k}</dt><dd>${v}</dd></div>` : '');
-  const pics = [...(f.photos || [])];
-  if (f.cut && !f.cut.startsWith('r-')) pics.push(f.cut);
-  $('.body', sheet).innerHTML = `
-    <p class="eyebrow">Drop ${d.n} · ${d.name}</p>
-    <h2>${f.name}</h2>
-    <p class="desc">${f.desc}</p>
-    <dl>
-      ${row('Finish', f.finish)}${row('Size', f.size)}${row('Edition', f.edition)}${row('Odds', f.odds)}${row('Weight', f.weight)}
-      ${row('Price', f.price)}${row('Last sale', f.last)}
-      ${row('Status', st === 'upcoming' ? 'Not dropped yet' : st === 'live' ? 'On sale now' : st === 'studio' ? 'Studio only, never sold' : 'Sold out, on secondary')}
-    </dl>
-    ${f.url ? `<p><a class="buy" href="${f.url}" target="_blank" rel="noopener">See him on DYLI <svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M7 4h9v9M16 4 5 15"/></svg></a></p>` : ''}
-    ${pics.length ? `<div class="photos">${pics.map((p) => `<img src="assets/img/${p}.webp" alt="${f.name}, photo" loading="lazy"${p[0] === 'd' ? ' class="cut"' : ''}>`).join('')}</div>`
-      : '<p class="nophoto">No photos of this one yet. The render is all there is.</p>'}
-    <p class="fine">${d.blurb}</p>`;
-}
-export function openFlavorSheet(f, d) {
-  const sheet = $('#Sheet');
-  fillFlavorSheet(f, d);
-  sheet.style.setProperty('--sheet-c', hex(f.base));
-  sheet.hidden = false;
-  requestAnimationFrame(() => sheet.classList.add('on'));
-  $('.x', sheet).focus({ preventScroll: true });
-}
-export function closeFlavorSheet() {
-  const sheet = $('#Sheet');
-  if (sheet.hidden) return;
-  sheet.classList.remove('on'); setTimeout(() => (sheet.hidden = true), 320);
-}
-{
-  const sheet = $('#Sheet');
-  $('.x', sheet).addEventListener('click', closeFlavorSheet);
-  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeFlavorSheet(); });
-  addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFlavorSheet(); });
-}
+// The hero's (i) opens the drop site's flavor popup (drops-site.js), the same one the drop cards open.
+export function openFlavorSheet(f) { dispatchEvent(new CustomEvent('grumpl-open-flavor', { detail: { id: f.id } })); }
 
 export function initUI({ DROP, FLAVORS, focus, step, jump, motion, canMove }) {
   const root = document.documentElement;
-  const cta = $('#Cta'), info = $('#Info'), dock = $('#Dock'), sheet = $('#Sheet');
+  const cta = $('#Cta'), info = $('#Info'), dock = $('#Dock');
   let cur = null, played = false;
 
   // dot shelf: a second way to move along the drop
@@ -146,11 +105,9 @@ export function initUI({ DROP, FLAVORS, focus, step, jump, motion, canMove }) {
     $('.ed', info).textContent = `${f.size} · edition of ${f.edition}`;
     info.classList.add('in');
     paintCta(f);
-    if (!sheet.hidden && sheetFlavor && FLAVORS.includes(sheetFlavor)) fillSheet();
   }
 
-  const fillSheet = () => fillFlavorSheet(cur, DROP);
-  $('.more', info).addEventListener('click', () => openFlavorSheet(cur, DROP));
+  $('.more', info).addEventListener('click', () => openFlavorSheet(cur));
   addEventListener('keydown', (e) => { if (e.key === 'Escape') cta.classList.remove('open'); });
 
   return {

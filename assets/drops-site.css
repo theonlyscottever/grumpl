@@ -1,0 +1,309 @@
+/* The drops section and its flavor popup: Scott's Grumpl drop site (grumpl/site/index.html), carried over
+   as is. Every rule is the drop site's own, only scoped to #Drops / #DropOverlays so it can sit on the
+   landing page. The page edits are at the bottom. */
+@property --tint { syntax: '<color>'; inherits: true; initial-value: #9fdcae; }
+@property --tint-edge { syntax: '<color>'; inherits: true; initial-value: #4fd2e0; }
+#Drops, #DropOverlays, #DropClose { --ink: #0b0a0c;
+	--light: #eff4f3;
+	--paper: #ffffff;
+	--lemon: #ffee96;
+	--process: #00b7ee;
+	--muted: #5d5862;
+	--tint: #9fdcae;
+	--tint-edge: #4fd2e0;
+
+	--font-cute: caraque-melted, "Chewy", "Fredoka", ui-rounded, system-ui, sans-serif;
+	--font-solid: caraque-solid, "Fredoka", ui-rounded, system-ui, sans-serif;
+
+	--gap: 48px;
+	--radius: 12px 9px 7px 15px;
+	--radius-in: 8px 5px 3px 10px;
+	--tag-radius: 5px 4px 3px 6px;
+	--shadow: 2px 3px var(--ink), 6px 10px 0 rgba(0 0 0 / 0.15);
+	--ease: cubic-bezier(0.64, 1.5, 0.67, 1.125);
+	--trans: transform 0.5s var(--ease), opacity 0.5s var(--ease);
+	color-scheme: light; }
+#Drops { 
+	color: var(--ink);
+	background: color-mix(in oklab, var(--tint) 10%, var(--paper));
+	font: 500 18px/1.5 var(--font-solid);
+	transition: --tint 0.9s ease, --tint-edge 0.9s ease }
+body.ds-no-scroll { overflow: hidden; }
+#Drops #DropWash { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+	background:
+		radial-gradient(120% 70% at 85% -10%, color-mix(in oklab, var(--tint-edge) 16%, transparent), transparent 60%),
+		linear-gradient(to bottom, color-mix(in oklab, var(--tint) 5%, var(--paper)), color-mix(in oklab, var(--tint) 20%, var(--paper)) 75%, color-mix(in oklab, var(--tint-edge) 24%, var(--paper))); }
+#Drops #DropWash::after { content: ""; position: absolute; inset: 0; opacity: 0.09; mix-blend-mode: multiply;
+	background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+#Drops #DropMast, #Drops #DropShell { position: relative; z-index: 1;
+	padding-left: max(var(--gap), env(safe-area-inset-left, 0px));
+	padding-right: max(var(--gap), env(safe-area-inset-right, 0px)); }
+#Drops #DropMast { padding-block: 40px 8px; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; transition: var(--trans); }
+#Drops #DropMast p { max-width: 30ch; text-align: right; font-size: 17px; line-height: 1.35; color: var(--muted); margin: 0 0 6px; text-wrap: balance; }
+#Drops #DropMast p strong { color: var(--ink); font-weight: 600; }
+@keyframes ds-squish {
+	0%, 64%, 100% { transform: scale(1, 1) translateY(0); }
+	10% { transform: scale(1.025, 0.95) translateY(0); }
+	30% { transform: scale(0.97, 1.02) translateY(-10px); }
+	50% { transform: scale(1.02, 0.98) translateY(0); }
+	57% { transform: translateY(-3px); }
+}
+@keyframes ds-little-bounce {
+	0%, 64%, 100% { transform: var(--rest) scale(1, 1) translateY(0); }
+	10% { transform: var(--rest) scale(1.025, 0.95) translateY(0); box-shadow: 2px 3px var(--ink), 6px 7px 0 rgba(0 0 0 / 0.15); }
+	30% { transform: var(--rest) scale(0.95, 1.0125) translateY(-16px); box-shadow: 2px 3px var(--ink), 6px 16px 8px 2px rgba(0 0 0 / 0.15); }
+	50% { transform: var(--rest) scale(1.025, 0.975) translateY(0); }
+	57% { transform: var(--rest) translateY(-4px); }
+}
+@keyframes ds-wiggle { 50% { transform: rotate(2deg) translateY(-6px); } }
+#Drops #DropShell { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: var(--gap); padding-block: 32px 64px; align-items: start; }
+:is(#Drops, #DropOverlays) .card { position: relative;
+	background: var(--light);
+	border: 4px solid var(--ink);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	--rest: rotate(var(--r, 0deg));
+	transform: var(--rest);
+	transition: var(--trans), background-color 0.6s ease;
+	transition-delay: var(--d, 0s); }
+:is(#Drops, #DropOverlays) .card.pre { opacity: 0; transform: translateY(var(--fy, -80px)) rotate(var(--fr, 8deg)); transition: none; }
+:is(#Drops, #DropOverlays) .card.leaving { opacity: 0; transform: translateX(40px) rotate(-6deg) scale(1.15); transition-duration: 0.45s; transition-timing-function: cubic-bezier(0.5, 0, 0.75, 0); }
+:is(#Drops, #DropOverlays) .tag { position: absolute; z-index: 3; color: var(--paper); isolation: isolate; max-width: calc(100% - 32px);
+	font: 400 26px/1.05 var(--font-cute); letter-spacing: 0.01em; transition: var(--trans), color 0.5s var(--ease); }
+:is(#Drops, #DropOverlays) .tag::before { content: ""; position: absolute; inset: -3px -9px; z-index: -1; background: var(--ink);
+	border-radius: var(--tag-radius); transform: rotate(-0.6deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15); }
+:is(#Drops, #DropOverlays) #Rail { position: sticky; top: calc(24px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 20px; padding-top: 4px; }
+:is(#Drops, #DropOverlays) #Rail h2 { margin: 0 0 -4px 4px; font: 600 13px/1 var(--font-solid); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+:is(#Drops, #DropOverlays) .drop { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 12px; row-gap: 6px;
+	text-align: left; padding: 12px 14px 12px 12px; overflow: hidden; isolation: isolate;
+	background: color-mix(in oklab, var(--hue) 22%, var(--light)); }
+:is(#Drops, #DropOverlays) .drop::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius-in); opacity: 0.25; transition: opacity 0.5s var(--ease); pointer-events: none; }
+:is(#Drops, #DropOverlays) .drop-num { font: 400 46px/0.8 var(--font-cute); grid-row: span 2; min-width: 1.15em; }
+:is(#Drops, #DropOverlays) .drop-name { font: 600 17px/1.1 var(--font-solid); }
+:is(#Drops, #DropOverlays) .drop-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+:is(#Drops, #DropOverlays) .dots { grid-column: 1 / -1; display: flex; gap: 5px; margin-top: 2px; }
+:is(#Drops, #DropOverlays) .dots i { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--c); transition: transform 0.4s var(--ease); transition-delay: calc(var(--k) * 40ms); }
+:is(#Drops, #DropOverlays) .chip { display: inline-block; padding: 2px 7px 1px; border-radius: 4px 3px 4px 5px; background: var(--ink); color: var(--paper); font-size: 11px; letter-spacing: 0.08em; }
+:is(#Drops, #DropOverlays) .chip.soon { background: var(--lemon); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+:is(#Drops, #DropOverlays) .drop:not(.empty):hover { transform: var(--rest) scale(1.04) translateX(4px); }
+:is(#Drops, #DropOverlays) .drop:not(.empty):hover::after { opacity: 1; }
+:is(#Drops, #DropOverlays) .drop:not(.empty):hover .dots i { transform: translateY(-3px); }
+:is(#Drops, #DropOverlays) .drop.active { background: color-mix(in oklab, var(--hue) 55%, var(--light)); --rest: rotate(calc(var(--r) * -1.5)) translateX(10px) scale(1.06); }
+:is(#Drops, #DropOverlays) .drop.active::after { opacity: 1; }
+:is(#Drops, #DropOverlays) .drop.active.bounce { animation: ds-little-bounce 0.9s var(--ease) 1; }
+:is(#Drops, #DropOverlays) .drop.empty { background: transparent; border: 3px dashed color-mix(in oklab, var(--ink) 32%, transparent); box-shadow: none; cursor: default; color: color-mix(in oklab, var(--ink) 42%, transparent); }
+:is(#Drops, #DropOverlays) .drop.empty .drop-name { font-weight: 500; }
+:is(#Drops, #DropOverlays) .drop.empty svg { grid-row: span 2; width: 40px; height: 40px; opacity: 0.55; animation: ds-wiggle 3.2s ease-in-out infinite; animation-delay: calc(var(--k) * -0.8s); }
+:is(#Drops, #DropOverlays) #Stage { min-width: 0; display: flex; flex-direction: column; gap: 28px; }
+:is(#Drops, #DropOverlays) .drop-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px 32px; }
+:is(#Drops, #DropOverlays) .drop-head > * { transition: var(--trans); }
+:is(#Drops, #DropOverlays) .drop-head.pre > * { opacity: 0; transform: translateX(-40px); transition: none; }
+:is(#Drops, #DropOverlays) .drop-head.leaving > * { opacity: 0; transform: translateX(-60px) rotate(-2deg); transition-duration: 0.35s; }
+:is(#Drops, #DropOverlays) .eyebrow { font: 600 13px/1 var(--font-solid); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+:is(#Drops, #DropOverlays) .drop-head h1 { margin: 10px 0 0; font: 400 clamp(44px, 6vw, 84px)/0.95 var(--font-cute); letter-spacing: 0.01em; text-wrap: balance; }
+:is(#Drops, #DropOverlays) .drop-head p { grid-column: 1 / -1; margin: 0; max-width: 56ch; font-size: clamp(18px, 1.6vw, 22px); line-height: 1.4; text-wrap: pretty; }
+:is(#Drops, #DropOverlays) .drop-head .count { font: 400 22px/1 var(--font-cute); padding-bottom: 8px; white-space: nowrap; }
+:is(#Drops, #DropOverlays) .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px; }
+:is(#Drops, #DropOverlays) .flavor { aspect-ratio: 1; max-width: 100%; overflow: hidden; background: var(--ink); cursor: pointer; padding: 0; text-align: left; display: block; width: 100%; }
+:is(#Drops, #DropOverlays) .flavor img, :is(#Drops, #DropOverlays) .flavor .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+:is(#Drops, #DropOverlays) .flavor.cut { background: radial-gradient(circle at 50% 40%, #fff 0 12%, color-mix(in oklab, var(--belly) 35%, #fff) 38%, color-mix(in oklab, var(--base) 42%, #fff) 72%, color-mix(in oklab, var(--edge) 45%, #fff) 125%); }
+:is(#Drops, #DropOverlays) .slide.cut { background: radial-gradient(circle at 50% 42%, #fff 0 12%, color-mix(in oklab, var(--o-belly) 35%, #fff) 40%, color-mix(in oklab, var(--o-base) 42%, #fff) 74%, color-mix(in oklab, var(--o-edge) 45%, #fff) 130%); }
+:is(#Drops, #DropOverlays) .slide.cut img { object-fit: contain; }
+:is(#Drops, #DropOverlays) .flavor .art.blob { background: radial-gradient(circle at 50% 42%, var(--belly) 0 18%, var(--base) 42%, var(--edge)); }
+:is(#Drops, #DropOverlays) .flavor .rep { opacity: 0; transform: scale(1.1) rotate(-6deg); transition: var(--trans); background: var(--soft); }
+:is(#Drops, #DropOverlays) .flavor .tag { left: 21px; bottom: 18px; }
+:is(#Drops, #DropOverlays) .flavor .flav-sub { position: absolute; z-index: 3; left: 21px; bottom: 18px; color: var(--paper); font: 600 15px/1 var(--font-solid);
+	opacity: 0; transform: scale(0.6); transform-origin: left bottom; transition: var(--trans); isolation: isolate; }
+:is(#Drops, #DropOverlays) .flavor .flav-sub::before { content: ""; position: absolute; inset: -5px -9px; z-index: -1; background: var(--ink); border-radius: var(--tag-radius); transform: rotate(0.6deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15); }
+:is(#Drops, #DropOverlays) .flavor .acts { position: absolute; z-index: 3; top: 14px; left: 14px; display: flex; align-items: center; gap: 4px; padding: 7px 10px;
+	background: var(--ink); border-radius: var(--tag-radius); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15);
+	transform: translateY(-48px); opacity: 0; transition: var(--trans), gap 0.5s var(--ease); }
+:is(#Drops, #DropOverlays) .trigger { color: var(--ink); display: grid; place-items: center; width: 30px; height: 26px; background: var(--light); border-radius: 2px 3px 2px 4px; transform: rotate(-1deg) scale(0.9); transition: var(--trans), background-color 0.5s var(--ease); }
+:is(#Drops, #DropOverlays) .trigger svg { width: 18px; height: 18px; }
+:is(#Drops, #DropOverlays) .acts .trigger:hover, :is(#Drops, #DropOverlays) .trigger:hover { transform: rotate(1deg) scale(1.1); background: var(--lemon); }
+:is(#Drops, #DropOverlays) .acts .say { color: var(--paper); font-size: 14px; font-weight: 600; padding: 0 4px 0 2px; white-space: nowrap; }
+:is(#Drops, #DropOverlays) .flavor::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; border: 4px solid var(--paper); border-radius: var(--radius-in); opacity: 0.25; transition: var(--trans); }
+:is(#Drops, #DropOverlays) .flavor .sticker { position: absolute; z-index: 3; top: 14px; right: 12px; padding: 4px 10px 3px; background: var(--lemon); border: 3px solid var(--ink); border-radius: 6px 4px 7px 5px; font: 400 18px/1 var(--font-cute); transform: rotate(5deg); box-shadow: 2px 3px 0 var(--ink); transition: var(--trans); }
+:is(#Drops, #DropOverlays) .flavor:hover, :is(#Drops, #DropOverlays) .flavor:focus-visible { transform: scale(1.025); }
+:is(#Drops, #DropOverlays) .flavor:hover::after, :is(#Drops, #DropOverlays) .flavor:focus-visible::after { opacity: 1; }
+:is(#Drops, #DropOverlays) .flavor:hover .rep, :is(#Drops, #DropOverlays) .flavor:focus-visible .rep { opacity: 1; transform: none; }
+:is(#Drops, #DropOverlays) .flavor:hover .tag, :is(#Drops, #DropOverlays) .flavor:focus-visible .tag { opacity: 0; transform: scale(0.5); }
+:is(#Drops, #DropOverlays) .flavor:hover .flav-sub, :is(#Drops, #DropOverlays) .flavor:focus-visible .flav-sub { opacity: 1; transform: none; }
+:is(#Drops, #DropOverlays) .flavor:hover .acts, :is(#Drops, #DropOverlays) .flavor:focus-visible .acts { opacity: 1; transform: none; gap: 10px; }
+:is(#Drops, #DropOverlays) .flavor:hover .sticker { transform: rotate(-4deg) scale(1.08); }
+:is(#Drops, #DropOverlays) .intro { aspect-ratio: 1; max-width: 100%; overflow: hidden; background: var(--ink); color: var(--paper); padding: 26px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; isolation: isolate; }
+:is(#Drops, #DropOverlays) .intro::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--img) center / cover; mix-blend-mode: luminosity; opacity: 0.28; }
+:is(#Drops, #DropOverlays) .intro::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius); pointer-events: none; }
+:is(#Drops, #DropOverlays) .intro .big { font: 400 clamp(64px, 8vw, 112px)/0.8 var(--font-cute); }
+:is(#Drops, #DropOverlays) .intro .lbl { font: 400 clamp(24px, 2.4vw, 32px)/1 var(--font-cute); }
+:is(#Drops, #DropOverlays) .intro .sm { font-size: 15px; opacity: 0.8; }
+#DropOverlays { position: fixed; inset: 0; z-index: 20; overflow-y: auto; transition: var(--trans);
+	padding: max(var(--gap), env(safe-area-inset-top, 0px)) max(var(--gap), env(safe-area-inset-right, 0px)) max(var(--gap), env(safe-area-inset-bottom, 0px)) max(var(--gap), env(safe-area-inset-left, 0px));
+	display: grid; place-items: center; }
+#DropOverlays:not(.active) { opacity: 0; pointer-events: none; transition-delay: 0.3s; }
+:is(#Drops, #DropOverlays) .overlay-bg { position: fixed; inset: 0; transition: opacity 0.5s var(--ease);
+	background: radial-gradient(circle at 50% 50%, var(--o-belly) 10%, var(--o-base) 52%, var(--o-edge)); }
+#DropOverlays:not(.active) .overlay-bg { opacity: 0; transition-delay: 0.3s; }
+:is(#Drops, #DropOverlays) .sheet { position: relative; display: flex; align-items: center; justify-content: center; width: min(1000px, 100%); }
+:is(#Drops, #DropOverlays) .sheet .card { transition: var(--trans); transition-delay: 0.22s; }
+:is(#Drops, #DropOverlays) .sheet .art { width: min(520px, 100%); padding: 4px; background: var(--ink); --rest: rotate(-2.5deg); flex: none; }
+:is(#Drops, #DropOverlays) .sheet .info { width: min(420px, 100%); margin-left: -56px; margin-top: 64px; padding: 54px 28px 34px; z-index: 2; --rest: translateY(6px) rotate(2deg); background: var(--light); }
+:is(#Drops, #DropOverlays) .sheet .info::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius-in); pointer-events: none; }
+#DropOverlays:not(.active) .art, :is(#Drops, #DropOverlays) .sheet.swap .art { opacity: 0; transform: rotate(4deg) translateX(-80px) scale(1.125); transition-delay: 0s; transition-duration: 0.6s; }
+#DropOverlays:not(.active) .info, :is(#Drops, #DropOverlays) .sheet.swap .info { opacity: 0; transform: translateX(40px) rotate(-6deg) scale(1.2); transition-delay: 0s; transition-duration: 0.6s; }
+:is(#Drops, #DropOverlays) .sheet.arrive .art { opacity: 0; transform: rotate(-10deg) translateX(-40px) translateY(60px) scale(0.9); transition: none; }
+:is(#Drops, #DropOverlays) .sheet.arrive .info { opacity: 0; transform: translateX(80px) rotate(8deg) translateY(40px) scale(0.9); transition: none; }
+:is(#Drops, #DropOverlays) .info .tag { top: -22px; left: 24px; font-size: 36px; }
+:is(#Drops, #DropOverlays) .sheet .info.long { padding-top: 92px; }
+:is(#Drops, #DropOverlays) .info .eyebrow { margin-bottom: 10px; }
+:is(#Drops, #DropOverlays) .info p.desc { margin: 0 0 18px; font-size: 19px; line-height: 1.38; text-wrap: pretty; }
+:is(#Drops, #DropOverlays) .specs { margin: 0 0 22px; display: grid; grid-template-columns: auto 1fr; font-size: 16px; }
+:is(#Drops, #DropOverlays) .specs dt, :is(#Drops, #DropOverlays) .specs dd { margin: 0; padding: 7px 0; border-bottom: 2.5px dotted color-mix(in oklab, var(--ink) 30%, transparent); }
+:is(#Drops, #DropOverlays) .specs dt { font-weight: 600; padding-right: 18px; }
+:is(#Drops, #DropOverlays) .specs dd { text-align: right; font-variant-numeric: tabular-nums; }
+:is(#Drops, #DropOverlays) .specs dd small { color: var(--muted); font-size: 13px; margin-left: 6px; }
+:is(#Drops, #DropOverlays) .specs .swatch { display: inline-flex; gap: 4px; vertical-align: -3px; margin-right: 8px; }
+:is(#Drops, #DropOverlays) .specs .swatch i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--ink); background: var(--c); }
+:is(#Drops, #DropOverlays) .cta { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 16px 14px 20px;
+	background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); font: 400 26px/1 var(--font-cute); letter-spacing: 0.01em;
+	box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18); transform: rotate(-0.6deg); transition: var(--trans), color 0.4s var(--ease); text-decoration: none; }
+:is(#Drops, #DropOverlays) .cta .trigger { width: 38px; height: 32px; color: var(--ink); }
+:is(#Drops, #DropOverlays) .cta:hover { transform: rotate(0.6deg) scale(1.03); color: var(--lemon); }
+:is(#Drops, #DropOverlays) .cta:hover .trigger { background: var(--lemon); transform: rotate(3deg) scale(1.1); }
+:is(#Drops, #DropOverlays) .cta-note { margin: 10px 2px 0; font-size: 13px; color: var(--muted); }
+:is(#Drops, #DropOverlays) .remind label { display: block; font: 400 24px/1.05 var(--font-cute); margin-bottom: 10px; }
+:is(#Drops, #DropOverlays) .remind .row { display: flex; gap: 8px; padding: 6px; background: var(--ink); border-radius: var(--tag-radius); transform: rotate(-0.6deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18); }
+:is(#Drops, #DropOverlays) .remind input { flex: 1; min-width: 0; padding: 10px 12px; border: 0; border-radius: 3px 2px 3px 4px; background: var(--paper); font-size: 17px; }
+:is(#Drops, #DropOverlays) .remind input:focus-visible { outline: 3px solid var(--lemon); outline-offset: 0; }
+:is(#Drops, #DropOverlays) .remind button.go { padding: 0 14px; border-radius: 3px 2px 4px 3px; background: var(--lemon); color: var(--ink); font: 400 21px/1 var(--font-cute); transition: var(--trans), background-color 0.4s; }
+:is(#Drops, #DropOverlays) .remind button.go:hover { transform: rotate(2deg) scale(1.06); background: var(--paper); }
+:is(#Drops, #DropOverlays) .remind .err { min-height: 1.3em; margin: 8px 2px 0; font-size: 14px; color: #b3123b; }
+:is(#Drops, #DropOverlays) .remind .done { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 3px solid var(--ink); border-radius: var(--radius); background: var(--lemon); font-size: 17px; line-height: 1.3; transform: rotate(-1deg); animation: ds-little-bounce 0.9s var(--ease) 1; --rest: rotate(-1deg); }
+:is(#Drops, #DropOverlays) .remind .done b { font: 400 24px/1 var(--font-cute); display: block; font-weight: 400; }
+:is(#Drops, #DropOverlays) .info .acts { position: absolute; bottom: -26px; left: 28px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); transform: rotate(-0.8deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15); font-size: 14px; font-weight: 600; }
+:is(#Drops, #DropOverlays) .info .acts span { min-width: 7ch; text-align: center; font-variant-numeric: tabular-nums; }
+:is(#Drops, #DropOverlays) .car { position: relative; aspect-ratio: 1; max-width: 100%; overflow: hidden; border-radius: var(--radius-in); background: var(--o-soft); touch-action: pan-y; }
+:is(#Drops, #DropOverlays) .track { display: flex; height: 100%; transition: transform 0.7s var(--ease); will-change: transform; }
+:is(#Drops, #DropOverlays) .slide { flex: 0 0 100%; height: 100%; position: relative; overflow: hidden; }
+:is(#Drops, #DropOverlays) .slide img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.06) rotate(1.5deg); transition: transform 0.9s var(--ease); user-select: none; -webkit-user-drag: none; }
+:is(#Drops, #DropOverlays) .slide.on img { transform: none; }
+:is(#Drops, #DropOverlays) .slide.three { background: var(--o-soft); cursor: grab; touch-action: none; }
+:is(#Drops, #DropOverlays) .slide.three:active { cursor: grabbing; }
+:is(#Drops, #DropOverlays) .slide.three canvas { width: 100% !important; height: 100% !important; display: block; }
+:is(#Drops, #DropOverlays) .slide.three .wait { position: absolute; inset: 0; display: grid; place-items: center; font: 400 22px var(--font-cute); color: color-mix(in oklab, var(--ink) 55%, transparent); }
+:is(#Drops, #DropOverlays) .slide.soon { display: grid; place-content: center; text-align: center; gap: 6px; background: repeating-linear-gradient(-45deg, var(--o-soft) 0 18px, color-mix(in oklab, var(--o-base) 30%, var(--o-soft)) 18px 36px); }
+:is(#Drops, #DropOverlays) .slide.soon b { font: 400 34px/1 var(--font-cute); font-weight: 400; }
+:is(#Drops, #DropOverlays) .car .tag { top: 18px; left: 22px; font: 600 14px/1 var(--font-solid); letter-spacing: 0.04em; }
+:is(#Drops, #DropOverlays) .car-nav { position: absolute; z-index: 3; bottom: 14px; left: 50%; transform: translateX(-50%) rotate(-0.8deg); display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--ink); border-radius: var(--tag-radius); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18); }
+:is(#Drops, #DropOverlays) .car-nav .pips { display: flex; gap: 5px; align-items: center; }
+:is(#Drops, #DropOverlays) .car-nav .pips button { width: 9px; height: 9px; border-radius: 2px 3px 2px 3px; background: color-mix(in oklab, var(--light) 45%, transparent); transition: width 0.45s var(--ease), background-color 0.3s; }
+:is(#Drops, #DropOverlays) .car-nav .pips button.on { width: 22px; background: var(--lemon); }
+:is(#Drops, #DropOverlays) .car-nav .pips button.is3d { border-radius: 50%; }
+:is(#Drops, #DropOverlays) .tilt { position: absolute; z-index: 3; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px 8px 9px;
+	background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.18);
+	font: 400 18px/1 var(--font-cute); transform: rotate(1.5deg); animation: ds-nudge 2.6s var(--ease) infinite; }
+:is(#Drops, #DropOverlays) .tilt svg { width: 22px; height: 22px; color: var(--lemon); }
+:is(#Drops, #DropOverlays) .tilt:disabled { opacity: 0.6; animation: none; }
+@keyframes ds-nudge { 0%, 70%, 100% { transform: rotate(1.5deg); } 78% { transform: rotate(-5deg) scale(1.06); } 86% { transform: rotate(5deg) scale(1.06); } 93% { transform: rotate(-2deg); } }
+:is(#Drops, #DropOverlays) .slide .hint { position: absolute; z-index: 3; left: 50%; top: 56px; width: max-content; max-width: calc(100% - 32px); padding: 8px 12px;
+	background: var(--lemon); border: 3px solid var(--ink); border-radius: 6px 4px 7px 5px; box-shadow: 2px 3px 0 var(--ink);
+	font: 600 14px/1.25 var(--font-solid); text-align: center; opacity: 0; transform: translateX(-50%) translateY(-8px) rotate(-1deg); transition: var(--trans); pointer-events: none; }
+:is(#Drops, #DropOverlays) .slide .hint.show { opacity: 1; transform: translateX(-50%) rotate(-1deg); }
+:is(#Drops, #DropOverlays) .slide .hint.stay { pointer-events: auto; }
+:is(#Drops, #DropOverlays) .slide .hint .full { text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
+#DropClose { position: fixed; z-index: 30; top: max(28px, calc(env(safe-area-inset-top, 0px) + 16px)); right: max(28px, calc(env(safe-area-inset-right, 0px) + 16px));
+	width: 44px; height: 44px; display: grid; place-items: center; transform: rotate(-4deg); transition: var(--trans); }
+#DropClose::before, #DropClose::after { content: ""; position: absolute; width: 34px; height: 8px; background: var(--light); border: 2.5px solid var(--ink); border-radius: 1px 2px 1px 3px; transition: transform 0.5s var(--ease); }
+#DropClose::before { transform: rotate(-45deg); }
+#DropClose::after { transform: rotate(45deg); }
+#DropClose:hover { transform: rotate(2deg) scale(1.25); }
+#DropClose:hover::before { transform: rotate(-46deg); }
+#DropClose:hover::after { transform: rotate(48deg); }
+#DropClose:not(.active) { opacity: 0; transform: translateY(-12px); pointer-events: none; }
+#Drops #DropShell { transition: var(--trans); }
+@media (max-width: 1180px) {
+	:is(#Drops, #DropOverlays) .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+	#Drops, #DropOverlays, #DropClose { --gap: 22px; }
+	#Drops #DropMast p { display: none; }
+	#Drops #DropShell { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 18px; }
+	:is(#Drops, #DropOverlays) #Rail { position: relative; top: 0; flex-direction: row; overflow-x: auto; gap: 14px; padding: 12px 6px 18px; margin: 0 -6px; scroll-snap-type: x proximity; scrollbar-width: none; }
+	:is(#Drops, #DropOverlays) #Rail::-webkit-scrollbar { display: none; }
+	:is(#Drops, #DropOverlays) #Rail h2 { display: none; }
+	:is(#Drops, #DropOverlays) .drop { flex: 0 0 196px; scroll-snap-align: start; }
+	:is(#Drops, #DropOverlays) .drop-meta { white-space: nowrap; }
+	:is(#Drops, #DropOverlays) .drop-name { white-space: nowrap; }
+	:is(#Drops, #DropOverlays) .drop.active { --rest: rotate(calc(var(--r) * -1.5)) translateY(-4px) scale(1.04); }
+	:is(#Drops, #DropOverlays) .drop.empty { flex-basis: 150px; }
+	:is(#Drops, #DropOverlays) .sheet { flex-direction: column; }
+	:is(#Drops, #DropOverlays) .sheet .info { margin: 22px 0 40px; width: min(520px, 100%); }
+}
+@media (max-width: 560px) {
+	:is(#Drops, #DropOverlays) .drop-head { grid-template-columns: minmax(0, 1fr); }
+	:is(#Drops, #DropOverlays) .drop-head .count { display: none; }
+	:is(#Drops, #DropOverlays) .intro { aspect-ratio: auto; min-height: 150px; }
+}
+@media (hover: none) {
+	:is(#Drops, #DropOverlays) .flavor:hover, :is(#Drops, #DropOverlays) .drop:not(.empty):hover { transform: var(--rest); }
+	:is(#Drops, #DropOverlays) .flavor:hover .rep { opacity: 0; transform: scale(1.1) rotate(-6deg); }
+	:is(#Drops, #DropOverlays) .flavor:hover .tag { opacity: 1; transform: none; }
+	:is(#Drops, #DropOverlays) .flavor:hover .flav-sub, :is(#Drops, #DropOverlays) .flavor:hover .acts { opacity: 0; }
+	:is(#Drops, #DropOverlays) .flavor:active, :is(#Drops, #DropOverlays) .drop:not(.empty):active { transform: var(--rest) scale(0.96); transition-duration: 0.15s; }
+	:is(#Drops, #DropOverlays) .cta:active { transform: rotate(0.6deg) scale(0.97); }
+}
+@media (max-width: 560px) {
+	#Drops, #DropOverlays, #DropClose { --gap: 16px; }
+	#Drops #DropMast { padding-block: calc(14px + env(safe-area-inset-top, 0px)) 0; }
+	#Drops #DropShell { padding-top: 6px; gap: 14px; }
+	:is(#Drops, #DropOverlays) #Rail { position: sticky; top: 0; z-index: 6; margin: 0 -16px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 14px; gap: 10px; scroll-padding-inline: 16px;
+		background: color-mix(in oklab, color-mix(in oklab, var(--tint) 10%, var(--paper)) 82%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+	:is(#Drops, #DropOverlays) .drop { flex: 0 0 auto; grid-template-columns: auto auto; padding: 8px 12px 8px 9px; border-width: 3px; column-gap: 8px; row-gap: 3px; }
+	:is(#Drops, #DropOverlays) .drop-num { font-size: 34px; }
+	:is(#Drops, #DropOverlays) .drop-name { font-size: 15px; }
+	:is(#Drops, #DropOverlays) .drop-meta { font-size: 10px; gap: 5px; }
+	:is(#Drops, #DropOverlays) .drop .dots { display: none; }
+	:is(#Drops, #DropOverlays) .drop.empty { flex-basis: auto; }
+	:is(#Drops, #DropOverlays) .drop.empty svg { width: 28px; height: 28px; }
+	:is(#Drops, #DropOverlays) .drop-head h1 { font-size: 46px; margin-top: 6px; }
+	:is(#Drops, #DropOverlays) .drop-head p { font-size: 16px; }
+	:is(#Drops, #DropOverlays) .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+	:is(#Drops, #DropOverlays) .intro { grid-column: 1 / -1; aspect-ratio: auto; min-height: 0; padding: 18px; flex-direction: row; align-items: flex-end; gap: 14px; }
+	:is(#Drops, #DropOverlays) .intro .big { font-size: 64px; }
+	:is(#Drops, #DropOverlays) .intro .lbl { font-size: 24px; }
+	:is(#Drops, #DropOverlays) .intro .sm { display: none; }
+	:is(#Drops, #DropOverlays) .card { border-width: 3px; }
+	:is(#Drops, #DropOverlays) .flavor .tag { left: 12px; right: 12px; bottom: 10px; font-size: 18px; }
+	:is(#Drops, #DropOverlays) .flavor .flav-sub, :is(#Drops, #DropOverlays) .flavor .acts { display: none; }
+	:is(#Drops, #DropOverlays) .flavor .sticker { top: 8px; right: 8px; font-size: 14px; padding: 3px 7px 2px; border-width: 2.5px; }
+	:is(#Drops, #DropOverlays) .flavor::after { border-width: 3px; }
+	#DropOverlays { padding: calc(64px + env(safe-area-inset-top, 0px)) 12px calc(28px + env(safe-area-inset-bottom, 0px)); place-items: start center; overscroll-behavior: contain; }
+	:is(#Drops, #DropOverlays) .sheet .art { --rest: rotate(-1.2deg); }
+	:is(#Drops, #DropOverlays) .car { aspect-ratio: 4 / 5; }
+	:is(#Drops, #DropOverlays) .sheet .info { margin: 18px 0 36px; padding: 34px 18px 28px; --rest: rotate(1deg); }
+	:is(#Drops, #DropOverlays) .info .tag { font-size: 30px; left: 16px; }
+	:is(#Drops, #DropOverlays) .info p.desc { font-size: 17px; }
+	:is(#Drops, #DropOverlays) .info .acts { left: 18px; }
+	#DropClose { top: calc(14px + env(safe-area-inset-top, 0px)); right: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	:is(#Drops, #DropOverlays) .track { transition: none; }
+}
+
+/* ---------- landing page fit ---------- */
+#Drops { position: relative; isolation: isolate; padding-top: clamp(28px, 6vh, 64px); }
+#Drops #DropWash { position: absolute; }
+:is(#Drops, #DropOverlays) [hidden] { display: none !important; }
+:is(#Drops, #DropOverlays) :is(button, input) { font: inherit; color: inherit; }
+:is(#Drops, #DropOverlays) button { background: none; border: 0; padding: 0; cursor: pointer; }
+:is(#Drops, #DropOverlays, #DropClose) :focus-visible, #DropClose:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+#Drops #DropMast p { margin-left: auto; }
+/* the page header is fixed at the top, so the sticky rail stops just under it */
+:is(#Drops, #DropOverlays) #Rail { top: calc(var(--top-pad, 12px) + 74px); }
+@media (max-width: 900px) { :is(#Drops, #DropOverlays) #Rail { top: 0; } }
+@media (max-width: 560px) {
+	:is(#Drops, #DropOverlays) #Rail { top: calc(var(--top-pad, 12px) + 58px); padding-top: 10px; }
+}
+/* the 3D canvas keeps whatever size it last rendered at; take it out of the layout so it can't widen the popup */
+#DropOverlays { grid-template-columns: minmax(0, 1fr); }
+#DropOverlays .slide.three canvas { position: absolute; inset: 0; }
