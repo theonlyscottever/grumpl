@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grumpl</title>
+<meta name="description" content="A plump little vinyl guy. Play with the newest drop.">
+<meta name="theme-color" content="#eef3fb">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Fredoka:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://use.typekit.net/nsx2gny.css">
+<style>
+:root {
+	--paper: #ffffff;
+	--ink: #1b1620;
+	--muted: #8d8494;
+	--lemon: #ffee96;
+	--wash: #eef3fb;
+	--wash-deep: #dfe7f7;
+	--base: #56c2dc;
+	--font-cute: caraque-melted, "Chewy", "Fredoka", ui-rounded, system-ui, sans-serif;
+	--font-solid: caraque-solid, "Fredoka", ui-rounded, system-ui, sans-serif;
+	--ease: cubic-bezier(0.64, 1.5, 0.67, 1.125);
+	--trans: all 0.5s var(--ease);
+	--tag-radius: 7px 5px 8px 6px;
+	--gut: max(16px, env(safe-area-inset-left, 0px));
+	color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { background: var(--paper); }
+body { margin: 0; color: var(--ink); font: 500 16px/1.45 var(--font-solid); background: var(--paper); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+/* ---------- hero: the stage ---------- */
+#Hero { position: relative; height: 100svh; min-height: 560px; overflow: hidden; isolation: isolate;
+	background: radial-gradient(120% 75% at 50% 32%, var(--wash) 0%, color-mix(in oklab, var(--wash) 45%, #fff) 48%, #fff 78%);
+	transition: background 0.9s ease; }
+#Hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+	background: radial-gradient(60% 40% at 50% 30%, color-mix(in oklab, var(--wash-deep) 60%, transparent), transparent 70%); transition: opacity .9s; }
+#stage { position: absolute; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+#loading { position: absolute; inset: 0; display: grid; place-items: center; font: 400 26px var(--font-cute); color: var(--muted); pointer-events: none; transition: opacity .5s; }
+body.ready #loading { opacity: 0; }
+
+/* top bar: menu (phase 2) left, the buy button right */
+.bar { position: absolute; z-index: 5; top: calc(14px + env(safe-area-inset-top, 0px)); left: var(--gut); right: var(--gut); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
+.bar > * { pointer-events: auto; }
+#Burger { width: 48px; height: 48px; border: 0; padding: 0; background: none; display: grid; place-items: center; transition: var(--trans); }
+#Burger:hover { transform: rotate(-8deg) scale(1.08); }
+#Burger svg { width: 44px; height: 44px; }
+
+#Cta { position: relative; display: flex; justify-content: flex-end; }
+#Cta .go { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px 11px 15px; border: 3px solid var(--ink); border-radius: 12px 9px 7px 15px;
+	background: var(--c, var(--base)); color: var(--c-ink, var(--ink)); font: 400 21px/1 var(--font-cute); letter-spacing: 0.01em;
+	box-shadow: 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / 0.12); transform: rotate(1.5deg); transition: var(--trans), background-color .6s ease; white-space: nowrap; }
+#Cta .go svg { width: 18px; height: 18px; flex: none; }
+#Cta .go:hover { transform: rotate(-2deg) scale(1.06); }
+#Cta .go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+#Cta .go.bump { animation: bump .55s var(--ease); }
+@keyframes bump { 0% { transform: rotate(1.5deg) scale(1); } 35% { transform: rotate(-3deg) scale(1.12); } 100% { transform: rotate(1.5deg) scale(1); } }
+#Cta .pop { position: absolute; top: calc(100% + 12px); right: 0; width: min(330px, calc(100vw - 32px)); padding: 16px; background: var(--paper);
+	border: 3px solid var(--ink); border-radius: 12px 9px 7px 15px; box-shadow: 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / 0.12);
+	transform-origin: 85% 0; transform: translateY(-8px) rotate(-3deg) scale(0.8); opacity: 0; visibility: hidden; transition: var(--trans), visibility 0s .5s; }
+#Cta.open .pop { transform: none; opacity: 1; visibility: visible; transition: var(--trans), visibility 0s; }
+#Cta .pop p { margin: 0 34px 10px 0; font: 500 15px/1.35 var(--font-solid); }
+#Cta form { display: flex; gap: 8px; }
+#Cta input { flex: 1; min-width: 0; padding: 10px 12px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px; font: 500 16px var(--font-solid); background: #fff; }
+#Cta input:focus { outline: 3px solid var(--c, var(--base)); outline-offset: 1px; }
+#Cta form button { padding: 0 14px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px; background: var(--c, var(--base)); color: var(--c-ink, var(--ink)); font: 400 18px var(--font-cute); }
+#Cta .close { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: none; padding: 0; }
+#Cta .close svg { width: 16px; height: 16px; }
+#Cta .done { margin: 0; font: 400 20px/1.15 var(--font-cute); }
+
+/* the name floats in the white space beside him */
+#Info { position: absolute; z-index: 4; left: var(--gut); top: calc(84px + env(safe-area-inset-top, 0px)); max-width: min(62vw, 300px);
+	pointer-events: none; }
+@media (min-aspect-ratio: 4/5) { #Info { left: max(40px, 4vw); top: auto; bottom: calc(110px + 4vh); } }
+#Info > * { opacity: 0; transform: translateY(10px); }
+#Info.in > * { opacity: 1; transform: none; transition: opacity .5s ease, transform .6s var(--ease); }
+#Info.in > :nth-child(2) { transition-delay: .06s; } #Info.in > :nth-child(3) { transition-delay: .12s; } #Info.in > :nth-child(4) { transition-delay: .18s; }
+#Info h1 { margin: 0 0 6px; font: 400 clamp(34px, 5vw, 54px)/0.92 var(--font-cute); letter-spacing: 0.01em; text-wrap: balance; }
+#Info .drop, #Info .ed { margin: 0; font: 600 12px/1.5 var(--font-solid); letter-spacing: 0.12em; text-transform: uppercase; color: color-mix(in oklab, var(--ink) 55%, var(--wash-deep)); }
+#Info .more { pointer-events: auto; margin-top: 10px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 5px 6px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--paper);
+	font: 600 13px/1 var(--font-solid); transition: var(--trans); }
+#Info .more i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 700 13px/1 Georgia, serif; font-style: italic; }
+#Info .more:hover { transform: rotate(-3deg) scale(1.06); background: var(--lemon); }
+
+/* dot shelf + jump, bottom centre (the brand book's flavor dock) */
+#Dock { position: absolute; z-index: 5; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) rotate(-0.6deg);
+	display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; max-width: calc(100vw - 24px);
+	background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.2), 0 10px 30px rgba(0 0 0 / 0.12); }
+#Dock .lbl { font: 400 19px/1 var(--font-cute); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+#Dock .lbl small { display: block; font: 600 10px/1.3 var(--font-solid); letter-spacing: 0.12em; text-transform: uppercase; color: color-mix(in oklab, var(--paper) 55%, transparent); }
+#Dock .ds { display: flex; gap: 7px; }
+#Dock .ds button { width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 3px solid var(--paper);
+	background: radial-gradient(circle at 45% 40%, var(--belly) 0 20%, var(--base) 55%, var(--edge) 120%); transition: transform 0.45s var(--ease); }
+#Dock .ds button:hover { transform: translateY(-4px) scale(1.1); }
+#Dock .ds button[aria-pressed="true"] { transform: translateY(-6px) scale(1.18); border-color: var(--lemon); box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--lemon); }
+#Dock .arw { width: 30px; height: 34px; padding: 0; border: 0; background: none; color: color-mix(in oklab, var(--paper) 70%, transparent); display: grid; place-items: center; }
+#Dock .arw:hover { color: var(--paper); }
+#Dock .arw svg { width: 16px; height: 16px; }
+#Jump { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px 7px; border: 0; border-radius: 6px 4px 7px 5px; background: var(--lemon); color: var(--ink); font: 400 19px/1 var(--font-cute); transition: var(--trans); }
+#Jump svg { width: 18px; height: 18px; }
+#Jump:hover { transform: rotate(-4deg) scale(1.06); }
+#Jump.hop { animation: hop .5s var(--ease); }
+@keyframes hop { 30% { transform: translateY(-7px) rotate(-6deg) scale(1.1); } 100% { transform: none; } }
+#Dock kbd { font: 600 10px/1 var(--font-solid); letter-spacing: .08em; text-transform: uppercase; opacity: .55; }
+@media (max-width: 520px) { #Dock .lbl, #Dock kbd { display: none; } #Dock { gap: 6px; padding-left: 8px; } }
+@media (pointer: coarse) { #Dock kbd { display: none; } }
+
+/* details sheet */
+#Sheet { position: fixed; z-index: 20; inset: 0; background: rgba(27 22 32 / 0); transition: background .3s; }
+#Sheet.on { background: rgba(27 22 32 / 0.22); }
+#Sheet .card { position: absolute; right: 0; top: 0; bottom: 0; width: min(440px, 100vw); overflow-y: auto; overscroll-behavior: contain;
+	padding: calc(22px + env(safe-area-inset-top, 0px)) 24px calc(40px + env(safe-area-inset-bottom, 0px)); background: var(--paper);
+	border-left: 4px solid var(--ink); transform: translateX(105%) rotate(2deg); transition: transform .5s var(--ease); }
+#Sheet.on .card { transform: none; }
+@media (max-width: 640px) { #Sheet .card { top: auto; width: 100vw; max-height: 86svh; border-left: 0; border-top: 4px solid var(--ink); border-radius: 18px 14px 0 0; transform: translateY(105%); } }
+#Sheet .x { position: sticky; top: 0; float: right; width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px; background: #fff3d6; display: grid; place-items: center; transform: rotate(4deg); transition: var(--trans); }
+#Sheet .x:hover { transform: rotate(-6deg) scale(1.08); }
+#Sheet .x svg { width: 18px; height: 18px; }
+#Sheet .eyebrow { margin: 4px 0 6px; font: 600 12px/1 var(--font-solid); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+#Sheet h2 { margin: 0 0 12px; font: 400 44px/0.95 var(--font-cute); }
+#Sheet .desc { margin: 0 0 18px; font-size: 17px; }
+#Sheet dl { margin: 0 0 20px; display: grid; gap: 0; border: 3px solid var(--ink); border-radius: 12px 9px 7px 15px; overflow: hidden; }
+#Sheet dl div { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 9px 14px; }
+#Sheet dl div + div { border-top: 2px dashed color-mix(in oklab, var(--ink) 20%, transparent); }
+#Sheet dt { font: 600 12px/1.6 var(--font-solid); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+#Sheet dd { margin: 0; }
+#Sheet .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+#Sheet .photos img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border: 3px solid var(--ink); border-radius: 12px 9px 7px 15px; display: block; }
+#Sheet .photos img:first-child { grid-column: 1 / -1; aspect-ratio: 4 / 3; }
+#Sheet .nophoto, #Sheet .fine { color: var(--muted); font-size: 14px; }
+
+/* below the hero (phase 2 lands here) */
+.next { min-height: 60svh; display: grid; place-items: center; padding: 60px var(--gut); text-align: center; color: var(--muted); }
+.next b { display: block; font: 400 34px/1 var(--font-cute); color: var(--ink); margin-bottom: 8px; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: 0.01s !important; } }
+</style>
+</head>
+<body>
+<section id="Hero" aria-label="The newest drop">
+	<div id="stage"></div>
+	<div id="loading">Waking the Grumpls…</div>
+
+	<div class="bar">
+		<button id="Burger" type="button" aria-label="Menu (coming soon)">
+			<svg viewBox="0 0 48 48" aria-hidden="true">
+				<path d="M8 21c0-8 7.5-13 16-13s16 5 16 13z" fill="#f2b36a" stroke="#1b1620" stroke-width="3" stroke-linejoin="round"/>
+				<path d="M7 25.5c3-2.5 5 1 8-1.2s5 1.6 8-.6 5 1.6 8-.6 5 1.6 10 .2" fill="none" stroke="#7bc96f" stroke-width="3.4" stroke-linecap="round"/>
+				<rect x="7" y="28" width="34" height="6" rx="3" fill="#8a4b3a" stroke="#1b1620" stroke-width="3"/>
+				<path d="M8 37h32c0 3-3 5-6 5H14c-3 0-6-2-6-5z" fill="#f2b36a" stroke="#1b1620" stroke-width="3" stroke-linejoin="round"/>
+				<g fill="#fff4dc"><circle cx="18" cy="14" r="1.2"/><circle cx="25" cy="12" r="1.2"/><circle cx="31" cy="15" r="1.2"/></g>
+			</svg>
+		</button>
+		<div id="Cta">
+			<button class="go" type="button"></button>
+			<div class="pop" role="dialog" aria-label="Remind me">
+				<button class="close" type="button" aria-label="Close"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg></button>
+				<p>One email when this drop opens. Nothing else.</p>
+				<form novalidate><input type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Email"><button type="submit">Ping me</button></form>
+				<p class="done" hidden></p>
+			</div>
+		</div>
+	</div>
+
+	<div id="Info" aria-live="polite">
+		<h1>Grumpl</h1>
+		<p class="drop"></p>
+		<p class="ed"></p>
+		<button class="more" type="button"><i>i</i>More about him</button>
+	</div>
+
+	<div id="Dock">
+		<span class="lbl"><small>Flavor</small><b></b></span>
+		<button class="arw" id="Prev" type="button" aria-label="Previous flavor"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" d="M12.5 4 6.5 10l6 6"/></svg></button>
+		<span class="ds" role="group" aria-label="Flavors in this drop"></span>
+		<button class="arw" id="Next" type="button" aria-label="Next flavor"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" d="M7.5 4l6 6-6 6"/></svg></button>
+		<button id="Jump" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M10 16V4M5 9l5-5 5 5"/></svg>Jump <kbd>space</kbd></button>
+	</div>
+</section>
+
+<section class="next">
+	<p><b>More below soon</b>The sticky logo, the burger menu, every drop, the story and the artists come next.</p>
+</section>
+
+<div id="Sheet" hidden>
+	<div class="card" role="dialog" aria-label="Flavor details">
+		<button class="x" type="button" aria-label="Close"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg></button>
+		<div class="body"></div>
+	</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+	"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+	"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+	"cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+} }
+</script>
+<script type="module" src="assets/app.js"></script>
+</body>
+</html>
