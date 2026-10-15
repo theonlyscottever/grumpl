@@ -11,6 +11,7 @@ import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { DROP, FLAVORS } from './drop.js';
 import { initUI } from './ui.js';
+import { createMotion, canMove, haptic } from './motion.js';
 
 const HULL = {"v":[[-0.3237,0.0,0.1173],[0.5271,1.9964,-0.329],[0.9383,0.6757,0.0653],[-0.1516,1.2282,0.56],[-0.4956,1.9708,-0.3318],[0.2007,0.5576,-0.5524],[-0.9294,0.7082,0.1177],[0.2442,0.4608,0.5809],[0.4813,0.0073,-0.0364],[0.0212,1.9077,0.2427],[-0.4673,0.585,-0.4272],[0.0209,1.7802,-0.6516],[-0.3224,0.6529,0.5423],[0.3647,1.4639,0.4544],[-0.3369,1.626,0.3886],[0.4025,1.5924,-0.5027],[-0.3495,1.5827,-0.5076],[0.501,1.7099,0.1171],[0.4827,0.333,-0.3489],[-0.2092,0.2646,-0.4104],[-0.118,0.3431,0.5525],[0.013,1.6479,0.5067],[-0.1505,0.5936,-0.5573],[-0.0102,0.7329,0.6432],[0.3602,0.0024,0.2699],[0.2938,1.7752,0.3555],[0.1704,1.2287,0.5663],[0.4872,0.6315,-0.4523],[-0.2741,1.8422,0.2349],[0.3307,0.7125,0.5626],[-0.2687,0.0128,-0.1393],[0.2524,0.3158,-0.4574],[-0.4396,0.3542,-0.3639],[-0.1151,1.7982,0.3936],[-0.3222,0.4259,0.5003],[0.0016,0.5144,0.6415],[-0.1851,1.5292,0.5017],[0.5453,0.0098,0.1634],[-0.3063,0.4402,-0.501],[0.0354,1.9571,0.045],[0.2219,1.6036,0.4907],[0.0829,0.3333,0.5636],[0.0901,1.8083,0.4009],[0.3715,0.4699,-0.5024],[0.2882,0.0011,-0.0808],[-0.436,0.0105,-0.039],[0.1542,0.6235,0.638],[0.239,1.8843,0.2146],[0.4038,0.4522,0.4856],[-0.1533,0.6155,0.624],[-0.5062,0.0092,0.1347],[-0.4068,1.7179,0.224],[0.4395,1.682,0.2825],[0.2642,1.5104,-0.5724],[-0.313,0.6173,-0.5254],[-0.393,0.0085,0.2644],[-0.8881,0.6296,-0.0163],[-0.2035,1.6811,0.4564],[-0.1308,1.9071,0.1972],[0.3962,0.0001,0.1135],[0.3565,1.6414,0.4093],[0.0158,1.2311,0.5803],[-0.1528,0.4394,-0.5236],[0.3417,0.6186,-0.5321]],"f":[[6,4,56],[16,56,4],[51,4,6],[18,27,2],[43,27,18],[2,1,17],[17,52,2],[1,52,17],[11,4,1],[11,16,4],[56,16,10],[1,4,39],[39,9,1],[33,9,58],[58,39,4],[9,39,58],[25,52,1],[2,13,29],[43,18,31],[2,52,60],[60,13,2],[52,25,60],[61,3,23],[5,31,62],[43,31,5],[16,11,54],[54,10,16],[14,51,6],[36,57,14],[33,58,28],[28,57,33],[4,51,28],[28,58,4],[51,14,28],[28,14,57],[1,9,47],[47,25,1],[6,56,50],[42,9,33],[42,47,9],[25,47,42],[13,60,40],[40,60,25],[25,42,40],[43,5,63],[63,5,11],[11,53,63],[63,27,43],[15,1,2],[2,27,15],[15,11,1],[15,53,11],[27,63,15],[15,63,53],[22,54,11],[22,5,62],[11,5,22],[12,3,36],[12,14,6],[36,14,12],[34,12,6],[26,29,13],[13,40,26],[26,61,23],[36,3,21],[3,61,21],[21,57,36],[61,26,21],[21,26,40],[21,40,42],[33,57,21],[21,42,33],[62,31,19],[31,30,19],[8,31,18],[8,18,2],[23,3,49],[3,12,49],[12,34,49],[34,20,49],[32,19,30],[56,10,32],[44,30,31],[31,8,44],[37,8,2],[45,32,30],[45,50,56],[56,32,45],[62,19,38],[19,32,38],[38,22,62],[54,22,38],[10,54,38],[38,32,10],[55,20,34],[6,50,55],[55,34,6],[59,44,8],[8,37,59],[48,37,2],[2,29,48],[29,7,48],[35,49,20],[23,49,35],[20,55,41],[41,35,20],[7,35,41],[24,59,37],[24,41,55],[7,41,24],[37,48,24],[24,48,7],[0,55,50],[44,59,0],[0,24,55],[59,24,0],[50,45,0],[30,44,0],[0,45,30],[46,7,29],[46,35,7],[23,35,46],[46,26,23],[29,26,46]]};
 const COM_Y = 0.9;                                   // model origin is at his feet; physics body is centred here
@@ -306,8 +307,10 @@ world.addBody(body);
 const _up = new CANNON.Vec3(), _ax = new CANNON.Vec3(), _fwd = new CANNON.Vec3(), Y_UP = new CANNON.Vec3(0, 1, 0);
 let twirlSteps = 0;
 let grip = null;
+let tiltG = 0;
 world.addEventListener('preStep', () => {
   if (grip) return;
+  if (tiltG) body.force.x += tiltG;               // a deliberate phone tilt lets him slide to the low side
   const p = body.position;
   if (Math.abs(p.x) > 1.8 || Math.abs(p.z) > 1.1 || p.y > LIFT + COM_Y + 0.9 || p.y < LIFT + COM_Y - 0.8) return;
   const v = body.velocity;
@@ -816,6 +819,36 @@ if (!reduceMotion) setInterval(() => {
   if (performance.now() - idleAt > 6000 && document.visibilityState === 'visible') { puffRow(); idleAt = performance.now(); }
 }, 700);
 
+// ---------- Tilt and shake (phones; from the drop site, grumpl/handoff/motion) ----------
+// Tilt: the camera leans with the phone, so you look around him a little. Past 12° he slides downhill.
+// Shake: a jostle sets him wobbling; a hard shake tosses him the opposite way to the phone, like a toy in a box.
+const camBase = new THREE.Vector3();
+const par = { cur: new THREE.Vector3(), want: new THREE.Vector3() };
+const motion = createMotion({
+  onTilt({ x, y, slide }) { par.want.set(x * 0.9, y * 0.6, 0); tiltG = slide * 0.45; },
+  onWobble({ dir, strength }) {
+    if (ring.t < 1 || grip) return;
+    body.wakeUp();
+    body.angularVelocity.x += -dir[2] * strength; body.angularVelocity.y += (Math.random() - 0.5) * strength; body.angularVelocity.z += dir[0] * strength;
+    body.velocity.y = Math.max(body.velocity.y, 1.5);
+    haptic(10); poke();
+  },
+  onToss({ velocity }) {
+    if (ring.t < 1 || grip) return;
+    body.wakeUp();
+    body.velocity.set(velocity[0], Math.max(velocity[1], 3), velocity[2]);
+    body.angularVelocity.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 10);
+    twirlSteps = 260;
+    haptic([18, 30, 12]); poke();
+  },
+});
+let lastWallHit = 0;
+body.addEventListener('collide', (e) => {
+  if (!motion.on || e.body === crest || e.body === floorB || e.body === hand) return;
+  const v = Math.abs(e.contact.getImpactVelocityAlongNormal()), now = performance.now();
+  if (v > 2 && now - lastWallHit > 90) { lastWallHit = now; haptic(Math.min(28, v * 2.2)); }
+});
+
 // ---------- Layout ----------
 const _r = new THREE.Vector3(), _n = new THREE.Vector3();
 function screenToPlaneZ(nx, ny, z, out) {
@@ -836,7 +869,8 @@ function resize() {
   // his middle sits a little above centre; the foreground cloud takes the bottom
   const centreNdc = portrait ? 0.08 : 0.02;
   lookAt.set(0, LIFT + 1.0 - centreNdc * halfH, 0);
-  camera.position.set(0, lookAt.y + dist * 0.13, dist);
+  camBase.set(0, lookAt.y + dist * 0.13, dist);
+  camera.position.copy(camBase).add(par.cur);
   camera.lookAt(lookAt);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
@@ -875,7 +909,7 @@ function adaptResolution() {
   else fastRun = 0;
 }
 window.__grumpl = { renderer, scene, camera, ring, slots, focus: (i) => focus(i), jump, puffRow };
-const ui = initUI({ DROP, FLAVORS, focus: (i) => focus(i), step, jump });
+const ui = initUI({ DROP, FLAVORS, focus: (i) => focus(i), step, jump, motion, canMove });
 onFocus(FLAVORS[0], 0);
 resize();
 
@@ -883,6 +917,11 @@ renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 1 / 20);
   if (!slots[0].set) return;
   if (grip && dt > 0) hand.velocity.set((handTarget.x - hand.position.x) / dt * 0.6, (handTarget.y - hand.position.y) / dt * 0.6, (handTarget.z - hand.position.z) / dt * 0.6);
+  motion.tick();
+  if (motion.on) {
+    par.cur.lerp(par.want, Math.min(1, dt * 6));
+    if (par.cur.distanceToSquared(par.want) > 1e-6) { camera.position.copy(camBase).add(par.cur); camera.lookAt(lookAt); poke(2); }
+  }
   updateRing(dt);
   const g = focusGroup();
   if (ring.t >= 1) {

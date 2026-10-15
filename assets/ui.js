@@ -23,7 +23,7 @@ const ICON = {
   x: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg>',
 };
 
-export function initUI({ DROP, FLAVORS, focus, step, jump }) {
+export function initUI({ DROP, FLAVORS, focus, step, jump, motion, canMove }) {
   const root = document.documentElement;
   const cta = $('#Cta'), info = $('#Info'), dock = $('#Dock'), sheet = $('#Sheet');
   let cur = null, played = false;
@@ -38,6 +38,20 @@ export function initUI({ DROP, FLAVORS, focus, step, jump }) {
   });
   $('#Prev').addEventListener('click', () => step(-1));
   $('#Next').addEventListener('click', () => step(1));
+
+  // tilt and shake: phones only, and iOS asks permission from a tap
+  const tilt = $('#Tilt');
+  if (canMove?.()) tilt.hidden = false;
+  const say = (t) => { const h = $('#Hint'); h.textContent = t; h.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(() => h.classList.remove('on'), 3200); };
+  tilt.addEventListener('click', async () => {
+    tilt.disabled = true;
+    const r = await motion.enable();
+    if (r === 'on') { tilt.hidden = true; say('Tilt to look around. Shake hard to toss him.'); navigator.vibrate?.([12, 40, 12]); }
+    else {
+      tilt.disabled = false;
+      say(r === 'denied' ? 'Motion is off. Reload the page to be asked again.' : r === 'framed' ? 'Shake only works on the page itself, not in a preview.' : 'No motion sensor here. Flick him with your finger.');
+    }
+  });
 
   // the one call to action, always about the Grumpl in front
   function paintCta(f) {
