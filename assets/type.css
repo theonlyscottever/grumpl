@@ -30,3 +30,9 @@ strong { font-weight: 500; }
 #Foot .links a, #Foot .links button { font-size: 18px; }
 /* on a phone the name wraps before it can run under the Shake me / Sound buttons */
 @media (max-width: 560px) { #Info h1 { max-width: 58vw; } }
+
+/* Scott round 4: the hero flavor name is about 1.35 times the section titles, and every headline that wraps
+   to two lines sits tight at line-height 1 */
+#Info h1, .sec-head h2, #Studio .st-head h2, :is(#Colors, #Studio) .cl-head h2 { line-height: 1; }
+#Info h1 { font-size: clamp(54px, 5.4vw, 86px); }
+@media (max-width: 1120px) { #Info h1 { font-size: clamp(43px, 10.8vw, 64px); } }

@@ -11,15 +11,17 @@ const RULES = [
   ['.sound-btn, #Foot [data-sound]', {}],
   ['#Tilt', {}],
   ['#Info .more', {}],
-  ['#Dock', { depth: 0.35 }],
-  ['#Dock .ds button', { shape: 'round' }],
-  ['#Dock .arw', { shape: 'round' }],
+  ['#Dock', { depth: 0.35, matte: true, noPress: true }],
+  ['#Dock .ds button', { shape: 'round', dot: true }],
+  ['#Dock .arw', { shape: 'round', matte: true }],
   ['#Jump', {}],
   ['#DropClose', { shape: 'x' }],
   ['#A-Close', { shape: 'x' }],
   ['#Menu .menu-x', { shape: 'x' }],
   [':is(#Drops, #DropOverlays) .remind button.go', {}],
   [':is(#Drops, #DropOverlays) .tilt', {}],
+  // Make your own: only the finishing buttons are jelly; every other control stays plain (Scott round 4)
+  ['#Studio .st-save, #Studio .st-dl, #Studio .st-share', {}],
 ];
 
 function scan(root = document) {

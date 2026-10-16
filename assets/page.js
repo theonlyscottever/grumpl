@@ -60,18 +60,18 @@ function stick() {
   if (!logoR || !mark.firstChild) { mark.classList.toggle('on', scrolled); return; }
   const heroTop = hero.getBoundingClientRect().top;
   const vy = logoR.y + heroTop;                              // the 3D logo's top edge on screen right now
-  const swapAt = top + logoR.h * 0.9;
-  const finalW = clamp(logoR.w * 0.3, 92, 150);
+  // Scott round 4: the logo docks later in the scroll (once the cloud hem has pinned) and 50% bigger than before
+  const swapAt = top + logoR.h * 0.35;
+  const finalW = clamp(logoR.w * 0.45, 138, 225);
   if (vy > swapAt) { mark.classList.remove('on', 'pinned'); heroLogo.classList.remove('gone'); undock3D(); show3D(true); return; }
   heroLogo.classList.add('gone');
-  const p = clamp((swapAt - vy) / (logoR.h * 1.3), 0, 1);
+  const p = clamp((swapAt - vy) / (logoR.h * 1.6), 0, 1);
   const e = p * p * (3 - 2 * p);
   const w = logoR.w + (finalW - logoR.w) * e;
   const cx = logoR.x + logoR.w / 2 + (innerWidth / 2 - logoR.x - logoR.w / 2) * e;
   const y = swapAt + (top - swapAt) * e;
-  // a chrome or gummy logo keeps its finish all the way up: the 3D canvas itself flies to the top and stays live
-  const c3 = logoMode !== 'flat' && $('#Logo3D');
-  if (c3) { mark.classList.remove('on', 'pinned'); show3D(true); dock3D(c3, cx, y, w / logoR.w, p >= 1); return; }
+  // Scott round 4: up top it is always the flat, animated brand-book logo, whatever finish the hero wears,
+  // so the 3D logo stops rendering once it has scrolled away
   undock3D();
   mark.style.width = `${logoR.w}px`;
   mark.style.transform = `translate(${cx - logoR.w / 2}px, ${y}px) scale(${w / logoR.w})`;
@@ -82,14 +82,7 @@ function stick() {
 // The 3D canvas covers the logo plus some room (logo3d.js PAD); docked, it moves out of the hero (which clips)
 // to sit fixed on the page, scaled about the logo's top centre exactly like the flat #Mark.
 const PAD3 = { x: 0.07, y: 0.14 };
-let docked3D = null, dockPinned = false;
-function dock3D(c, cx, y, s, pinned) {
-  const W = Math.round(logoR.w * (1 + PAD3.x * 2)), H = Math.round(logoR.h * (1 + PAD3.y * 2)), oy = (H - logoR.h) / 2;
-  if (docked3D !== c) { docked3D = c; c.classList.add('docked'); document.body.append(c); }
-  Object.assign(c.style, { left: `${cx - W / 2}px`, top: `${y - oy}px`, transformOrigin: `50% ${oy}px`, transform: `scale(${s})` });
-  c.classList.toggle('pinned', pinned);
-  if (pinned !== dockPinned) { dockPinned = pinned; dispatchEvent(new CustomEvent('grumpl-logo-dock', { detail: { scale: pinned ? s : 1 } })); }
-}
+let docked3D = null, dockPinned = false;   // a 3D logo left docked by an older build is put back
 function undock3D() {
   const c = docked3D; if (!c) return;
   docked3D = null;
@@ -110,8 +103,9 @@ setInterval(() => {
   mark.classList.remove('hop'); void mark.offsetWidth; mark.classList.add('hop');
 }, 500);
 mark.addEventListener('animationend', (e) => { if (e.target.style.getPropertyValue('--i') === '5') mark.classList.remove('hop'); });
-/* the header cloud: once the page scrolls, a wide puffy cloud along the top holds the burger, logo and buy button.
-   Drawn at the window's width so its billows never repeat; deepest in the middle, where the logo hangs lowest. */
+/* the header cloud (Scott round 4: no new element): the hero's cloud mass ends in a soft, rolling hem, and as the
+   hero scrolls away that hem stays at the top to hold the burger, logo and buy button. It rides up with the hero's
+   bottom edge and pins there. Drawn at the window's width; deepest in the middle, where the logo hangs. */
 const topCloud = document.createElement('div'); topCloud.id = 'TopCloud'; topCloud.setAttribute('aria-hidden', 'true');
 $('#Top').prepend(topCloud);
 // the header's cloud is rendered in 3D (cloud3d.js), once per width, after the hero has loaded
@@ -125,6 +119,14 @@ function drawCloud() {
 addEventListener('grumpl-hero-ready', drawCloud, { once: true });
 setTimeout(drawCloud, 6000);
 addEventListener('resize', () => { if (cloudW) drawCloud(); });
+function hem() {
+  const b = hero.getBoundingClientRect().bottom;
+  topCloud.style.transform = `translateY(${Math.max(0, Math.round(b) - 2)}px)`;
+  topCloud.classList.toggle('pinned', b <= 2);
+}
+hem();
+addEventListener('scroll', hem, { passive: true });
+addEventListener('resize', hem);
 addEventListener('scroll', stick, { passive: true });
 addEventListener('resize', stick);
 mark.addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });

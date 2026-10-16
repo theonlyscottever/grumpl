@@ -106,22 +106,24 @@ function shadowMat() {
 // edges and down the sides, and a soft glow through the middle where the light passes through.
 function makeMat() {
   const m = new THREE.MeshPhysicalMaterial({ transparent: true });
-  m.userData.u = { uEdge: { value: new THREE.Color() }, uEdgeAmt: { value: 0.7 }, uDepth: { value: 10 } };
+  m.userData.u = { uEdge: { value: new THREE.Color() }, uEdgeAmt: { value: 0.7 }, uDepth: { value: 10 }, uGlow: { value: 0 }, uJelly: { value: 1 } };
   m.onBeforeCompile = (sh) => {
     turnEnv(sh, envRot);
     Object.assign(sh.uniforms, m.userData.u);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vZ;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvZ = position.z;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      uniform vec3 uEdge; uniform float uEdgeAmt, uDepth; varying float vZ;`)
+      uniform vec3 uEdge; uniform float uEdgeAmt, uDepth, uGlow, uJelly; varying float vZ;`)
       .replace('#include <opaque_fragment>', `{
         vec3 base = diffuseColor.rgb;
         float ndv = saturate(dot(normal, geometryViewDir));
         float fres = pow(1.0 - ndv, 2.0);
         float side = 1.0 - smoothstep(0.55, 0.95, vZ / uDepth);        // 1 down the sides, 0 on the face
         vec3 deep = mix(base, uEdge, uEdgeAmt) * 0.85;
-        outgoingLight *= mix(vec3(1.0), deep * 1.25 + 0.04, max(fres, side * 0.8) * 0.8);
-        outgoingLight += base * 0.3 * pow(ndv, 1.5) * (1.0 - side);       // lit through the middle
+        outgoingLight *= mix(vec3(1.0), deep * 1.25 + 0.04, max(fres, side * 0.8) * 0.8 * uJelly);
+        outgoingLight += base * 0.3 * pow(ndv, 1.5) * (1.0 - side) * uJelly;   // lit through the middle
+        // a nightlight inside the jelly: light scattering out through a dense body, brightest where it's thickest
+        outgoingLight += mix(base, vec3(1.0), 0.25) * uGlow * (0.65 * pow(ndv, 1.3) + 0.2 * (1.0 - side));
         diffuseColor.a = mix(diffuseColor.a, 0.97, max(fres * 0.9, side * 0.75));
       }
       #include <opaque_fragment>`);
@@ -134,6 +136,9 @@ function applyMat(it) {
   SKIN_KEYS.NUM.forEach((n) => { if (n in m && n !== 'opacity') m[n] = c[n]; });
   m.opacity = c.opacity; m.color.copy(c.color); m.sheenColor.copy(c.sheenColor);
   m.userData.u.uEdge.value.copy(c.edge); m.userData.u.uEdgeAmt.value = c.edgeAmt;
+  m.userData.u.uJelly.value = it.kind === 'jelly' ? 1 : 0;
+  if (it.kind === 'pearl') { m.emissive.set('#ffffff'); m.emissiveIntensity = 0.32; } else m.emissiveIntensity = 0;
+  it.glow = it.kind === 'jelly' && it.opts.dot && it.el.getAttribute('aria-pressed') === 'true' ? 1 : 0;
 }
 function colorOf(it) {
   const cs = getComputedStyle(it.el);
@@ -144,12 +149,25 @@ const cssColor = (() => {
   const cv = document.createElement('canvas').getContext('2d');
   return (s, fb = '#ffffff') => { cv.fillStyle = fb; cv.fillStyle = s; return cv.fillStyle; };
 })();
+// Each button's look (Scott 2026-10-16): jelly by default, tinted by its own colour; anything meant to be pure white
+// is the logo cloud's pearl white instead; the flavor bar and its arrows are matte black plastic (no cursor light);
+// the chosen flavor dot is a jelly nightlight.
+const PEARL = { color: new THREE.Color('#f7f5f2'), sheenColor: new THREE.Color('#ffffff'), metalness: 0, roughness: 0.55, clearcoat: 0.15, clearcoatRoughness: 0.3,
+  sheen: 0.6, sheenRoughness: 0.5, envMapIntensity: 1, opacity: 1, edgeAmt: 0, fuzz: 0 };
+function looks(it, col, edge) {
+  const white = /^#f[ef]f[ef]f[ef]$|^#fffff[ef]$/i.test(col) || col.toLowerCase() === '#ffffff';
+  it.kind = it.opts.matte ? 'matte' : white ? 'pearl' : 'jelly';
+  if (it.kind === 'pearl') return { ...PEARL, color: PEARL.color.clone(), sheenColor: PEARL.sheenColor.clone(), edge: new THREE.Color(edge) };
+  const p = skinParams('gummy', col, edge);
+  if (it.kind === 'matte') Object.assign(p, { roughness: 0.72, clearcoat: 0.05, clearcoatRoughness: 0.6, sheen: 0.25, envMapIntensity: 0.35, opacity: 1, edgeAmt: 0.25 });
+  else if (it.opts.dot && it.el.getAttribute('aria-pressed') !== 'true') Object.assign(p, { roughness: 0.45, clearcoat: 0.3, envMapIntensity: 0.6, opacity: 1, edgeAmt: 0.5 });
+  return p;
+}
 function retarget(it, now = performance.now()) {
   const { c, e } = colorOf(it);
   const col = cssColor(c), edge = cssColor(e || c);
-  // always gummy now (Scott 2026-10-16), tinted by each button's own colour
-  it.target = skinParams('gummy', col, edge);
-  if (!it.cur) { it.cur = skinParams('gummy', col, edge); applyMat(it); }
+  it.target = looks(it, col, edge);
+  if (!it.cur) { it.cur = looks(it, col, edge); applyMat(it); }
   const r = it.el.getBoundingClientRect();
   it.startAt = now + (reduce ? 0 : Math.max(0, Math.min(1, (r.left + r.width / 2) / innerWidth)) * 420);
   it.anim = true; it.dirty = true;
@@ -174,7 +192,7 @@ export function skin(el, opts = {}) {
   new IntersectionObserver(([en]) => { it.seen = en.isIntersecting; if (it.seen) { it.dirty = true; wake(); } }).observe(el);
   el.addEventListener('pointerenter', () => { it.wantHover = 1; wake(); });
   el.addEventListener('pointerleave', () => { it.wantHover = 0; it.wantPress = 0; wake(); });
-  el.addEventListener('pointerdown', () => { it.wantPress = 1; wake(); });
+  el.addEventListener('pointerdown', () => { if (!opts.noPress) { it.wantPress = 1; wake(); } });
   const up = () => { if (it.wantPress) { it.wantPress = 0; it.pv += 6; wake(); } };
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   // colors that come from CSS variables can change with the flavor: look again after any style change
@@ -254,6 +272,14 @@ function frame(now) {
   if (more) wake();
 }
 export const skinStats = { draws: 0, frames: 0 };
+let _back = null;
+function backMat() {
+  if (_back) return _back;
+  _back = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.6, sheen: 0.6, sheenColor: new THREE.Color('#ffffff'), sheenRoughness: 0.5,
+    emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.45, envMapIntensity: 0.6 });
+  _back.onBeforeCompile = (sh) => turnEnv(sh, envRot);
+  return _back;
+}
 const _shear = new THREE.Matrix4();
 window.__skin = { items, skinStats };
 function draw(it) {
@@ -266,19 +292,38 @@ function draw(it) {
   // the cursor light, placed where the pointer is relative to this button, a little in front of the screen
   const r = it.el.getBoundingClientRect();
   light.position.set(cursor.x - (r.left + r.width / 2), -(cursor.y - (r.top + r.height / 2)), 260);
-  light.intensity = CURSOR_LIGHT;
-  // the face sits on the element's box; the base is down and right of it, by the depth along the shear.
-  // Hover lifts it a little thicker, a press pushes the face down toward the page.
+  // the flavor bar is housing: matte plastic the cursor light never reaches
+  light.intensity = it.kind === 'matte' ? 0 : CURSOR_LIGHT;
+  it.mat.userData.u.uGlow.value = (it.glow || 0) * 0.9 + (it.kind === 'jelly' ? it.hover * 0.3 : 0);
+  // The base sits fixed down and right of the element's box, by the resting depth along the shear; it never moves.
+  // Hover lifts the face a little; a press pushes the face (and the label riding on it) down into the base.
+  const Dm = it.mesh.geometry.userData.depth;
   const sx = 1 + it.hover * 0.02 - it.press * 0.02;
-  const sz = Math.max(0.25, 1 + it.hover * 0.25 - it.press * 0.6), D = it.mesh.geometry.userData.depth * sz;
-  _shear.set(sx, 0, SHEAR.x * sz, -SHEAR.x * D, 0, sx, SHEAR.y * sz, -SHEAR.y * D, 0, 0, sz, 0, 0, 0, 0, 1);
+  const sz = Math.max(0.25, 1 + it.hover * 0.25 - it.press * 0.6);
+  _shear.set(sx, 0, SHEAR.x * sz, -SHEAR.x * Dm, 0, sx, SHEAR.y * sz, -SHEAR.y * Dm, 0, 0, sz, 0, 0, 0, 0, 1);
   it.mesh.matrix.copy(_shear); it.mesh.matrixWorldNeedsUpdate = true;
-  it.shadow.position.set(-SHEAR.x * D, -SHEAR.y * D, -1);
+  it.shadow.position.set(-SHEAR.x * Dm, -SHEAR.y * Dm, -1);
+  const fx = SHEAR.x * Dm * (sz - 1), fy = -SHEAR.y * Dm * (sz - 1);
+  if (Math.abs(fx - (it.fx || 0)) + Math.abs(fy - (it.fy || 0)) > 0.05) {
+    it.fx = fx; it.fy = fy;
+    it.el.style.setProperty('--sk-x', `${fx.toFixed(2)}px`); it.el.style.setProperty('--sk-y', `${fy.toFixed(2)}px`);
+  }
+  // the white candy backing: a thinner pearl slab just inside the jelly, so the jelly reads dense and deep
+  // against a flat page
+  const back = it.kind === 'jelly' && !it.opts.dot && !it.opts.noBacking;
+  if (back) {
+    it.back ||= new THREE.Mesh(undefined, backMat()); it.back.matrixAutoUpdate = false;
+    it.back.geometry = it.mesh.geometry;
+    const bz = 0.55, bs = 1 - 4 / Math.max(it.w, it.h);
+    it.back.matrix.set(bs, 0, SHEAR.x * bz, -SHEAR.x * Dm, 0, bs, SHEAR.y * bz, -SHEAR.y * Dm, 0, 0, bz, 0, 0, 0, 0, 1);
+    it.back.matrixWorldNeedsUpdate = true;
+    scene.add(it.back);
+  }
   scene.add(it.shadow, it.mesh);
   R.setViewport(0, 0, pw, ph); R.setScissor(0, 0, pw, ph); R.setScissorTest(true);
   R.clear(); R.render(scene, cam);
   R.setScissorTest(false);
-  scene.remove(it.shadow, it.mesh);
+  scene.remove(it.shadow, it.mesh); if (it.back) scene.remove(it.back);
   it.ctx.clearRect(0, 0, pw, ph);
   it.ctx.drawImage(R.domElement, 0, fullH - ph, pw, ph, 0, 0, pw, ph);
 }

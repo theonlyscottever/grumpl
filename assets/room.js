@@ -13,6 +13,10 @@ const ROOMS = {
   meadow: { file: 'meadow-512.hdr', rot: 4 * Math.PI / 3 },
   forest: { file: 'forest-512.hdr', rot: 4 * Math.PI / 3 },
   soft: { file: 'forest-soft-512.hdr', rot: 4 * Math.PI / 3 },
+  // round 4 options (Scott: more contrast and clearer shapes; the gallery with the red benches is the fallback)
+  gallery: { file: 'gallery-512.hdr', rot: 4 * Math.PI / 3 },
+  coast: { file: 'coast-512.hdr', rot: 4 * Math.PI / 3 },
+  hills: { file: 'hills-512.hdr', rot: 4 * Math.PI / 3 },
 };
 const pick = ROOMS[new URLSearchParams(location.search).get('room')] || ROOMS.meadow;
 const rotQ = parseFloat(new URLSearchParams(location.search).get('roomrot'));

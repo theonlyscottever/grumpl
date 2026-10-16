@@ -7,7 +7,7 @@
 #Cta .go { --skin: var(--c); --skin-edge: var(--c-edge); }
 #Cta .pop form button { --skin: var(--c); --skin-edge: var(--c-edge); }
 #Cta .close, #DropClose, #A-Close { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }
-#Menu .menu-x { --skin: var(--lemon); --skin-edge: #ffd23f; }
+#Menu .menu-x { --skin: var(--paper, #fff); --skin-edge: #e9e6f2; }   /* Scott round 4: every close X is the logo's pearl white */
 #Cta .close.skinned svg, #DropClose.skinned svg, #Menu .menu-x.skinned svg { opacity: 0; }
 #A-Close.skinned::before, #A-Close.skinned::after { opacity: 0 !important; }
 .sound-btn, #Foot [data-sound] { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }
@@ -16,8 +16,9 @@
 #Info .more.skinned:hover { --skin: var(--lemon); }
 #Dock { --skin: var(--ink); --skin-edge: #3d3547; }
 #Dock .arw { --skin: #3a3242; --skin-edge: #574b63; }
-#Jump { --skin: var(--lemon); --skin-edge: #ffbf5e; }
-:is(#Drops, #DropOverlays) .remind button.go { --skin: var(--lemon); --skin-edge: #ffbf5e; }
+/* Remind me and Jump take the Grumpl's secondary (edge) colour, the colour of his airbrushed glow (Scott 2026-10-16) */
+#Jump { --skin: var(--edge, #6d72ff); --skin-edge: var(--edge, #6d72ff); color: var(--paper); }
+:is(#Drops, #DropOverlays) .remind button.go { --skin: var(--o-edge, var(--edge, #6d72ff)); --skin-edge: var(--o-edge, var(--edge, #6d72ff)); color: var(--paper); }
 :is(#Drops, #DropOverlays) .tilt { --skin: var(--ink); --skin-edge: #4b4256; }
 /* the dots keep their flavor's color; the chosen one rides higher and bigger */
 #Dock .ds button { --skin: var(--base); --skin-edge: var(--edge); }
@@ -25,3 +26,15 @@
 /* Jason's iPad: a quick double tap on Jump zoomed the page. Taps on anything clickable are just taps. */
 button, a, [role="button"], #Dock, .hero-tools { touch-action: manipulation; }
 #Cta .cal { --skin: var(--paper); --skin-edge: var(--c-edge, var(--edge)); }
+
+/* the sound button: a plain jelly square with the speaker (Scott 2026-10-16: the text pill was boring) */
+.hero-tools .sound-btn { width: 46px; height: 46px; padding: 0; justify-content: center; gap: 0; }
+.hero-tools .sound-btn::before { width: 22px; height: 22px; }
+.hero-tools .sound-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* the 3D face pushes down into its base when pressed; the label rides on the face (skin3d.js sets --sk-x/--sk-y) */
+.skinned > :not(.skin3d) { translate: var(--sk-x, 0px) var(--sk-y, 0px); }
+
+/* Make your own: the finishing buttons (save a size, download, share) are jelly in the Grumpl's glow colour */
+#Studio :is(.st-save, .st-dl, .st-share) { --skin: var(--st-edge, var(--edge, #6d72ff)); --skin-edge: var(--st-edge, var(--edge, #6d72ff)); color: var(--paper); }
+#Studio :is(.st-save, .st-dl, .st-share).skinned small { color: inherit; opacity: .85; }
+#Studio :is(.st-save, .st-dl).skinned:active { transform: none; }

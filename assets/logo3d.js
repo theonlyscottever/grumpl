@@ -17,7 +17,7 @@ const PAD = { x: 0.07, y: 0.14 };       // room around the badge for the tilt an
 const envRot = { value: new THREE.Matrix3() };   // the room's turn plus the logo's own slow sway
 const flockU = { uFlockAmt: { value: 0 } };     // the flocked Grumpl's pile on the letters (finish.js), eased in and out
 function turnable(m) {
-  m.onBeforeCompile = (sh) => { turnEnv(sh, envRot); flockShader(sh, flockU, 0.3); };
+  m.onBeforeCompile = (sh) => { turnEnv(sh, envRot); flockShader(sh, flockU, 0.6); };
   m.customProgramCacheKey = () => 'logo3d-room';
   return m;
 }
@@ -40,7 +40,8 @@ function preset(name, kind, base) {
     else if (name === 'vinyl') Object.assign(p, { color: C('#f7f5f2'), roughness: 0.55, sheen: 0.6, sheenColor: C('#ffffff'), sheenRoughness: 0.5, clearcoat: 0.15, clearcoatRoughness: 0.3 });
     else Object.assign(p, { color: C('#fad6da'), roughness: 0.55, sheen: 1, sheenColor: C('#ffffff'), sheenRoughness: 0.6 });
   } else if (name === 'chrome') Object.assign(p, { color: C(f ? f.base : ROSE), metalness: 1, roughness: 0.05, envMapIntensity: 1.2 });
-  else if (name === 'flock') Object.assign(p, { roughness: 1, sheen: 1, sheenRoughness: 0.75, sheenColor: C(col).lerp(C('#ffffff'), 0.55), envMapIntensity: 0.9 });
+  // flock matches the Grumpl's own (Scott 2026-10-16: the logo's was lighter, brighter, less detailed): finer grain, less white sheen
+  else if (name === 'flock') Object.assign(p, { roughness: 1, sheen: 0.7, sheenRoughness: 0.8, sheenColor: C(col).lerp(C('#ffffff'), 0.22), envMapIntensity: 0.6 });
   else if (name === 'vinyl') Object.assign(p, { roughness: 0.5, sheen: 0.6, sheenRoughness: 0.5, sheenColor: C(col).lerp(C('#ffffff'), 0.6), clearcoat: 0.3, clearcoatRoughness: 0.25, envMapIntensity: 0.8 });
   else Object.assign(p, { roughness: 0.12, transmission: 1, thickness: 0.9, ior: 1.45, attenuationColor: C(base), attenuationDistance: 0.6,
     clearcoat: 0.8, clearcoatRoughness: 0.1, color: C(base).lerp(C('#ffffff'), 0.55) });
@@ -104,8 +105,8 @@ export function initLogo3D(opts) {
   const cursorLight = new THREE.PointLight(0xffffff, CURSOR_LIGHT * 1.6, 0, 0); scene.add(cursorLight);
   // a soft white sky and a key from the upper left, like the prototype's bright Cloud view: the badge and the
   // letters read bright before any cursor light reaches them
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xeef0f6, 1.1));
-  const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(-3, 5, 7); scene.add(key);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xeef0f6, 0.6));
+  const key = new THREE.DirectionalLight(0xffffff, 0.7); key.position.set(-3, 5, 7); scene.add(key);
   S = { canvas, renderer, scene, camera, tilt, cursorLight, pieces: [], dpr: Math.min(devicePixelRatio || 1, 2), sweep: 0, sweepTo: 0, sign: 1 };
   window.__grumplLogo = S;   // for testing
   S.ready = Promise.all([
@@ -128,7 +129,7 @@ export function initLogo3D(opts) {
       p.target = preset('gummy', kind, base); p.cur = { ...p.target }; COL.forEach((k) => p.cur[k] = p.target[k].clone());
       applyMat(p);
       // the cloud badge is white on its own (Scott 2026-10-16: it went grey wherever the cursor light wasn't)
-      if (kind === 'puff') { p.mat.emissive.set('#ffffff'); p.mat.emissiveIntensity = 0.32; }
+      if (kind === 'puff') { p.mat.emissive.set('#ffffff'); p.mat.emissiveIntensity = 0.42; }   // round 4: the cloud's top is never in shadow
       p.mesh = new THREE.Mesh(geo, p.mat);
       p.mesh.userData.piece = p;
       p.pivot = new THREE.Group(); p.pivot.position.copy(c); p.pivot.add(p.mesh);
@@ -271,7 +272,7 @@ function frame() {
   // the cursor light sits where the pointer is, in the badge's units, a little in front of it
   if (rect) {
     const cr = S.canvas.getBoundingClientRect(), px = rect.w * (S.canvas.classList.contains('docked') ? (S.dock || 1) : 1) / UNITS_W;
-    S.cursorLight.position.set((cursor.x - (cr.left + cr.width / 2)) / px, -(cursor.y - (cr.top + cr.height / 2)) / px, 6);
+    S.cursorLight.position.set((cursor.x - (cr.left + cr.width / 2)) / px, -(cursor.y - (cr.top + cr.height / 2)) / px, 9);
   }
   pace(now);
   S.renderer.render(S.scene, S.camera);

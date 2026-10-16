@@ -7,9 +7,8 @@ html { scroll-padding-top: 84px; }
 #Top { position: fixed; z-index: 12; top: 0; left: 0; right: 0; height: calc(var(--top-pad) + 62px); padding: var(--top-pad) var(--gut) 0;
 	display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
 #Top > * { pointer-events: auto; }
-#TopCloud { position: absolute; z-index: -1; top: 0; left: 0; pointer-events: none; line-height: 0; opacity: 0; transform: translateY(-24px);
-	transition: opacity .35s, transform .45s var(--ease); }
-body.scrolled #TopCloud { opacity: 1; transform: none; }
+/* the hero cloud's hem: page.js moves it with the hero's bottom edge, then it pins at the top */
+#TopCloud { position: fixed; z-index: -1; top: 0; left: 0; pointer-events: none; line-height: 0; transform: translateY(100vh); will-change: transform; }
 #Burger[aria-expanded="true"] { opacity: 0; transform: scale(.6); }
 #Mark { position: fixed; z-index: 13; left: 0; top: 0; transform-origin: 50% 0; opacity: 0; pointer-events: none; display: block; line-height: 0; }
 #Mark.on { opacity: 1; }

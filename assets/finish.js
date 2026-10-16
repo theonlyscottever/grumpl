@@ -36,7 +36,7 @@ export function onCursor(f) { moved.add(f); return () => moved.delete(f); }
 addEventListener('pointermove', (e) => { cursor.x = e.clientX; cursor.y = e.clientY; cursor.at = performance.now(); cursor.gen++; moved.forEach((f) => f()); }, { passive: true });
 addEventListener('pointerdown', (e) => { cursor.x = e.clientX; cursor.y = e.clientY; cursor.at = performance.now(); cursor.gen++; moved.forEach((f) => f()); }, { passive: true });
 // how bright the cursor light is: soft, never the key light
-export const CURSOR_LIGHT = 0.9;
+export const CURSOR_LIGHT = 0.4;   // Scott 2026-10-16: much softer, it plays over things but never darkens or washes them out
 
 // ---- the flock, for the logo and the buttons: the Grumpl's own pile (grumpl-look.js flockTexture), cut down to
 // what reads on a flat-on badge: the fibre tile mapped across the face, sunnier tips and deeper gaps, the tufts

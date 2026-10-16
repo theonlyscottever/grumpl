@@ -65,7 +65,7 @@ const rims = [[-3.2, 20], [3.2, 15]].map(([x, power]) => {
 const lightU = makeLightU();
 // a soft second light that follows the cursor or finger (Scott, 2026-10-16): the studio key still does the work,
 // this one only lets you feel the light move across him
-const cursorL = new THREE.PointLight(0xffffff, 3.2, 0, 2); scene.add(cursorL);
+const cursorL = new THREE.PointLight(0xffffff, 1.3, 0, 2); scene.add(cursorL);
 let cursorGen = -1;
 const _cl = new THREE.Vector3();
 function placeCursorLight() {
