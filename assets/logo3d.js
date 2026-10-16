@@ -1,0 +1,287 @@
+// The 3D logo finishes (gummy, chrome): the puff-logo experiment (grumpl/logo/grumpl-puff-logo.html, Cloud view),
+// value for value, in its own small canvas laid exactly over the hero's cloud.
+// Why its own canvas: it renders at the screen's full resolution whatever the hero has dropped to, its
+// transmission pass only ever sees the badge (never the Grumpls), and its cost stays out of the hero's frame.
+// Same mesh pack, same materials, same warm room HDRI at exposure 1.1 turned 240°, Khronos Neutral tone mapping,
+// same tilt, sway and puffs. It stops drawing when it's hidden, scrolled away or the tab is in the background.
+import * as THREE from 'three';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ROOM = { url: 'assets/hdri/warm-room-512.hdr', exposure: 1.1, rot: 4 * Math.PI / 3 };
+const PACK = 'assets/logo/cloud.pack.gz';
+const UNITS_W = 13.07;                   // the pack is 100 px of the 1307 px logo to a unit
+const PAD = { x: 0.07, y: 0.14 };       // room around the badge for the tilt and the puffs, as a share of its size
+
+// r160 has no Neutral tone mapping and no environment rotation: both go in by hand (the maths of r162+)
+const NEUTRAL_TM = `vec3 CustomToneMapping( vec3 color ) {
+  const float startCompression = 0.8 - 0.04;
+  const float desaturation = 0.15;
+  color *= toneMappingExposure;
+  float x = min( color.r, min( color.g, color.b ) );
+  float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
+  color -= offset;
+  float peak = max( color.r, max( color.g, color.b ) );
+  if ( peak < startCompression ) return color;
+  float d = 1. - startCompression;
+  float newPeak = 1. - d * d / ( peak + d - startCompression );
+  color *= newPeak / peak;
+  float g = 1. - 1. / ( desaturation * ( peak - newPeak ) + 1. );
+  return mix( color, vec3( newPeak ), g );
+}`;
+const TM = THREE.NeutralToneMapping ?? (() => {
+  const chunk = THREE.ShaderChunk.tonemapping_pars_fragment;
+  if (!chunk.includes('startCompression')) THREE.ShaderChunk.tonemapping_pars_fragment = chunk.replace('vec3 CustomToneMapping( vec3 color ) { return color; }', NEUTRAL_TM);
+  return THREE.CustomToneMapping;
+})();
+const envRot = { value: new THREE.Matrix3() };
+function turnable(m) {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uRoomRot = envRot;
+    sh.fragmentShader = sh.fragmentShader.replace('#include <envmap_physical_pars_fragment>', 'uniform mat3 uRoomRot;\n' +
+      THREE.ShaderChunk.envmap_physical_pars_fragment
+        .replace('textureCubeUV( envMap, worldNormal, 1.0 )', 'textureCubeUV( envMap, uRoomRot * worldNormal, 1.0 )')
+        .replace('textureCubeUV( envMap, reflectVec, roughness )', 'textureCubeUV( envMap, uRoomRot * reflectVec, roughness )'));
+  };
+  m.customProgramCacheKey = () => 'logo3d-room';
+  return m;
+}
+
+// ---- Finishes (the experiment's presets for these two)
+const C = (s) => new THREE.Color(s);
+const ROSE = '#f2c9b8';
+function preset(name, kind, base) {
+  const letter = kind !== 'puff';
+  const p = { color: C(base), metalness: 0, roughness: 0.4, clearcoat: 0, clearcoatRoughness: 0.1, transmission: 0, thickness: 0.6,
+    ior: 1.5, sheen: 0, sheenRoughness: 0.5, sheenColor: C('#000000'), attenuationColor: C('#ffffff'), attenuationDistance: 1, envMapIntensity: 1 };
+  if (!letter) {
+    if (name === 'chrome') Object.assign(p, { color: C('#f3ebe7'), roughness: 0.42, sheen: 1, sheenColor: C('#ffffff'), sheenRoughness: 0.35, clearcoat: 0.25, clearcoatRoughness: 0.3 });
+    else Object.assign(p, { color: C('#fad6da'), roughness: 0.55, sheen: 1, sheenColor: C('#ffffff'), sheenRoughness: 0.6 });
+  } else if (name === 'chrome') Object.assign(p, { color: C(ROSE), metalness: 1, roughness: 0.05, envMapIntensity: 1.2 });
+  else Object.assign(p, { roughness: 0.12, transmission: 1, thickness: 0.9, ior: 1.45, attenuationColor: C(base), attenuationDistance: 0.6,
+    clearcoat: 0.8, clearcoatRoughness: 0.1, color: C(base).lerp(C('#ffffff'), 0.55) });
+  return p;
+}
+const NUM = ['metalness', 'roughness', 'clearcoat', 'clearcoatRoughness', 'transmission', 'thickness', 'ior', 'sheen', 'sheenRoughness', 'attenuationDistance', 'envMapIntensity'];
+const COL = ['color', 'sheenColor', 'attenuationColor'];
+const PART_COLORS = { 'letter-g': '#ff7756', 'letter-r': '#ffac4d', 'letter-u': '#edb300', 'letter-m': '#ff7680', 'letter-p': '#ff87e0', 'letter-l': '#ff7658',
+  'drop-g-1': '#ff7657', 'drop-g-2': '#ff7657', 'drop-g-3': '#ffac4d', 'drop-r-1': '#ff8e54', 'drop-r-2': '#ffac4d', 'drop-r-3': '#ffaa4d', 'drop-r-4': '#ffac4c',
+  'drop-r-5': '#fdbd3e', 'drop-r-6': '#ffab4a', 'drop-u-1': '#f0b201', 'drop-u-2': '#fb9059', 'drop-u-3': '#ff7d73', 'drop-u-4': '#f99156', 'drop-u-5': '#ff7680',
+  'drop-m-1': '#ff7680', 'drop-m-2': '#ff7680', 'drop-m-3': '#ff7881', 'drop-p-1': '#ff87e7', 'drop-p-2': '#ff87e8' };
+
+// ---- The mesh pack: front surfaces (int16) with baked normals (int8). The backs are never seen from the hero's
+// camera, so only the front half of each index is kept.
+function unpack(buf) {
+  const dv = new DataView(buf), hl = dv.getUint32(0, true);
+  const hdr = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, hl)));
+  let off = 4 + hl; const out = [];
+  const lo = hdr.min, sc = hdr.max.map((v, i) => (v - lo[i]) / 65535);
+  const take = (bytes) => { const s = buf.slice(off, off + bytes); off += Math.ceil(bytes / 4) * 4; return s; };
+  for (const p of hdr.parts) {
+    const ni = p.nv - p.nb;
+    const q = new Int16Array(take(p.nv * 6)); take(ni * 2);
+    const qn = new Int8Array(take((p.nv + ni) * 3)); take(p.nv);
+    const idx = new (p.wide ? Uint32Array : Uint16Array)(take(p.ni * (p.wide ? 4 : 2)));
+    const pos = new Float32Array(p.nv * 3), nrm = new Float32Array(p.nv * 3);
+    for (let i = 0; i < p.nv * 3; i++) pos[i] = (q[i] + 32768) * sc[i % 3] + lo[i % 3];
+    for (let i = 0; i < p.nv; i++) {
+      const x = qn[i * 3] / 127, y = qn[i * 3 + 1] / 127, z = qn[i * 3 + 2] / 127, l = Math.hypot(x, y, z) || 1;
+      nrm[i * 3] = x / l; nrm[i * 3 + 1] = y / l; nrm[i * 3 + 2] = z / l;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    g.setIndex(new THREE.BufferAttribute(idx, 1)); g.userData.nb = p.nb;
+    out.push({ id: p.id, geo: g });
+  }
+  return out;
+}
+async function gunzipFetch(url) {
+  const r = await fetch(url);
+  const body = r.body.pipeThrough(new DecompressionStream('gzip'));
+  return new Response(body).arrayBuffer();
+}
+
+let S = null;   // everything, once built
+let mode = 'flat', shown = true, rect = null, want = new THREE.Vector2(), onTap = null;
+
+export function initLogo3D(opts) {
+  want = opts.want || want; onTap = opts.onTap;
+  if (S) return S.ready;
+  const canvas = document.createElement('canvas');
+  canvas.id = 'Logo3D'; canvas.setAttribute('aria-hidden', 'true');
+  opts.after.after(canvas);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setClearColor(0x000000, 0);
+  renderer.toneMapping = TM; renderer.toneMappingExposure = ROOM.exposure;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(28, 1, 0.5, 100);
+  const tilt = new THREE.Group(); scene.add(tilt);
+  S = { canvas, renderer, scene, camera, tilt, pieces: [], dpr: Math.min(devicePixelRatio || 1, 2), sweep: 0, sweepTo: 0, sign: 1 };
+  window.__grumplLogo = S;   // for testing
+  S.ready = Promise.all([
+    gunzipFetch(PACK),
+    new RGBELoader().setDataType(THREE.HalfFloatType).loadAsync(ROOM.url),
+  ]).then(([buf, hdr]) => {
+    hdr.mapping = THREE.EquirectangularReflectionMapping;
+    const pm = new THREE.PMREMGenerator(renderer);
+    scene.environment = pm.fromEquirectangular(hdr).texture;
+    pm.dispose(); hdr.dispose();
+    for (const { id: rawId, geo } of unpack(buf)) {
+      const kind = rawId === 'cloud-body' ? 'puff' : rawId.startsWith('drop') ? 'drop' : 'letter';
+      const base = PART_COLORS[rawId] || '#ffffff';
+      geo.computeBoundingBox();
+      const c = new THREE.Vector3(); geo.boundingBox.getCenter(c);
+      if (kind !== 'puff') {   // pivot on the outline, so squash and stretch never lifts the seam out of its groove
+        const P = geo.attributes.position.array, nb = geo.userData.nb; let z = 0;
+        for (let i = 0; i < nb; i++) z += P[i * 3 + 2];
+        c.z = z / nb;
+      }
+      geo.translate(-c.x, -c.y, -c.z);
+      const p = { id: rawId, kind, base, s: 0, v: 0, startAt: 0, mat: turnable(new THREE.MeshPhysicalMaterial()) };
+      p.target = preset('gummy', kind, base); p.cur = { ...p.target }; COL.forEach((k) => p.cur[k] = p.target[k].clone());
+      applyMat(p);
+      p.mesh = new THREE.Mesh(geo, p.mat);
+      p.mesh.userData.piece = p;
+      p.pivot = new THREE.Group(); p.pivot.position.copy(c); p.pivot.add(p.mesh);
+      tilt.add(p.pivot);
+      S.pieces.push(p);
+    }
+    S.tappable = S.pieces.filter((p) => p.kind !== 'puff');
+    S.idle = [...S.tappable].sort((a, b) => a.pivot.position.x - b.pivot.position.x);
+    wire();
+    layout();
+    renderer.compile(scene, camera);
+  });
+  return S.ready;
+}
+
+function applyMat(p) { NUM.forEach((k) => p.mat[k] = p.cur[k]); COL.forEach((k) => p.mat[k].copy(p.cur[k])); }
+function kick(p, amt, delay = 0) { if (reduce) return; setTimeout(() => { p.v += amt * 9; wake(); }, delay); }
+
+// Finish changes sweep left to right, each piece puffing as its new finish arrives
+export function setLogo3DMode(m) {
+  const was = mode; mode = m;
+  if (!S?.pieces.length) return;
+  if (m !== 'flat') {
+    const instant = was === 'flat';
+    for (const p of S.pieces) {
+      const x = (p.pivot.position.x + UNITS_W / 2) / UNITS_W;
+      p.target = preset(m, p.kind, p.base);
+      p.startAt = performance.now() + (instant || reduce ? 0 : x * 520 + (p.kind === 'drop' ? 80 : 0));
+      if (instant) { p.cur = { ...p.target }; COL.forEach((k) => p.cur[k] = p.target[k].clone()); applyMat(p); }
+    }
+  }
+  visible();
+}
+export function puffLogo3D() {
+  if (!S?.idle) return;
+  S.idle.forEach((p) => kick(p, p.kind === 'letter' ? 0.6 : 0.45, ((p.pivot.position.x + UNITS_W / 2) / UNITS_W) * 520));
+  if (!reduce) { S.sign = -S.sign; S.sweepTo = S.sign * 0.35; }
+}
+
+function visible() {
+  const on = mode !== 'flat' && shown && !!rect && !!S?.tappable;
+  S && S.canvas.classList.toggle('on', on);
+  if (on) wake();
+  return on;
+}
+
+// ---- Layout: the canvas covers the hero's logo rectangle plus some room, and the camera is set so the badge's
+// outline lands exactly on the flat logo's (one unit = rect.w / 13.07 px)
+function layout() {
+  if (!S || !rect) return;
+  const px = rect.w / UNITS_W;
+  const w = Math.round(rect.w * (1 + PAD.x * 2)), h = Math.round(rect.h * (1 + PAD.y * 2));
+  Object.assign(S.canvas.style, { left: `${rect.x + rect.w / 2 - w / 2}px`, top: `${rect.y + rect.h / 2 - h / 2}px`, width: `${w}px`, height: `${h}px` });
+  S.renderer.setPixelRatio(S.dpr);
+  S.renderer.setSize(w, h, false);
+  const cam = S.camera, hu = h / px, match = 0.5;            // the badge's mid-depth is where sizes match exactly
+  cam.aspect = w / h;
+  const dist = hu / 2 / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) + match;
+  cam.position.set(0, 0, dist);
+  cam.lookAt(0, 0, 0);
+  cam.updateProjectionMatrix();
+  wake();
+}
+
+// ---- Input: the hero hands over where the cursor or the phone's tilt points (want, -1..1); hovering a letter puffs it
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let hovered = null, lastInput = performance.now(), idleStep = 0, idleNext = 0;
+function pick(e) {
+  const r = S.canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, S.camera);
+  const hit = ray.intersectObjects(S.pieces.map((p) => p.mesh), false)[0];
+  return hit ? hit.object.userData.piece : null;
+}
+function wire() {
+  const c = S.canvas;
+  c.addEventListener('pointermove', (e) => {
+    const p = pick(e);
+    c.classList.toggle('over', !!p);
+    if (p !== hovered) { if (p && p.kind !== 'puff') kick(p, 0.35); hovered = p; }
+  });
+  c.addEventListener('pointerleave', () => { hovered = null; });
+  let down = null;
+  c.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+  c.addEventListener('pointerup', (e) => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return;
+    if (pick(e)) onTap?.();
+  });
+  ['pointermove', 'pointerdown', 'keydown', 'wheel', 'scroll'].forEach((t) => addEventListener(t, () => { lastInput = performance.now(); wake(); }, { passive: true }));
+  addEventListener('grumpl-logo', (e) => { rect = e.detail; layout(); visible(); });
+  addEventListener('grumpl-logo-3d', (e) => { shown = !!e.detail?.show; visible(); });
+  document.addEventListener('visibilitychange', wake);
+  new MutationObserver(wake).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+}
+
+// ---- Loop: runs only while the logo is on screen; the slow sway keeps the room's reflections alive
+const clock = new THREE.Clock();
+const _e = new THREE.Euler(), _m = new THREE.Matrix4();
+const aim = new THREE.Vector2();
+let raf = 0, t = 0;
+const covered = () => document.body.classList.contains('menu-open') || document.body.classList.contains('ds-no-scroll');
+function wake() { if (!raf && S) { clock.getDelta(); raf = requestAnimationFrame(frame); } }
+function frame() {
+  raf = 0;
+  if (document.hidden || covered() || !(mode !== 'flat' && shown && rect && S.tappable)) return;
+  const dt = Math.min(clock.getDelta(), 0.05), now = performance.now();
+  t += dt;
+  // idle: when nobody is touching anything, the pieces puff one after another, left to right
+  if (!reduce && now - lastInput > 3500 && now >= idleNext) {
+    const p = S.idle[idleStep % S.idle.length]; kick(p, p.kind === 'letter' ? 0.55 : 0.45);
+    idleStep++;
+    idleNext = now + (idleStep % S.idle.length === 0 ? 2600 : p.kind === 'letter' ? 260 : 110);
+  }
+  aim.lerp(want, 1 - Math.exp(-dt * 4));
+  S.sweep += (S.sweepTo - S.sweep) * (1 - Math.exp(-dt * 1.6));
+  if (Math.abs(S.sweepTo) > 0.01 && Math.abs(S.sweepTo - S.sweep) < 0.02) S.sweepTo = 0;
+  const sway = reduce ? 0 : 1;
+  S.tilt.rotation.y = aim.x * 0.32 + sway * Math.sin(t * 0.4) * 0.05;
+  S.tilt.rotation.x = -aim.y * 0.22 + sway * Math.sin(t * 0.33) * 0.03;
+  const yaw = ROOM.rot + aim.x * 0.9 + S.sweep + sway * Math.sin(t * 0.2) * 0.25, pitch = aim.y * 0.25;
+  envRot.value.setFromMatrix4(_m.makeRotationFromEuler(_e.set(-pitch, -yaw, 0)));
+  const k = 1 - Math.exp(-dt * 5);
+  for (const p of S.pieces) {
+    if (now >= p.startAt) {
+      NUM.forEach((n) => p.cur[n] += (p.target[n] - p.cur[n]) * k);
+      COL.forEach((n) => p.cur[n].lerp(p.target[n], k));
+      if (p.target.transmission === 0 && p.cur.transmission < 0.01) p.cur.transmission = 0;
+      applyMat(p);
+    }
+    p.v += (-180 * p.s - 10 * p.v) * dt; p.s += p.v * dt;
+    p.pivot.scale.set(1 + p.s * 0.09, 1 + p.s * 0.09, 1 + p.s * 0.5);
+  }
+  pace(now);
+  S.renderer.render(S.scene, S.camera);
+  raf = requestAnimationFrame(frame);
+}
+// Resolution: full (up to 2x) unless the device really can't keep up, then one step down at a time
+let lastAt = 0, avg = 16.7, slow = 0;
+function pace(now) {
+  const gap = now - lastAt; lastAt = now;
+  if (gap > 80) return;
+  avg += (gap - avg) * 0.1;
+  if (avg > 24 && ++slow > 45 && S.dpr > 1) { S.dpr = Math.max(1, S.dpr - 0.5); slow = 0; avg = 16.7; layout(); }
+  else if (avg <= 24) slow = 0;
+}

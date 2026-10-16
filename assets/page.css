@@ -201,6 +201,9 @@ body.logo-loading #stage { cursor: progress; }
 /* the hero's logo: the vector, resting on the foreground cloud */
 #HeroLogo { position: absolute; z-index: 2; padding: 0; border: 0; background: none; line-height: 0; opacity: 0; cursor: pointer;
 	filter: drop-shadow(0 6px 6px rgba(40 80 140 / .14)) drop-shadow(0 2px 1px rgba(40 80 140 / .1)); transition: opacity .4s; -webkit-tap-highlight-color: transparent; }
+#Logo3D { position: absolute; z-index: 2; display: block; opacity: 0; pointer-events: none; transition: opacity .35s; touch-action: pan-y; }
+#Logo3D.on { opacity: 1; pointer-events: auto; }
+#Logo3D.over { cursor: pointer; }
 #HeroLogo.on { opacity: 1; animation: settle 1.1s var(--ease) both; }
 #HeroLogo.gone, #HeroLogo.is3d { opacity: 0; pointer-events: none; animation: none; }
 #HeroLogo.gone { transition: none; }   /* the swap to the sticky copy has to be instant to be invisible */

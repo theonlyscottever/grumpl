@@ -27,10 +27,11 @@ let kick = 30;
 const poke = (n = 6) => { kick = Math.max(kick, n); };
 const stage = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: false });
-const DPR_STEPS = [0.75, 1, 1.25, 1.5, 1.75, 2].filter((d) => d <= Math.max(1, devicePixelRatio));
-let dprMax = DPR_STEPS.length - 1;
-let dprIdx = DPR_STEPS.indexOf(Math.min(coarse ? 1.5 : 1.25, DPR_STEPS[dprMax]));   // adaptResolution steps down if a phone can't keep up
-if (dprIdx < 0) dprIdx = DPR_STEPS.length - 1;
+// Sharp first: start at the screen's own density (up to 2x) and only step down while frames are actually slow.
+// adaptResolution steps back up when there's headroom, so one hiccup (a shader compiling, a tab switch) never
+// leaves the hero blurry for good.
+const DPR_STEPS = [0.75, 1, 1.25, 1.5, 1.75, 2].filter((d) => d <= Math.max(1, Math.min(2, devicePixelRatio)));
+let dprIdx = DPR_STEPS.length - 1;
 renderer.setPixelRatio(DPR_STEPS[dprIdx]);
 renderer.setClearColor(0xffffff, 0);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -174,8 +175,11 @@ const lampU = { value: new THREE.Vector3(0, 0, 0) };
 const logoMaskU = { value: null };
 const logoRectU = { value: new THREE.Vector4(0, 0, 1, 1) };   // centre xy, size xy in the front cloud's own space
 function makeCloudMat({ fade = true, front = false } = {}) {
-  const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, sheen: 1, sheenRoughness: 0.85,
-    sheenColor: 0xffffff, envMapIntensity: 1.1, vertexColors: true, toneMapped: false });
+  // The clouds only use their lighting for a brightness (shade, below), so they get the cheap version of the rig:
+  // standard instead of physical (no sheen), and the two rim strips, which barely touch a cloud's front, are left
+  // out. The clouds cover most of the screen, so this is where per-pixel cost adds up.
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0,
+    envMapIntensity: 1.25, vertexColors: true, toneMapped: false });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uOcc = occU; sh.uniforms.uPress = pressU; sh.uniforms.uSky = skyU; sh.uniforms.uTint = tintU;
     sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU;
@@ -219,6 +223,7 @@ function makeCloudMat({ fade = true, front = false } = {}) {
     ` + sh.fragmentShader
       .replace('#include <color_fragment>', `
         float puffAO = vColor.r;`)
+      .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('defined( RE_Direct_RectArea )', 'defined( RE_Direct_RectArea ) && 0'))
       .replace('#include <opaque_fragment>', `
         vec3 cN = normalize( vCN );
         vec3 cV = normalize( cameraPosition - vCW );
@@ -396,9 +401,6 @@ async function buildLogo() {
     g.setTransform(S, 0, 0, S, 0, 0);
     for (const c of cloudParts.slice(1)) { g.globalAlpha = c.alpha; g.fillStyle = c.fill; g.fill(c.path, c.rule); }
     g.globalAlpha = 1;
-    if (logo3D.on && logo3D.mode === 'gummy') {   // light through the jelly warms the cream around each letter
-      g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(front.glow ||= glowOf(W, H, S), 0, 0); g.setTransform(S, 0, 0, S, 0, 0);
-    }
     let busy = false;
     for (const pc of front.pieces) {
       busy = puffOf(pc) || busy;
@@ -461,16 +463,6 @@ async function buildLogo() {
   frontMat.needsUpdate = true;
   poke(10);
 }
-// the warm glow the gummy letters throw on the badge (drawn once; it stays put while the letters puff)
-function glowOf(W, H, S) {
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const g = cv.getContext('2d');
-  g.setTransform(S, 0, 0, S, 0, 0);
-  g.filter = `blur(${7 * S}px)`;
-  g.strokeStyle = 'rgba(255, 128, 72, 0.42)'; g.lineWidth = 12;
-  for (const pc of front.pieces) for (const c of pc.parts) g.stroke(c.path);
-  return cv;
-}
 // a puff: squash, pop up big, settle with a wobble (the brand-book letter jump). Writes sc, dy, rot onto the piece.
 function puffOf(pc) {
   pc.sc = 1; pc.dy = 0; pc.rot = 0;
@@ -485,269 +477,65 @@ function puffOf(pc) {
 }
 
 // ---------- The 3D logo finishes (tap the logo): flat, gummy, chrome ----------
-// The inflated letters from the logo thread (grumpl/logo), quantized and loaded only when someone asks.
-const logo3D = { on: false, mode: 'flat', group: null, letters: {}, mats: {}, loading: null, meshes: [], backdrop: null };
+const logo3D = { on: false, mode: 'flat' };
 const LOGO_MODES = ['flat', 'gummy', 'chrome'];
-const SVG_CX = 653.5, SVG_CY = 379;            // the 3D letters are centred on the SVG's middle, 100 px to a unit
 
 // Which finish a visit opens on. Each load rolls the dice; ?logo=gummy|flat|chrome forces one (testing),
-// and a season (by date, or ?season=name, or ?season=none) can change the odds and the gummy's colours.
+// and a season can change the odds. Seasons switch on by date only when marked auto; ?season=name forces one.
 const LOGO_ODDS = { gummy: 0.5, flat: 0.35, chrome: 0.15 };
 const SEASONS = [   // from/to are 'MM-DD', inclusive (a range may wrap the new year)
-  { name: 'halloween', from: '10-01', to: '10-31', odds: { gummy: 0.6, flat: 0.25, chrome: 0.15 }, gummy: 'candy-corn' },
+  { name: 'halloween', from: '10-01', to: '10-31', auto: false, odds: { gummy: 0.6, flat: 0.25, chrome: 0.15 } },
 ];
 const urlQ = new URLSearchParams(location.search);
 const SEASON = (() => {
   const q = urlQ.get('season');
   if (q) return SEASONS.find((s) => s.name === q) || null;
   const d = new Date(), md = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return SEASONS.find((s) => (s.from <= s.to ? md >= s.from && md <= s.to : md >= s.from || md <= s.to)) || null;
+  return SEASONS.find((s) => s.auto && (s.from <= s.to ? md >= s.from && md <= s.to : md >= s.from || md <= s.to)) || null;
 })();
 function pickLogo() {
   const q = urlQ.get('logo');
   if (LOGO_MODES.includes(q)) return q;
-  if (navigator.connection?.saveData) return 'flat';          // the 3D letters are a 1.8 MB download
+  if (navigator.connection?.saveData) return 'flat';          // the 3D logo is a 1.9 MB download
   const odds = SEASON?.odds || LOGO_ODDS;
   let r = Math.random() * Object.values(odds).reduce((a, b) => a + b, 0);
   for (const [mode, w] of Object.entries(odds)) if ((r -= w) < 0) return mode;
   return 'flat';
 }
 
-// The gummy finish is the puff-logo experiment's (grumpl/logo/grumpl-puff-logo.html, Cloud, Gummy, Warm room),
-// value for value: transmissive jelly lit only by the warm room HDRI (Poly Haven st_fagans_interior), Khronos
-// Neutral tone mapping at exposure 1.1, the room turned 240° and swung by the cursor (or the phone's tilt).
-// The rest of the hero keeps its studio light: the gummy letters live on their own layer and get a second,
-// small render with no lights, their own env map and their own tone mapping.
-// Cost: three's transmission re-renders every opaque object behind a transmissive one. In that second render
-// the only opaque thing is a flat stand-in for the badge (drawn into the transmission buffer, nowhere else),
-// so the jelly refracts the cloud badge it sits on without the hero (Grumpls, clouds) being drawn twice.
-const GUMMY_LAYER = 1;
-const WARM_ROOM = { url: 'assets/hdri/warm-room-512.hdr', exposure: 1.1, rotation: 4 * Math.PI / 3 };
-const room = { tex: null, loading: null, aim: new THREE.Vector2(), want: new THREE.Vector2(), sweep: 0, sweepTo: 0, sign: 1,
-  rot: { value: new THREE.Matrix3() }, unit: 1 };
-const NEUTRAL_TM = `vec3 CustomToneMapping( vec3 color ) {
-  const float startCompression = 0.8 - 0.04;
-  const float desaturation = 0.15;
-  color *= toneMappingExposure;
-  float x = min( color.r, min( color.g, color.b ) );
-  float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
-  color -= offset;
-  float peak = max( color.r, max( color.g, color.b ) );
-  if ( peak < startCompression ) return color;
-  float d = 1. - startCompression;
-  float newPeak = 1. - d * d / ( peak + d - startCompression );
-  color *= newPeak / peak;
-  float g = 1. - 1. / ( desaturation * ( peak - newPeak ) + 1. );
-  return mix( color, vec3( newPeak ), g );
-}`;
-const GUMMY_TM = THREE.NeutralToneMapping ?? (() => {    // r160 has no Neutral: it goes in as the custom tone mapping
-  const chunk = THREE.ShaderChunk.tonemapping_pars_fragment;
-  if (!chunk.includes('startCompression')) THREE.ShaderChunk.tonemapping_pars_fragment = chunk.replace('vec3 CustomToneMapping( vec3 color ) { return color; }', NEUTRAL_TM);
-  return THREE.CustomToneMapping;
-})();
-function loadRoom() {
-  return room.loading ||= import('three/addons/loaders/RGBELoader.js').then(({ RGBELoader }) =>
-    new RGBELoader().setDataType(THREE.HalfFloatType).loadAsync(WARM_ROOM.url)).then((t) => {
-    t.mapping = THREE.EquirectangularReflectionMapping;
-    const pm = new THREE.PMREMGenerator(renderer);
-    room.tex = pm.fromEquirectangular(t).texture;
-    pm.dispose(); t.dispose();
-  });
-}
-// scene.environmentRotation arrived in r162; this is its maths (yaw y, pitch x), applied to the letters' lookups
-const _re = new THREE.Euler(), _rm = new THREE.Matrix4();
-function turnRoom(dt) {
-  const k = 1 - Math.exp(-dt * 4);
-  room.aim.lerp(room.want, k);
-  room.sweep += (room.sweepTo - room.sweep) * (1 - Math.exp(-dt * 1.6));
-  const yaw = WARM_ROOM.rotation + room.aim.x * 0.9 + room.sweep, pitch = room.aim.y * 0.25;
-  room.rot.value.setFromMatrix4(_rm.makeRotationFromEuler(_re.set(-pitch, -yaw, 0)));
-  return room.aim.distanceToSquared(room.want) > 1e-5 || Math.abs(room.sweepTo - room.sweep) > 1e-3;
-}
-turnRoom(0);
-addEventListener('pointermove', (e) => {                // the cursor (or a finger dragging) swings the room
-  if (!logo3D.on || logo3D.mode !== 'gummy' || (coarse && motion?.on)) return;
+// The gummy and chrome finishes are the puff-logo experiment itself (grumpl/logo/grumpl-puff-logo.html, Cloud view),
+// drawn by assets/logo3d.js in its own small canvas over the hero's cloud: full resolution, its own warm room light,
+// and none of its cost in the hero's frame. It loads only when a visit lands on (or taps to) a 3D finish.
+const room = { want: new THREE.Vector2() };            // where the cursor or the phone's tilt points, -1..1, for the logo's room
+addEventListener('pointermove', (e) => {
+  if (logo3D.mode === 'flat' || (coarse && motion?.on)) return;
   const r = stage.getBoundingClientRect();
   room.want.set(THREE.MathUtils.clamp((e.clientX - r.left) / r.width * 2 - 1, -1, 1), THREE.MathUtils.clamp(-((e.clientY - r.top) / r.height * 2 - 1), -1, 1));
 }, { passive: true });
-
-const CANDY = { yellow: new THREE.Color('#ffc21a'), orange: new THREE.Color('#ff8a1c'), white: new THREE.Color('#fff3dc') };
-function gummyMat(hex, mesh) {
-  const c = new THREE.Color(hex);
-  const m = new THREE.MeshPhysicalMaterial({ color: c.clone().lerp(new THREE.Color(0xffffff), 0.55), roughness: 0.12, transmission: 1,
-    thickness: 0.9, ior: 1.45, attenuationColor: c, attenuationDistance: 0.6, clearcoat: 0.8, clearcoatRoughness: 0.1, envMap: room.tex });
-  const candy = SEASON?.gummy === 'candy-corn';
-  const U = { uRoomRot: room.rot, uCandyY: { value: mesh.userData.candyY }, uCY: { value: CANDY.yellow }, uCO: { value: CANDY.orange }, uCW: { value: CANDY.white } };
-  m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, U);
-    sh.fragmentShader = sh.fragmentShader.replace('#include <envmap_physical_pars_fragment>', 'uniform mat3 uRoomRot;\n' +
-      THREE.ShaderChunk.envmap_physical_pars_fragment
-        .replace('textureCubeUV( envMap, worldNormal, 1.0 )', 'textureCubeUV( envMap, uRoomRot * worldNormal, 1.0 )')
-        .replace('textureCubeUV( envMap, reflectVec, roughness )', 'textureCubeUV( envMap, uRoomRot * reflectVec, roughness )'));
-    if (!candy) return;
-    // candy corn: yellow base, orange middle, a milky white tip, banded up each letter (drips take their letter's bands)
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vCandyY;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCandyY = position.y;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      varying float vCandyY; uniform vec2 uCandyY; uniform vec3 uCY, uCO, uCW;
-      float candyT() { return ( vCandyY - uCandyY.x ) / ( uCandyY.y - uCandyY.x ); }
-      vec3 candyCol( out float tip ) {
-        float t = candyT(), w = fwidth( t ) + 0.01;
-        tip = smoothstep( 0.74 - w, 0.74 + w, t );
-        return mix( mix( uCY, uCO, smoothstep( 0.42 - w, 0.42 + w, t ) ), uCW, tip );
-      }`)
-      .replace('#include <color_fragment>', '#include <color_fragment>\n{ float tip; diffuseColor.rgb = mix( candyCol( tip ), vec3( 1.0 ), 0.55 * ( 1.0 - tip ) ); }')
-      .replace('#include <transmission_fragment>', THREE.ShaderChunk.transmission_fragment
-        .replace('material.transmission = transmission;', 'float cTip; vec3 cCol = candyCol( cTip );\nmaterial.transmission = transmission * ( 1.0 - 0.55 * cTip );')
-        .replace('material.attenuationColor = attenuationColor;', 'material.attenuationColor = cCol;'));
-  };
-  m.customProgramCacheKey = () => `logo-gummy-${candy}`;
-  return m;
-}
-// three scales the transmission ray by the model's size but not the attenuation distance: keep the experiment's ratio
-function gummyScale() {
-  room.unit = (LOGO_W / 13.07) * front.s;                    // world size of one experiment unit (100 px of the logo)
-  logo3D.meshes.forEach((m) => { const g = logo3D.mats.gummy?.get(m); if (g) g.attenuationDistance = 0.6 * room.unit; });
-}
-function logoMat(mode, hex) {
-  const c = new THREE.Color(hex);
-  return new THREE.MeshPhysicalMaterial({ color: c, metalness: 1, roughness: 0.12,
-    clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.0 });
-}
-// What the jelly sees through itself: the badge's cream, pressed into a darker groove under each letter, the
-// way the experiment's puffed cloud dips where the letters sit (that groove is what gives the jelly its deep
-// edges and see-through structure). It is only ever drawn into three's transmission buffer: on screen it
-// writes nothing, the real badge is already there.
-function makeBackdrop() {
-  const W = 768, H = Math.round(W * 758 / 1307), k = W / 1307;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const g = cv.getContext('2d');
-  g.fillStyle = front.fills?.['cloud-fill'] || '#fae5e1'; g.fillRect(0, 0, W, H);
-  g.setTransform(k, 0, 0, k, 0, 0);
-  const pass = (blur, fill, stroke, lw) => {
-    g.filter = `blur(${blur * k}px)`;
-    for (const pc of front.pieces) for (const c of pc.parts) {
-      if (fill) { g.fillStyle = fill; g.fill(c.path, c.rule); }
-      if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(c.path); }
-    }
-  };
-  pass(10, null, 'rgba(176, 92, 78, 0.55)', 16);     // the groove's walls, in shadow
-  pass(6, 'rgba(246, 204, 192, 0.7)', null, 0);       // its floor, lit through the jelly
-  pass(3, null, 'rgba(255, 244, 236, 0.5)', 3);       // the lit lip right at the outline
-  g.filter = 'none';
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.MeshBasicMaterial({ map: tex });
-  const b = new THREE.Mesh(new THREE.PlaneGeometry(LOGO_W, LOGO_H), mat);
-  b.position.set(LOGO_C.x, LOGO_C.y, LOGO_Z - 0.05);
-  b.layers.set(GUMMY_LAYER);
-  b.onBeforeRender = (r) => { mat.colorWrite = mat.depthWrite = r.getRenderTarget() !== null; };
-  return b;
-}
-async function buildLogo3D() {
-  const gltf = await loadGLB('assets/models/logo-letters.glb');
-  const k = LOGO_W / 13.07;
-  const g = new THREE.Group();
-  g.position.set(LOGO_C.x, LOGO_C.y, LOGO_Z - 0.02);
-  g.scale.set(k, k, k);           // the experiment's own proportions (the jelly's highlights depend on them)
-  front.pieces.forEach((pc) => {
-    const piv = new THREE.Group();
-    piv.position.set((pc.cx - SVG_CX) / 100, -(pc.cy - SVG_CY) / 100, 0);
-    g.add(piv);
-    logo3D.letters[pc.k] = { piv, meshes: [] };
-  });
-  gltf.scene.updateMatrixWorld(true);
-  const parts = [];
-  gltf.scene.traverse((o) => {
-    if (!o.isMesh) return;
-    const letter = o.name.split('-')[1];
-    const L = logo3D.letters[letter]; if (!L) return;
-    // The file is quantized: positions carry a squashed per-axis node scale, but the normals were written in
-    // the letters' real space. Left on the node, three's normal matrix flattens every normal toward the viewer
-    // (no rim highlights) and the transmission ray is stretched unevenly. So bake the positions and keep the
-    // normals as they are: the letters get a plain, even scale.
-    const geo = new THREE.BufferGeometry();
-    geo.setIndex(o.geometry.index);
-    const flat = (a) => { const f = new Float32Array(a.count * 3); for (let i = 0; i < a.count; i++) { f[i * 3] = a.getX(i); f[i * 3 + 1] = a.getY(i); f[i * 3 + 2] = a.getZ(i); } return new THREE.BufferAttribute(f, 3); };
-    geo.setAttribute('position', flat(o.geometry.attributes.position));
-    geo.applyMatrix4(o.matrixWorld);
-    geo.setAttribute('normal', flat(o.geometry.attributes.normal));
-    geo.normalizeNormals();
-    geo.computeBoundingBox();
-    const m = new THREE.Mesh(geo, null);
-    m.position.copy(L.piv.position).negate();
-    m.userData.fill = front.fills?.[o.name] || '#ff8a7a';
-    m.userData.letter = letter; m.userData.isLetter = o.name.startsWith('letter-');
-    m.renderOrder = 3;
-    L.piv.add(m); L.meshes.push(m); logo3D.meshes.push(m); parts.push(m);
-  });
-  parts.forEach((m) => {          // candy-corn bands run up each letter, its drips included
-    const L = parts.find((p) => p.userData.isLetter && p.userData.letter === m.userData.letter) || m;
-    m.userData.candyY = new THREE.Vector2(L.geometry.boundingBox.min.y, L.geometry.boundingBox.max.y);
-  });
-  g.visible = false;                                         // shown once it has its finish (setLogoFinish)
-  logo3D.group = g;
-  logo3D.backdrop = makeBackdrop();
-  logo3D.backdrop.visible = false;
-  front.group.add(g, logo3D.backdrop);
-}
-function showLetters(v) {
-  if (logo3D.group) logo3D.group.visible = v;
-  if (logo3D.backdrop) logo3D.backdrop.visible = v && logo3D.mode === 'gummy';
-}
+let logoMod = null;
 async function setLogoFinish(mode) {
   if (!front.logo) return;
   logo3D.mode = mode;
-  if (mode !== 'flat' && !logo3D.group) {
-    if (!logo3D.loading) logo3D.loading = Promise.all([buildLogo3D(), loadRoom()]).catch((e) => { console.error('logo 3D', e); logo3D.loading = null; });
+  const want3D = mode !== 'flat' && !night.on;
+  if (want3D && !logoMod) {
     document.body.classList.add('logo-loading');
-    await logo3D.loading;
+    try {
+      const m = await import('./logo3d.js');
+      await m.initLogo3D({ after: stage, want: room.want, onTap: () => cycleLogo() });
+      logoMod = m;
+    } catch (e) { console.error('logo 3D', e); }
     document.body.classList.remove('logo-loading');
-    if (!logo3D.group || logo3D.mode !== mode) return;
+    if (!logoMod || logo3D.mode !== mode) return;
+    logoMod.setLogo3DMode(mode);
+    sendLogoRect();
   }
-  const show3D = mode !== 'flat' && !night.on;
-  logo3D.on = show3D;
-  front.logo.visible = show3D && logoAllowed;
-  dispatchEvent(new CustomEvent('grumpl-logo-mode', { detail: { mode: show3D ? mode : 'flat' } }));
-  if (logo3D.group) {
-    showLetters(show3D && logoAllowed);
-    if (show3D) {
-      const gummy = mode === 'gummy';
-      if (gummy) logo3D.mats.gummy ||= new WeakMap();
-      else logo3D.mats[mode] ||= {};
-      logo3D.meshes.forEach((m) => {
-        if (gummy) {
-          if (!logo3D.mats.gummy.has(m)) logo3D.mats.gummy.set(m, gummyMat(m.userData.fill, m));
-          m.material = logo3D.mats.gummy.get(m);
-        } else m.material = logo3D.mats[mode][m.userData.fill] ||= logoMat(mode, m.userData.fill);
-        m.layers.set(gummy ? GUMMY_LAYER : 0);
-      });
-      if (gummy) gummyScale();
-    }
-  }
+  logo3D.on = want3D && !!logoMod;
+  logoMod?.setLogo3DMode(logo3D.on ? mode : 'flat');
+  dispatchEvent(new CustomEvent('grumpl-logo-mode', { detail: { mode: logo3D.on ? mode : 'flat' } }));
   front.draw?.(); poke(6);
   puffRow();
 }
 function cycleLogo() { setLogoFinish(LOGO_MODES[(LOGO_MODES.indexOf(logo3D.mode) + 1) % LOGO_MODES.length]); }
-const gummyShown = () => logo3D.on && logo3D.mode === 'gummy' && logo3D.group?.visible && room.tex;
-// the second render: just the gummy letters (and their backdrop, for the transmission buffer), lit by the room
-function renderGummy() {
-  const tm = renderer.toneMapping, ex = renderer.toneMappingExposure, ac = renderer.autoClear;
-  renderer.toneMapping = GUMMY_TM; renderer.toneMappingExposure = WARM_ROOM.exposure; renderer.autoClear = false;
-  camera.layers.set(GUMMY_LAYER);
-  renderer.render(scene, camera);
-  camera.layers.set(0);
-  renderer.toneMapping = tm; renderer.toneMappingExposure = ex; renderer.autoClear = ac;
-}
-function pose3DLetters() {
-  if (!logo3D.on) return;
-  front.pieces.forEach((pc) => {
-    const L = logo3D.letters[pc.k]; if (!L) return;
-    L.piv.position.y = -(pc.cy + pc.dy - SVG_CY) / 100;
-    L.piv.rotation.z = -pc.rot;
-    L.piv.scale.setScalar(pc.sc);
-  });
-}
 
 function puffLetter(i, delay = 0) {
   const pc = front.pieces[i]; if (!pc) return;
@@ -756,7 +544,7 @@ function puffLetter(i, delay = 0) {
 // each puff also swings the room a little, so on a phone with nothing to steer it the jelly still catches the light
 function puffRow() {
   front.pieces.forEach((_, i) => puffLetter(i, i * 110));
-  if (!reduceMotion) { room.sign = -room.sign; room.sweepTo = room.sign * 0.35; }
+  logoMod?.puffLogo3D();
   dispatchEvent(new Event('grumpl-puff'));
 }
 
@@ -787,6 +575,7 @@ const ready = Promise.all([
   const firstLogo = pickLogo();
   if (firstLogo !== 'flat') setLogoFinish(firstLogo);
   document.body.classList.add('ready');
+  hold(2500);                      // shader compiles and uploads: not a reason to drop resolution
   poke(30);
 }).catch((e) => {
   document.getElementById('loading').textContent = 'The Grumpl could not load. Reload to try again.';
@@ -1165,7 +954,6 @@ function resize() {
     ny += over / h * 2;
   }
   ui.layout?.({ portrait });
-  gummyScale();
   sendLogoRect();
   poke(4);
 }
@@ -1199,34 +987,40 @@ function sendLogoRect() {
   }
   dispatchEvent(new CustomEvent('grumpl-logo', { detail: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } }));
 }
-let logoAllowed = true;
-addEventListener('grumpl-logo-3d', (e) => {
-  const show = logoAllowed = !!e.detail?.show;
-  if (front.logo) front.logo.visible = show && logo3D.on;
-  if (logo3D.group) logo3D.group.visible = show && logo3D.on;
-  poke(3);
-});
 
 // The hero stops drawing once it has scrolled away
 let heroOn = true;
 new IntersectionObserver(([e]) => { heroOn = e.isIntersecting; if (heroOn) poke(6); }).observe(document.getElementById('Hero'));
+// ...and while the menu or a drop popup covers it (they get the GPU to themselves)
+const covered = () => document.body.classList.contains('menu-open') || document.body.classList.contains('ds-no-scroll');
+new MutationObserver(() => { if (!covered()) poke(6); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 addEventListener('resize', resize);
 
 // ---------- Frame loop ----------
 const _v = new THREE.Vector3(), _c3 = new THREE.Vector3();
 const backDirW = new THREE.Vector3(0, 0.25, -1).normalize();
 const clock = new THREE.Clock();
-let lastFrameAt = 0, frameAvg = 16.7, fastRun = 0, lastSig = '';
+// Frame pacing, measured only across back-to-back frames (render on demand leaves gaps that mean nothing).
+// Slow for ~half a second: one step down. Comfortably fast for ~2 s: one step back up, but not straight back
+// to a level that was just too slow (it waits longer each time that happens).
+let lastFrameAt = 0, frameAvg = 16.7, run = 0, lastSig = '', settleUntil = 0, failAt = new Map();
+const hold = (ms = 1200) => { settleUntil = Math.max(settleUntil, performance.now() + ms); };   // ignore a known hitch
+function setDpr(i) {
+  dprIdx = i; frameAvg = 16.7; run = 0;
+  renderer.setPixelRatio(DPR_STEPS[i]); resize(); hold(600);
+}
 function adaptResolution() {
   const now = performance.now(), gap = now - lastFrameAt;
   lastFrameAt = now;
-  if (gap > 100) return;
-  frameAvg += (gap - frameAvg) * 0.1;
-  if (frameAvg > 22 && dprIdx > 0) { dprMax = --dprIdx; frameAvg = 16.7; fastRun = 0; renderer.setPixelRatio(DPR_STEPS[dprIdx]); resize(); }
-  else if (frameAvg < 18) { if (++fastRun > 90 && dprIdx < dprMax) { dprIdx++; fastRun = 0; renderer.setPixelRatio(DPR_STEPS[dprIdx]); resize(); } }
-  else fastRun = 0;
+  if (gap > 70 || now < settleUntil) return;
+  frameAvg += (gap - frameAvg) * 0.12;
+  if (frameAvg > 21) { if (++run > 30 && dprIdx > 0) { failAt.set(dprIdx, now); setDpr(dprIdx - 1); } }
+  else if (frameAvg < 17.5 && dprIdx < DPR_STEPS.length - 1) {
+    const failed = failAt.get(dprIdx + 1) || -1e9;
+    if (++run > 120 && now - failed > 20000) setDpr(dprIdx + 1);
+  } else run = 0;
 }
-window.__grumpl = { renderer, scene, camera, ring, slots, body, focus: (i) => focus(i), jump, puffRow, setNight, setLogoFinish, cycleLogo, smoosh: smooshAt, night, logo3D, room, season: SEASON };
+window.__grumpl = { renderer, scene, camera, ring, slots, body, focus: (i) => focus(i), jump, puffRow, setNight, setLogoFinish, cycleLogo, smoosh: smooshAt, night, logo3D, room, season: SEASON, logo: () => logoMod };
 // the page's lamp-aware eyes read this
 window.__grumplLamp = night.screen;
 const ui = initUI({ DROP, FLAVORS, focus: (i) => focus(i), step, jump, motion, canMove });
@@ -1235,7 +1029,7 @@ resize();
 
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 1 / 20);
-  if (!slots[0].set || !heroOn) return;
+  if (!slots[0].set || !heroOn || covered()) return;
   if (grip && dt > 0) hand.velocity.set((handTarget.x - hand.position.x) / dt * 0.6, (handTarget.y - hand.position.y) / dt * 0.6, (handTarget.z - hand.position.z) / dt * 0.6);
   motion.tick();
   if (motion.on) {
@@ -1267,15 +1061,13 @@ renderer.setAnimationLoop(() => {
   lightU.uBackDirV.value.copy(backDirW).transformDirection(vm);
   g.updateMatrixWorld(true);
   OCC_LOCAL.forEach(([p, r], i) => { _c3.copy(p).applyMatrix4(g.matrixWorld); occU.value[i].set(_c3.x, _c3.y, _c3.z, r); });
-  if (front.busy && front.draw) { front.busy = front.draw(); pose3DLetters(); poke(2); }
-  if (gummyShown() && turnRoom(dt)) poke(2);
+  if (front.busy && front.draw) { front.busy = front.draw(); poke(2); }
 
   const p = g.position, q = g.quaternion;
   const sig = [p.x, p.y, p.z, q.x, q.y, q.z, pressU.value.w, ring.show, squash.a].map((v) => v.toFixed(4)).join();
   if (sig !== lastSig || kick > 0 || grip) {
     adaptResolution();
     renderer.render(scene, camera);
-    if (gummyShown()) renderGummy();
     lastSig = sig;
     kick = Math.max(0, kick - 1);
   }

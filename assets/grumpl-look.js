@@ -53,8 +53,11 @@ export function finishFor(f) {
   if (f.kind === 'gummy') return {
     sugar: true,
     tint: { base: f.base, edge: f.edge, belly: f.belly, sss: 0xff3a30, sssAmt: 1.0, glow: 0.28 },
-    body: { roughness: 0.3, transmission: 0.55, thickness: 1.4, ior: 1.47, attenuationColor: 0xff3347,
-            attenuationDistance: 0.8, specularIntensity: 1, envMapIntensity: 1.3, sheen: 0.5, sheenRoughness: 0.7, sheenColor: 0xffffff },
+    // see-through jelly without three's transmission pass (that redraws the whole scene a second time every
+    // frame): the body shader lets the bright world behind him through itself, darkened by how much jelly the
+    // light crosses (thick belly, thin ears and hands), the way transmission + attenuation do
+    jelly: { amount: 0.55, thickness: 2.4, attenuationColor: f.jellyAtt ?? 0xff3347, attenuationDistance: 0.8 },
+    body: { roughness: 0.3, ior: 1.47, specularIntensity: 1, envMapIntensity: 1.3, sheen: 0.5, sheenRoughness: 0.7, sheenColor: 0xffffff },
     eyes: EYES, teeth: { ...TEETH, roughness: 0.45 }
   };
   if (f.kind === 'flock') return {
@@ -94,6 +97,7 @@ export const bodyCompile = (U) => (sh) => {
   sh.fragmentShader = sh.fragmentShader
     .replace('#include <common>', `#include <common>
       uniform vec3 uBase, uEdge, uBelly, uSss; uniform float uSssAmt, uGlow, uKeyStrength, uFlock;
+      uniform float uJelly, uJellyThick, uJellyDist; uniform vec3 uJellyAtt;
       float hash13(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
       float vnoise(vec3 p) {
         vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -163,6 +167,19 @@ export const bodyCompile = (U) => (sh) => {
         reflectedLight.directSpecular *= dOcc;
         reflectedLight.indirectDiffuse *= occ;
         reflectedLight.indirectSpecular *= mix(0.6, 1.0, occ);
+      }`)
+    .replace('#include <transmission_fragment>', `
+      if (uJelly > 0.0) {
+        vec3 jV = normalize(vViewPosition);
+        float jNV = max(dot(normal, jV), 0.3);
+        // how much jelly the light crosses: the baked thinness map, longer at grazing angles
+        float jD = mix(uJellyThick, uJellyThick * 0.2, smoothstep(0.03, 0.6, vThin)) / jNV * 0.6;
+        vec3 jT = material.diffuseColor * pow(uJellyAtt, vec3(jD / uJellyDist));
+        // behind him: the white page and the clouds, a touch bluer low down
+        float jY = (inverseTransformDirection(refract(-jV, normal, 1.0 / 1.47), viewMatrix)).y;
+        vec3 jBehind = mix(vec3(0.86, 0.9, 1.0), vec3(1.0), smoothstep(-0.6, 0.3, jY));
+        vec3 jF = EnvironmentBRDF(normal, jV, material.specularColor, material.specularF90, material.roughness);
+        totalDiffuse = mix(totalDiffuse, (1.0 - jF) * jT * jBehind, uJelly);
       }`);
 };
 export const eyesCompile = (sh) => {
@@ -174,7 +191,8 @@ export const eyesCompile = (sh) => {
 export function makeSet(f, lightU, eyeEnv) {
   const U = { ...lightU,
     uBase: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() }, uBelly: { value: new THREE.Color() },
-    uSss: { value: new THREE.Color() }, uSssAmt: { value: 0 }, uGlow: { value: 0 }, uFlock: { value: 0 } };
+    uSss: { value: new THREE.Color() }, uSssAmt: { value: 0 }, uGlow: { value: 0 }, uFlock: { value: 0 },
+    uJelly: { value: 0 }, uJellyThick: { value: 1 }, uJellyDist: { value: 1 }, uJellyAtt: { value: new THREE.Color(1, 1, 1) } };
   const set = { U, body: new THREE.MeshPhysicalMaterial(), eyes: new THREE.MeshPhysicalMaterial(), teeth: new THREE.MeshPhysicalMaterial() };
   set.body.onBeforeCompile = bodyCompile(U);
   set.body.customProgramCacheKey = () => 'grumpl-body';
@@ -189,6 +207,9 @@ export function makeSet(f, lightU, eyeEnv) {
   U.uBase.value.set(fin.tint.base); U.uEdge.value.set(fin.tint.edge); U.uBelly.value.set(fin.tint.belly);
   U.uSss.value.set(fin.tint.sss); U.uSssAmt.value = fin.tint.sssAmt; U.uGlow.value = fin.tint.glow;
   U.uFlock.value = fin.flock ? 1 : 0;
+  const j = fin.jelly;
+  U.uJelly.value = j ? j.amount : 0;
+  if (j) { U.uJellyThick.value = j.thickness; U.uJellyDist.value = j.attenuationDistance; U.uJellyAtt.value.set(j.attenuationColor); }
   set.sugar = !!fin.sugar;
   return set;
 }
