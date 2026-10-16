@@ -214,12 +214,16 @@ body.ds-no-scroll { overflow: hidden; }
 :is(#Drops, #DropOverlays) .slide .hint .full { text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
 #DropClose { position: fixed; z-index: 30; top: max(28px, calc(env(safe-area-inset-top, 0px) + 16px)); right: max(28px, calc(env(safe-area-inset-right, 0px) + 16px));
 	width: 44px; height: 44px; display: grid; place-items: center; transform: rotate(-4deg); transition: var(--trans); }
-#DropClose::before, #DropClose::after { content: ""; position: absolute; width: 34px; height: 8px; background: var(--light); border: 2.5px solid var(--ink); border-radius: 1px 2px 1px 3px; transition: transform 0.5s var(--ease); }
-#DropClose::before { transform: rotate(-45deg); }
-#DropClose::after { transform: rotate(45deg); }
-#DropClose:hover { transform: rotate(2deg) scale(1.25); }
-#DropClose:hover::before { transform: rotate(-46deg); }
-#DropClose:hover::after { transform: rotate(48deg); }
+/* one X, outlined as a single shape (the ink stroke sits under the cream one, so the crossing has no seams) */
+#DropClose svg { width: 44px; height: 44px; overflow: visible; transition: transform 0.5s var(--ease); }
+#DropClose svg path { fill: none; stroke-linecap: square; }
+#DropClose .x-ink { stroke: var(--ink); stroke-width: 13px; }
+#DropClose .x-fill { stroke: var(--light); stroke-width: 8px; }
+#DropClose { background: none; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) {   /* on phones a hover state can swallow the first tap */
+	#DropClose:hover { transform: rotate(2deg) scale(1.25); }
+	#DropClose:hover svg { transform: rotate(-2deg); }
+}
 #DropClose:not(.active) { opacity: 0; transform: translateY(-12px); pointer-events: none; }
 #Drops #DropShell { transition: var(--trans); }
 @media (max-width: 1180px) {

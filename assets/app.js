@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { buildStudioEnv, makeLightU, buildFigure, loadGLB } from './grumpl-look.js';
-import { roomWant, turnRoom } from './room.js';
+import { roomWant, turnRoom, roomEnv } from './room.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { DROP, FLAVORS } from './drop.js';
 import { initUI } from './ui.js';
@@ -516,7 +516,7 @@ addEventListener('pointermove', (e) => {
   room.want.set(THREE.MathUtils.clamp((e.clientX - r.left) / r.width * 2 - 1, -1, 1), THREE.MathUtils.clamp(-((e.clientY - r.top) / r.height * 2 - 1), -1, 1));
 }, { passive: true });
 let logoMod = null;
-async function setLogoFinish(mode) {
+async function setLogoFinish(mode, { puff = true } = {}) {
   if (!front.logo) return;
   logo3D.mode = mode;
   const want3D = mode !== 'flat' && !night.on;
@@ -536,7 +536,7 @@ async function setLogoFinish(mode) {
   logoMod?.setLogo3DMode(logo3D.on ? mode : 'flat');
   dispatchEvent(new CustomEvent('grumpl-logo-mode', { detail: { mode: logo3D.on ? mode : 'flat' } }));
   front.draw?.(); poke(6);
-  puffRow();
+  if (puff) puffRow();
 }
 function cycleLogo() { setLogoFinish(LOGO_MODES[(LOGO_MODES.indexOf(logo3D.mode) + 1) % LOGO_MODES.length]); }
 
@@ -557,7 +557,7 @@ const ready = Promise.all([
   loadGLB('assets/models/cloud-bank.glb'),
   loadGLB('assets/models/cloud-front.glb'),
   buildLogo().catch((e) => console.error('logo', e)),
-]).then(([fig, bank, fc]) => {
+]).then(async ([fig, bank, fc]) => {
   // background rows of the bank stay put; the hero puff is copied under each Grumpl on the arc
   bank.scene.traverse((o) => {
     if (!o.isMesh) return;
@@ -575,11 +575,24 @@ const ready = Promise.all([
   updateRing(0);
   resize();
   if (night.on) setNight(true);
+  // Warm everything before the curtain lifts (Scott: a longer load is fine if what follows is smooth):
+  // the warm room for the chrome, the 3D logo, and every shader compiled and drawn once, off screen
+  hold(8000);
   const firstLogo = pickLogo();
-  if (firstLogo !== 'flat') setLogoFinish(firstLogo);
+  const warm = [];
+  if (hasChrome) warm.push(roomEnv(renderer).then((t) => slots.forEach(({ set }) => {
+    if (set.chrome) for (const m of [set.body, set.teeth]) { m.envMap = t; m.needsUpdate = true; }
+  })));
+  if (firstLogo !== 'flat') warm.push(setLogoFinish(firstLogo, { puff: false }));
+  await Promise.race([Promise.all(warm), new Promise((r) => setTimeout(r, 8000))]);
+  try { await renderer.compileAsync(scene, camera); } catch { renderer.compile(scene, camera); }
+  const frame = () => new Promise((r) => requestAnimationFrame(r));
+  for (let i = 0; i < 2; i++) { renderer.render(scene, camera); await frame(); }
   document.body.classList.add('ready');
-  hold(2500);                      // shader compiles and uploads: not a reason to drop resolution
+  hold(2500);                      // texture uploads right after the reveal: not a reason to drop resolution
   poke(30);
+  if (logo3D.on) setTimeout(puffRow, 250);
+  dispatchEvent(new Event('grumpl-hero-ready'));
 }).catch((e) => {
   document.getElementById('loading').textContent = 'The Grumpl could not load. Reload to try again.';
   console.error(e);

@@ -60,7 +60,6 @@ const INTRO = {
 export function mountArtists(el) {
   el.classList.add('hidden');
   el.innerHTML = `
-    <header id="A-Masthead"><div id="A-Logo"><img src="${DIR}grumpl-logo-black.webp" alt="Grumpl"></div></header>
     <div id="A-Site">
       <section id="A-Hero">
         <header><h1>${INTRO.title}</h1></header>
@@ -92,14 +91,13 @@ export function mountArtists(el) {
     <button id="A-Close" class="trigger" type="button" aria-label="Close"></button>`;
   document.body.append(layer);
 
-  const mast = $('#A-Masthead', el), overlays = $('#Artists-Overlays', layer), closeX = $('#A-Close', layer);
+  const overlays = $('#Artists-Overlays', layer), closeX = $('#A-Close', layer);
   let open = null;
 
   // the section slides in the first time it scrolls into view
   new IntersectionObserver((entries, io) => {
     if (!entries[0].isIntersecting) return;
     el.classList.remove('hidden');
-    mast.classList.add('active');
     io.disconnect();
   }, { threshold: 0.05 }).observe(el);
 
@@ -112,7 +110,6 @@ export function mountArtists(el) {
   function show(id) {
     open = $(`.overlay[data-id="${id}"]`, layer);
     if (!open) return;
-    mast.classList.remove('active');
     el.classList.add('hidden');
     overlays.classList.add('active');
     open.classList.add('active');
@@ -127,7 +124,6 @@ export function mountArtists(el) {
     overlays.classList.remove('active');
     closeX.classList.remove('active');
     el.classList.remove('hidden');
-    mast.classList.add('active');
     document.documentElement.style.overflow = '';
     open = null;
     $(`[data-open="${id}"]`, el)?.focus({ preventScroll: true });

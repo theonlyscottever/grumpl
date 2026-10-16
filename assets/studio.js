@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { buildStudioEnv, makeLightU, buildFigure, paintSet, loadGLB } from './grumpl-look.js';
+import { roomEnv } from './room.js';
 import { mountPicker, deriveTones, parseHex, STARTERS } from './colors.js';
 
 const MODEL_URL = new URL('./models/grumpl.glb', import.meta.url).href;
@@ -337,6 +338,17 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
       G = { renderer, scene, camera, key, rims, lightU, rig, spin, decals, env, eyeEnv, shadow, shadowTex, figs: {}, cur: null, tex: new Map(), maxDim, ray: new THREE.Raycaster() };
       showFigure();
       if (!tris) tris = buildTris(G.cur.body);
+      // every finish built and compiled now (the chrome with its warm room), so picking one never stalls
+      const keep = S.flavor;
+      for (const f of flavors) if (!G.figs[f.kind]) { S.flavor = f.id; showFigure(); }
+      S.flavor = keep;
+      if (Object.values(G.figs).some((fg) => fg.set.chrome)) {
+        const t = await roomEnv(renderer);
+        for (const fg of Object.values(G.figs)) if (fg.set.chrome) for (const m of [fg.set.body, fg.set.teeth]) { m.envMap = t; m.needsUpdate = true; }
+      }
+      for (const fg of Object.values(G.figs)) fg.group.visible = true;
+      try { renderer.compile(scene, camera); } catch { /* compiles on first draw instead */ }
+      showFigure();
       await syncDecals();
       sizeGL();
       stage.dataset.state = 'ready';

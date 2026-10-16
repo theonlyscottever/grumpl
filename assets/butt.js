@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { buildStudioEnv, makeLightU, makeSet, buildFigure, bodyCompile, loadGLB } from './grumpl-look.js';
+import { roomEnv } from './room.js';
 
 const MODEL_URL = new URL('./models/grumpl.glb', import.meta.url).href;
 
@@ -22,7 +23,7 @@ const BUTT_Q = (() => {                           // cheek normal -> up, his hea
     .premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), BUTT.yaw));
 })();
 const REST = new THREE.Vector3(0, 0, 0);          // the crest sits at the origin
-const FALL = { grow: 1.15, drop: 0.8 };           // seconds: he falls and grows into the hill; the next one drops in at `drop`
+const FALL = { grow: 1.15, drop: 1.4 };           // seconds: he falls and grows into the hill; after a beat, the next one drops in at `drop`
 const HOLD = 3.5;                                 // seconds the scene holds between change-overs
 const STEP = 1 / 120;                             // fixed step, so a debug jump to time t matches the live run
 const G = 22;
@@ -177,6 +178,9 @@ export function mountButt(el, { FLAVORS }) {
     // compile everything now, so the first change-over does not stall
     const shown = [...rigs, spare].filter(Boolean).map((r) => [r.holder, r.holder.visible]).concat(littles.map((l) => [l.group, l.group.visible]));
     shown.forEach(([o]) => { o.visible = true; });
+    // the chrome's warm room goes on before compiling, or it would compile twice
+    const env = await roomEnv(renderer);
+    scene.traverse((o) => { const m = o.material; if (m?.userData.room && !m.envMap) { m.envMap = env; m.needsUpdate = true; } });
     try { renderer.compile(scene, camera); } catch (e) { /* compiles on first draw instead */ }
     shown.forEach(([o, v]) => { o.visible = v; });
     ready = true;
@@ -250,6 +254,7 @@ export function mountButt(el, { FLAVORS }) {
     const f = st.fall;
     f.t += dt;
     const e = Math.min(f.t / FALL.grow, 1);
+    if (!f.landed) {
     const ez = e * e * (3 - 2 * e);                  // smooth in and out for the path
     const es = e * e;                                // the zoom speeds up as he comes at us
     // he tips forward toward the screen in one somersault, growing, and lands face down
@@ -264,6 +269,7 @@ export function mountButt(el, { FLAVORS }) {
     // the old hill falls away beneath him and past the bottom of the screen
     _a.set(0, -11 * es, 2.5 * es);
     poseRig(f.old, _a, BUTT_Q, BUTT.scale * (1 + 0.6 * es));
+    }
     // the next little one waits above the frame, then drops onto the new cheek
     if (!f.dropped && f.t >= FALL.drop) {
       f.dropped = true;
@@ -272,13 +278,14 @@ export function mountButt(el, { FLAVORS }) {
       st.drop = { y: 5.5, vy: -3, yaw: 0, w: f.dir * 7, target: f.dir * Math.PI * 2, hit: false, ground: false,
         sq: 0, sqv: 0, tilt: 0, tiltv: 0 };
     }
-    if (e >= 1) {
+    if (e >= 1 && !f.landed) {
+      f.landed = true;
       f.old.holder.visible = false;
       poseRig(f.rig, REST, BUTT_Q, BUTT.scale);
       st.hill = f.rig;
       st.press.v -= 1.2;                             // the new hill settles with a wobble
-      st.fall = null;
     }
+    if (f.landed && f.dropped) st.fall = null;
   }
   function updateDrop(dt) {
     const d = st.drop;
@@ -327,7 +334,7 @@ export function mountButt(el, { FLAVORS }) {
     g.scale.set(1 / Math.sqrt(sy), sy, 1 / Math.sqrt(sy));
     pressU.value.set(0, 0, 0, Math.max(0, depth));
     // the hill squashes and springs back with the cushion, like jelly
-    if (!st.fall && st.hill) { const j = st.press.s * 0.5; st.hill.holder.scale.set(1 + j * 0.5, 1 - j, 1 + j * 0.5); }
+    if ((!st.fall || st.fall.landed) && st.hill) { const j = st.press.s * 0.5; st.hill.holder.scale.set(1 + j * 0.5, 1 - j, 1 + j * 0.5); }
   }
   function busy() {
     const p = st.press;

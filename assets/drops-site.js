@@ -413,6 +413,7 @@ addEventListener('grumpl3d-ready', async () => {
 let booted = false;
 function boot3D() { if (booted) return; booted = true; import('./drops-3d.js').catch((err) => console.error(err)); }
 new IntersectionObserver(([e], io) => { if (e.isIntersecting) { io.disconnect(); boot3D(); } }, { rootMargin: '600px 0px' }).observe(section);
+addEventListener('grumpl-warm-drops', boot3D);
 
 /* the hero's (i) and the menu's drop cards open the same things */
 addEventListener('grumpl-open-flavor', (e) => openFlavor(e.detail.id));

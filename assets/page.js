@@ -172,7 +172,7 @@ function closeMenu(then) {
   menu.classList.add('closing');
   burger.setAttribute('aria-expanded', 'false');
   document.body.classList.remove('menu-open');
-  setTimeout(() => { menu.hidden = true; menu.classList.remove('closing'); then?.(); }, reduce ? 10 : 520);
+  setTimeout(() => { menu.hidden = true; menu.classList.remove('closing'); then?.(); }, reduce ? 10 : 640);
   burger.focus({ preventScroll: true });
 }
 burger.addEventListener('click', () => (menuOpen ? closeMenu() : openMenu()));
@@ -255,11 +255,22 @@ function lazyMount(sel, load) {
     load(el).catch((err) => { console.error(sel, err); el.classList.add('failed'); });
   }, { rootMargin: '600px 0px' });
   io.observe(el);
+  // or straight away, when the page warms it ahead of time
+  return () => { if (done) return Promise.resolve(); done = true; io.disconnect(); return load(el).catch((err) => { console.error(sel, err); el.classList.add('failed'); }); };
 }
 const FL = () => import('./drop.js').then((m) => m.FLAVORS);
-lazyMount('#Studio', async (el) => (await import('./studio.js')).mountStudio(el, { FLAVORS: await FL() }));
+const warmStudio = lazyMount('#Studio', async (el) => (await import('./studio.js')).mountStudio(el, { FLAVORS: await FL() }));
 lazyMount('#Artists', async (el) => (await import('./artists.js')).mountArtists(el));
-lazyMount('#Butt', async (el) => (await import('./butt.js')).mountButt(el, { FLAVORS: await FL() }));
+const warmButt = lazyMount('#Butt', async (el) => (await import('./butt.js')).mountButt(el, { FLAVORS: await FL() }));
+// Once the hero is up, the 3D further down builds itself in the quiet moments, one piece at a time,
+// so scrolling to it (or opening a popup) never waits on a download or a shader compile
+const idle = (ms) => new Promise((r) => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(r, { timeout: 2000 }) : r()), ms));
+addEventListener('grumpl-hero-ready', async () => {
+  for (const warm of [() => dispatchEvent(new Event('grumpl-warm-drops')), async () => (await warmStudio?.())?.ready?.(), warmButt]) {
+    await idle(1200);
+    await warm?.();
+  }
+}, { once: true });
 
 /* ======================= sound ======================= */
 const paintSound = (on) => $$('[data-sound]').forEach((b) => {

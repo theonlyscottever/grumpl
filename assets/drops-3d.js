@@ -3,10 +3,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
-import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
+import { buildStudioEnv, makeLightU, buildFigure } from './grumpl-look.js';
+import { turnRoom, roomEnv } from './room.js';
 
-// One renderer, carried into whichever flavor popup is open. Lighting and the airbrushed
-// body shader come from the Grumpl light study prototype, trimmed for a card-sized view.
+// One renderer, carried into whichever flavor popup is open. He is lit and shaded exactly like the hero:
+// the same studio environment, spot key, rim strips and airbrushed body shader (grumpl-look.js), and the
+// rose chrome sees the same warm room as the logo (room.js).
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
 const DPR = Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 1.75);
 renderer.setPixelRatio(DPR);
@@ -22,102 +24,24 @@ const LOOK = new THREE.Vector3(0, 0.98, 0);
 camera.position.set(0, 1.35, 6.6);
 camera.lookAt(LOOK);
 
-function studioEnv(eyesOnly = false) {
-	const env = new THREE.Scene();
-	if (!eyesOnly) env.add(new THREE.Mesh(new THREE.BoxGeometry(24, 24, 24), new THREE.ShaderMaterial({
-		side: THREE.BackSide, toneMapped: false,
-		vertexShader: 'varying float vY; void main(){ vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-		fragmentShader: 'varying float vY; void main(){ gl_FragColor = vec4(vec3(mix(0.45, 0.30, smoothstep(-2.0, 2.0, vY))), 1.0); }'
-	})));
-	const panel = (w, h, pos, L, hex) => {
-		const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false });
-		m.color.set(hex).multiplyScalar(L);
-		const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
-		p.position.set(...pos); p.lookAt(0, 1, 0); env.add(p);
-	};
-	if (eyesOnly) { panel(2.2, 1.4, [0, 7, 1], 4.0, 0xffffff); panel(1.2, 1.2, [-5, 4, 4], 3.0, 0xffffff); }
-	else {
-		panel(6, 4, [0, 7, 1], 3.0, 0xfff4e8);
-		panel(3, 3, [-5, 4, 4], 2.5, 0xfff4e8);
-		panel(0.8, 5, [-4.5, 2.5, -3.5], 12, 0xf2f6ff);
-		panel(0.8, 5, [4.5, 2.5, -3.5], 10, 0xf2f6ff);
-		panel(5, 2.5, [0, 0.4, 4.5], 0.5, 0xffffff);
-		panel(3, 3, [5, 1.5, 2], 0.35, 0xffffff);
-		panel(4, 3, [0, 1.5, -6], 3.0, 0xfff8f0);
-	}
-	const pm = new THREE.PMREMGenerator(renderer);
-	const tex = pm.fromScene(env, 0.035).texture; pm.dispose(); return tex;
-}
-scene.environment = studioEnv();
-const eyeEnv = studioEnv(true);
-scene.add(new THREE.HemisphereLight(0xffffff, 0xf3ece6, 0.05));
-const key = new THREE.DirectionalLight(0xfff1e0, 1.5);
+scene.environment = buildStudioEnv(renderer);
+const eyeEnv = buildStudioEnv(renderer, true);
+// the hero's key: a soft spot high on camera-left, the same power at the same distance
+const key = new THREE.SpotLight(0xfff1e2, 24, 0, Math.PI / 4, 1, 2);
 scene.add(key, key.target);
-key.target.position.copy(LOOK);
+key.target.position.set(0, 0.8, 0);
 RectAreaLightUniformsLib.init();
-[[-3.2, 20], [3.2, 16]].forEach(([x, p]) => { const r = new THREE.RectAreaLight(0xf2f6ff, p, 0.5, 3); r.position.set(x, 2, -2.6); r.lookAt(0, 1.1, 0); scene.add(r); });
-
-const EYES = { color: 0x080809, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.02, specularIntensity: 1, envMapIntensity: 1 };
-const TEETH = { color: 0xf6f0e3, roughness: 0.5, envMapIntensity: 0.9 };
-const BODY = {
-	vinyl:  { roughness: 0.62, specularIntensity: 0.5, sheen: 0.6, sheenRoughness: 0.5, sheenColor: 0xffe0d4, envMapIntensity: 0.6 },
-	chrome: { roughness: 0.14, metalness: 1, envMapIntensity: 1.25 },
-	flock:  { roughness: 1, specularIntensity: 0, sheen: 1, sheenRoughness: 0.75, sheenColor: 0xd8ffd0, envMapIntensity: 0.9 },
-	gummy:  { roughness: 0.3, transmission: 0.55, thickness: 1.4, ior: 1.47, attenuationColor: 0xff3347, attenuationDistance: 0.8,
-		specularIntensity: 1, envMapIntensity: 1.3, sheen: 0.5, sheenRoughness: 0.7, sheenColor: 0xffffff },
-};
-const BASE = { color: 0xffffff, roughness: 0.5, metalness: 0, sheen: 0, sheenRoughness: 1, sheenColor: 0x000000, clearcoat: 0, clearcoatRoughness: 0,
-	specularIntensity: 1, transmission: 0, thickness: 0, ior: 1.5, attenuationColor: 0xffffff, attenuationDistance: Infinity, envMapIntensity: 1 };
-const mats = { body: new THREE.MeshPhysicalMaterial(), eyes: new THREE.MeshPhysicalMaterial(), teeth: new THREE.MeshPhysicalMaterial() };
-mats.eyes.envMap = eyeEnv;
-mats.eyes.onBeforeCompile = (sh) => {
-	sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_begin>',
-		THREE.ShaderChunk.lights_fragment_begin.replace('defined( RE_Direct_RectArea )', 'defined( RE_Direct_RectArea ) && 0'));
-};
-mats.eyes.customProgramCacheKey = () => 'grumpl-eyes';
-
-// airbrush: the secondary hue pools in the crevices (baked AO in COLOR_0.g) and dusts ears, hands, feet (COLOR_0.r = thinness)
-const U = { uBase: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() }, uBelly: { value: new THREE.Color() },
-	uAir: { value: 1 }, uGlow: { value: 0 }, uLocal: { value: new THREE.Matrix4() } };
-mats.body.onBeforeCompile = (sh) => {
-	Object.assign(sh.uniforms, U);
-	sh.vertexShader = sh.vertexShader
-		.replace('#include <common>', `#include <common>
-			attribute vec4 color; uniform mat4 uLocal;
-			varying float vThin; varying float vAo; varying vec3 vObj; varying vec3 vObjN;`)
-		.replace('#include <begin_vertex>', `#include <begin_vertex>
-			vThin = color.r; vAo = color.g;
-			vObj = (uLocal * vec4(position, 1.0)).xyz; vObjN = normalize(mat3(uLocal) * objectNormal);`);
-	sh.fragmentShader = sh.fragmentShader
-		.replace('#include <common>', `#include <common>
-			uniform vec3 uBase, uEdge, uBelly; uniform float uAir, uGlow;
-			varying float vThin; varying float vAo; varying vec3 vObj; varying vec3 vObjN; float crevice;`)
-		.replace('#include <color_fragment>', `
-			float thin = smoothstep(0.03, 0.55, vThin);
-			float feet = 1.0 - smoothstep(0.05, 0.35, vObj.y);
-			float crown = smoothstep(1.55, 2.0, vObj.y);
-			float edgeAmt = clamp(max(thin, max(feet * 0.8, crown * 0.6)), 0.0, 1.0);
-			float belly = smoothstep(0.2, 0.9, vObjN.z) * (1.0 - smoothstep(0.25, 0.7, abs(vObj.x)))
-				* smoothstep(0.15, 0.5, vObj.y) * (1.0 - smoothstep(1.05, 1.3, vObj.y));
-			crevice = (1.0 - smoothstep(0.3, 0.95, vAo)) * uAir;
-			float airbrush = clamp(max(crevice, edgeAmt * 0.45 * uAir), 0.0, 1.0);
-			diffuseColor.rgb = mix(mix(uBase, uEdge, airbrush), uBelly, belly * 0.6 * uAir);`)
-		.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
-			{
-				float through = mix(0.3, 1.0, smoothstep(0.0, 0.6, vThin));
-				totalEmissiveRadiance += uBase * uGlow * through;
-				totalEmissiveRadiance += uEdge * crevice * 0.12;
-				float occ = mix(0.55, 1.0, smoothstep(0.0, 0.9, vAo));
-				reflectedLight.indirectDiffuse *= occ;
-				reflectedLight.indirectSpecular *= mix(0.6, 1.0, occ);
-			}`);
-};
-mats.body.customProgramCacheKey = () => 'grumpl-body';
+const rims = [[-3.2, 20], [3.2, 15]].map(([x, power]) => {
+	const r = new THREE.RectAreaLight(0xf2f6ff, power, 0.5, 3);
+	r.position.set(x, 2, -2.6); r.lookAt(0, 1.1, 0); scene.add(r);
+	return r;
+});
+const lightU = makeLightU();
+const backDirW = new THREE.Vector3(0, 0.25, -1).normalize(), _v = new THREE.Vector3(), _w = new THREE.Vector3();
 
 // rig = where physics puts him (position + tumble); spin = the drag / idle turn inside it
 const rig = new THREE.Group(), spin = new THREE.Group();
 rig.add(spin); scene.add(rig);
-let sugar = null;
 
 // the inside of his box: five walls, the open side is your screen. No ground shadow by design;
 // all the shading budget goes to the light on his body.
@@ -129,45 +53,42 @@ const box = new THREE.Mesh(new THREE.BoxGeometry(BOX.x * 2, BOX.top, BOX.z * 2),
 box.position.y = BOX.top / 2;
 scene.add(box);
 
-function applyFlavor(f) {
-	const body = BODY[f.kind] || BODY.vinyl;
-	for (const [part, spec0] of [['body', body], ['eyes', EYES], ['teeth', TEETH]]) {
-		const spec = { ...BASE, ...spec0 }, m = mats[part];
-		for (const [k, v] of Object.entries(spec)) { if (m[k] && m[k].isColor) m[k].set(v); else m[k] = v; }
-		m.needsUpdate = true;
+// one figure per flavor, built the first time it is shown and kept (switching back costs nothing)
+let fig = null, shown = null;
+const figs = new Map();
+function figFor(f) {
+	const id = [f.kind, f.base, f.edge, f.belly].join();
+	if (!figs.has(id)) {
+		const fg = buildFigure(fig, f, lightU, eyeEnv, 0);
+		fg.group.visible = false;
+		spin.add(fg.group);
+		figs.set(id, fg);
 	}
-	U.uBase.value.set(f.base); U.uEdge.value.set(f.edge); U.uBelly.value.set(f.belly);
-	U.uAir.value = f.kind === 'chrome' ? 0.35 : 1;
-	U.uGlow.value = f.kind === 'gummy' ? 0.28 : f.kind === 'vinyl' ? 0.04 : 0;
-	if (f.kind === 'chrome') mats.body.color.set(f.base);
-	if (sugar) sugar.visible = f.kind === 'gummy';
+	return figs.get(id);
+}
+function applyFlavor(f) {
+	const fg = figFor(f);
+	if (shown && shown !== fg) shown.group.visible = false;
+	fg.group.visible = true; shown = fg;
 	scene.background.set(f.soft);
 	const wall = new THREE.Color(f.soft).lerp(new THREE.Color(0xffffff), 0.2);
 	wallMats.forEach((m) => m.color.copy(wall).multiplyScalar(m.userData.l));
 	kick = 3;
 }
+addEventListener('grumpl-room-ready', () => { kick = 3; });
 
-function sugarCoat(mesh, count = 16000) {
-	const sampler = new MeshSurfaceSampler(mesh).build();
-	const s = new THREE.Vector3(); mesh.getWorldScale(s); const unit = 1 / s.x;
-	const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.12, envMapIntensity: 2.5 }), count);
-	const p = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), m4 = new THREE.Matrix4();
-	for (let i = 0; i < count; i++) {
-		sampler.sample(p, n);
-		const size = (0.003 + Math.random() * 0.005) * unit;
-		p.addScaledVector(n, size * 0.25);
-		q.setFromEuler(e.set(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3));
-		sc.set(size, size * (0.7 + Math.random() * 0.5), size * (0.7 + Math.random() * 0.5));
-		inst.setMatrixAt(i, m4.compose(p, q, sc));
-	}
-	mesh.add(inst); sugar = inst; sugar.visible = false;
-}
-
-// light: steer with the pointer, kept in a flattering range (front, ±60° az, 30–60° el)
-const lightT = { az: 0.6, el: 0.9 }, lightC = { az: 0.6, el: 0.9 };
+// light: the hero's key (36° to camera-left, 50° up); the pointer nudges it within a flattering range
+const KEY_R = 4.8, KEY_AZ = THREE.MathUtils.degToRad(-36), KEY_EL = THREE.MathUtils.degToRad(50);
+const lightT = { az: KEY_AZ, el: KEY_EL }, lightC = { az: KEY_AZ, el: KEY_EL };
 function placeKey() {
-	const r = 6;
-	key.position.set(Math.sin(lightC.az) * Math.cos(lightC.el) * r, Math.sin(lightC.el) * r + 0.5, Math.cos(lightC.az) * Math.cos(lightC.el) * r);
+	const flat = Math.cos(lightC.el) * KEY_R;
+	key.position.set(Math.sin(lightC.az) * flat, Math.sin(lightC.el) * KEY_R + 0.3, Math.cos(lightC.az) * flat);
+	camera.updateMatrixWorld();
+	const vm = camera.matrixWorldInverse;
+	lightU.uKeyPosV.value.copy(key.position).applyMatrix4(vm);
+	rig.getWorldPosition(_w);
+	rims.forEach((r, i) => lightU.uRimDirV.value[i].copy(_v.copy(r.position).sub(_w).normalize().transformDirection(vm)));
+	lightU.uBackDirV.value.copy(backDirW).transformDirection(vm);
 }
 placeKey();
 
@@ -311,8 +232,8 @@ canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX }; trail.l
 canvas.addEventListener('pointermove', (e) => {
 	const r = canvas.getBoundingClientRect();
 	const nx = (e.clientX - r.left) / r.width * 2 - 1, ny = (e.clientY - r.top) / r.height * 2 - 1;
-	lightT.az = THREE.MathUtils.clamp(-nx * 1.05, -1.05, 1.05);
-	lightT.el = THREE.MathUtils.clamp(0.79 - ny * 0.26, 0.52, 1.05);
+	lightT.az = KEY_AZ - nx * 0.45;
+	lightT.el = THREE.MathUtils.clamp(KEY_EL - ny * 0.2, 0.6, 1.1);
 	if (e.pointerType === 'mouse' && !motion.on) camT.set(-nx * 0.35, -ny * 0.2);
 	kick = 3;
 	if (!drag) return;
@@ -357,11 +278,12 @@ function frame(now) {
 	lightC.el += (lightT.el - lightC.el) * ease;
 	if (camT.distanceTo(camC) > 1e-4) moving = true;
 	camC.lerp(camT, ec);
+	if (shown?.set.chrome && turnRoom(now)) moving = true; // the rose chrome's room follows the cursor, as in the hero
 	if (!moving) return; // nothing changed: skip the frame entirely
 	kick = Math.max(0, kick - 1);
-	placeKey();
 	camera.position.set(camC.x, 1.35 + camC.y, 7.2);
 	camera.lookAt(LOOK);
+	placeKey();
 	renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
@@ -380,12 +302,17 @@ window.Grumpl3D = {
 	enableMotion,
 	get motionOn() { return motion.on; },
 	async still(f, angle) {
+		const fg = figFor(f);
+		if (fg.set.chrome && !fg.set.body.envMap) {      // a still can't wait for the warm room to stream in mid-frame
+			const t = await roomEnv(renderer);
+			for (const m of [fg.set.body, fg.set.teeth]) { m.envMap = t; m.needsUpdate = true; }
+		}
 		const keep = { rot: spin.rotation.y, az: lightC.az, el: lightC.el, q: rig.quaternion.clone(), pos: rig.position.clone(), aspect: camera.aspect, fov: camera.fov };
 		renderer.setPixelRatio(1); renderer.setSize(640, 640, false);
 		camera.aspect = 1; camera.fov = 24; camera.updateProjectionMatrix();
 		camera.position.set(0, 1.35, 6.6); camera.lookAt(LOOK);
 		box.visible = false; rig.quaternion.identity(); rig.position.set(0, 0, 0);
-		applyFlavor(f); spin.rotation.y = angle; lightC.az = 0.6; lightC.el = 0.9; placeKey();
+		applyFlavor(f); spin.rotation.y = angle; lightC.az = KEY_AZ; lightC.el = KEY_EL; placeKey();
 		renderer.render(scene, camera);
 		const url = canvas.toDataURL('image/webp', 0.9);
 		box.visible = true; rig.quaternion.copy(keep.q); rig.position.copy(keep.pos);
@@ -405,16 +332,21 @@ active = true;
 async function unpack() { return (await fetch('assets/models/grumpl.glb')).arrayBuffer(); }
 unpack().then((buf) => new GLTFLoader().parse(buf, '', (gltf) => {
 	gltf.scene.updateMatrixWorld(true);
-	const rootInv = gltf.scene.matrixWorld.clone().invert();
-	const found = [];
-	gltf.scene.traverse((o) => { if (o.isMesh) found.push(o); });
-	found.forEach((o) => {
-		if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
-		if (o.name === 'body') U.uLocal.value.copy(rootInv).multiply(o.matrixWorld);
-		o.material = mats[o.name] || mats.body;
-		if (o.material === mats.body) sugarCoat(o);
-	});
-	spin.add(gltf.scene);
+	fig = gltf;
+	// the hero's flavors are the ones people open first: build and compile them now, chrome room included
+	import('./drop.js').then(async ({ FLAVORS }) => {
+		const env = await roomEnv(renderer);
+		for (const f of FLAVORS) {
+			const fg = figFor(f);
+			if (fg.set.chrome) for (const m of [fg.set.body, fg.set.teeth]) { m.envMap = env; m.needsUpdate = true; }
+			fg.group.visible = true;
+		}
+		// compile starts every program now (all of them in view for that instant), then finishes in the background
+		let done;
+		try { done = renderer.compileAsync(scene, camera); } catch { renderer.compile(scene, camera); }
+		for (const fg of figs.values()) fg.group.visible = fg === shown;
+		await done;
+	}).catch((err) => console.error(err));
 	ready = true;
 	if (slot) { slot.querySelector('.wait')?.setAttribute('hidden', ''); applyFlavor(flavor); arrive(); }
 	dispatchEvent(new Event('grumpl3d-ready'));

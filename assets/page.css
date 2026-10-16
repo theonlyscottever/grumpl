@@ -91,6 +91,13 @@ body.burger3d #Burger svg { visibility: hidden; }
 	transition: transform .7s var(--ease), opacity .3s; transition-delay: calc(.12s + var(--i) * 60ms); }
 #Menu.open .mdrop { transform: rotate(var(--r)); opacity: 1; }
 #Menu.closing .mdrop { transition-delay: 0s; transition-duration: .4s; }
+/* closing runs in order: the words and leader lines leave first (bottom up, quick), the layers fly home,
+   and only once the words are gone does the backdrop fade, so nothing is left floating over the page */
+#Menu.closing .layer .label { transform: translateX(-16px); transition: opacity .16s, transform .22s var(--ease); transition-delay: calc((6 - var(--i)) * 20ms); }
+#Menu.closing .layer .lead { transition: transform .18s ease, opacity .14s; transition-delay: calc((6 - var(--i)) * 20ms); }
+#Menu.closing .menu-fig, #Menu.closing .menu-sound { transition: opacity .16s; }
+#Menu.closing .menu-x { transition-duration: .22s; }
+#Menu.closing .menu-bg { transition: opacity .3s ease .3s; }
 #Menu .mdrop:hover { transform: rotate(calc(var(--r) * -1)) scale(1.06); transition-delay: 0s; }
 #Menu .mdrop img { position: absolute; inset: 10% 8% 22%; width: 84%; height: 68%; object-fit: contain; }
 #Menu .mdrop img.ph { inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -143,7 +150,17 @@ body.burger3d #Burger svg { visibility: hidden; }
 
 /* ---------- make your own ---------- */
 #Make { padding: 0; }   /* the studio is its own band, with its own heading */
-#Make #Studio .st-stagecol { top: calc(var(--top-pad) + 70px); }   /* stick just under the fixed header, like the storybook */
+#Make #Studio .st-stagecol { top: calc(var(--top-pad) + 70px); }   /* side by side: stick just under the fixed header */
+/* Phones: no sticky stage (it ended up covering the controls). The whole studio fits one screen instead: him on
+   top, the tabs under him, and only the tab's own content scrolls, so he is always in view while you work. */
+@media (max-width: 559px) {
+	#Make #Studio .st-app { --st-h: calc(100svh - var(--top-pad) - 86px); height: var(--st-h); grid-template-rows: auto minmax(0, 1fr); gap: 10px; }
+	#Make #Studio .st-stagecol { position: relative; top: auto; }
+	#Make #Studio .st-stage { aspect-ratio: auto; height: calc(var(--st-h) * 0.44); }
+	#Make #Studio .st-panel { display: flex; flex-direction: column; min-height: 0; }
+	#Make #Studio .st-tabs { flex: none; }
+	#Make #Studio .st-pane:not([hidden]) { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; margin: 0 -12px -12px; padding: 0 12px 12px; }
+}
 #Colors, #Studio { min-height: 200px; }
 #Colors.failed::after, #Studio.failed::after, #Artists.failed::after { content: "This part didn't load. Reload to try again."; display: block; padding: 40px var(--gut); text-align: center; color: var(--muted); }
 

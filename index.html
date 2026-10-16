@@ -50,6 +50,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #loading { position: absolute; inset: 0; display: grid; place-items: center; font: 400 26px var(--font-cute); color: var(--muted); pointer-events: none; transition: opacity .5s; }
 body.ready #loading { opacity: 0; }
+/* the Grumpls stay behind the curtain until every light and shader is warm (app.js), then fade in together */
+#stage { transition: opacity .6s ease; }
+body:not(.ready) #stage, body:not(.ready) #Logo3D, body:not(.ready) #HeroLogo { opacity: 0; animation: none; }
 
 /* top bar: menu (phase 2) left, the buy button right */
 .bar { position: absolute; z-index: 5; top: calc(14px + env(safe-area-inset-top, 0px)); left: var(--gut); right: var(--gut); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
@@ -231,7 +234,7 @@ body.ready #loading { opacity: 0; }
 	<div class="overlay-bg"></div>
 	<div class="sheet" id="DropSheet" role="dialog" aria-modal="true" aria-labelledby="FlavorName"></div>
 </div>
-<button id="DropClose" aria-label="Close"></button>
+<button id="DropClose" type="button" aria-label="Close"><svg viewBox="0 0 44 44" aria-hidden="true"><path class="x-ink" d="M11 11 33 33M33 11 11 33"/><path class="x-fill" d="M11 11 33 33M33 11 11 33"/></svg></button>
 
 <script type="importmap">
 { "imports": {

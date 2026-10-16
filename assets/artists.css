@@ -1396,15 +1396,18 @@
 :is(#Artists, #Artists-Layer) #A-Close::after {
   transform: rotate(45deg);
 }
-:is(#Artists, #Artists-Layer) #A-Close:hover {
-  transform: rotate(2deg) scale(1.25);
+@media (hover: hover) {   /* on phones a hover state can swallow the first tap */
+  :is(#Artists, #Artists-Layer) #A-Close:hover {
+    transform: rotate(2deg) scale(1.25);
+  }
+  :is(#Artists, #Artists-Layer) #A-Close:hover::before {
+    transform: rotate(-46deg);
+  }
+  :is(#Artists, #Artists-Layer) #A-Close:hover::after {
+    transform: rotate(48deg);
+  }
 }
-:is(#Artists, #Artists-Layer) #A-Close:hover::before {
-  transform: rotate(-46deg);
-}
-:is(#Artists, #Artists-Layer) #A-Close:hover::after {
-  transform: rotate(48deg);
-}
+:is(#Artists, #Artists-Layer) #A-Close { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 :is(#Artists, #Artists-Layer) #A-Close:not(.active) {
   opacity: 0;
   transform: translateY(-12px);
