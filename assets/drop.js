@@ -4,7 +4,9 @@
 export const DROP = {
   n: '03',
   name: 'Sugar Rush',
-  status: 'upcoming',             // 'live' -> Buy now, 'soldout' -> Buy on secondary, 'upcoming' -> Remind me
+  status: 'upcoming',             // 'upcoming' -> Save the date, 'live' -> Buy now, 'soldout' -> Get the next one
+  // when it drops (an exact moment, shown in the visitor's own time zone). PLACEHOLDER until Jason sets it (card G-48).
+  date: '2026-11-13T12:00:00-08:00',
   blurb: 'Stand-in for the next drop. Three flavors, swap them for the real ones when they exist.',
 };
 
@@ -33,5 +35,8 @@ export const FLAVORS = [
     desc: 'Grass-green nylon flock over vinyl, soft as a tennis ball. The edges glow lighter where the fibres turn away.',
   },
 ];
+
+// Where sign-ups are POSTed as JSON {email, flavor, drop}. Empty: kept on this device only (card G-02).
+export const SIGNUP_URL = '';
 
 export const SECONDARY_URL = 'https://www.dyli.io/profile/goblintown';

@@ -7,6 +7,7 @@ const RULES = [
   ['#Cta .go', {}],
   ['#Cta .pop form button', {}],
   ['#Cta .close', { shape: 'x' }],
+  ['#Cta .cal', {}],
   ['.sound-btn, #Foot [data-sound]', {}],
   ['#Tilt', {}],
   ['#Info .more', {}],

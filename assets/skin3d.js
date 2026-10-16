@@ -6,7 +6,7 @@
 // The element keeps its label, layout and click handling; only its painted box is replaced.
 import * as THREE from 'three';
 import { ROOM, roomEnv, turnEnv, setTurn, roomAim, turnRoom, NEUTRAL_TM } from './room.js';
-import { finish, onFinish, skinParams, SKIN_KEYS, cursor, onCursor, CURSOR_LIGHT } from './finish.js';
+import { finish, onFinish, skinParams, SKIN_KEYS, cursor, onCursor, CURSOR_LIGHT, flockShader } from './finish.js';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PAD = 6;                        // css px of room round each button for the antialiased rim
@@ -112,18 +112,17 @@ function mergeTwo(g1, g2) {
 // ---- the material: physical, turned with the room, with the airbrushed edge color glowing in at the rim
 function makeMat() {
   const m = new THREE.MeshPhysicalMaterial({ transparent: true });
-  m.userData.u = { uEdge: { value: new THREE.Color() }, uEdgeAmt: { value: 0.7 }, uFuzz: { value: 0 } };
+  m.userData.u = { uEdge: { value: new THREE.Color() }, uEdgeAmt: { value: 0.7 }, uFlockAmt: { value: 0 } };
   m.onBeforeCompile = (sh) => {
     turnEnv(sh, envRot);
     Object.assign(sh.uniforms, m.userData.u);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float rim; varying float vRim; varying vec2 vXY;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRim = rim; vXY = position.xy;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      uniform vec3 uEdge; uniform float uEdgeAmt, uFuzz; varying float vRim; varying vec2 vXY;
-      float skHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }`)
+      uniform vec3 uEdge; uniform float uEdgeAmt; varying float vRim; varying vec2 vXY;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        diffuseColor.rgb = mix(diffuseColor.rgb, uEdge, uEdgeAmt * smoothstep(0.25, 0.95, vRim));
-        diffuseColor.rgb *= 1.0 - uFuzz * 0.12 * skHash(floor(vXY * 1.5));`);
+        diffuseColor.rgb = mix(diffuseColor.rgb, uEdge, uEdgeAmt * smoothstep(0.25, 0.95, vRim));`);
+    flockShader(sh, m.userData.u, 1 / 140);   // the flocked Grumpl's pile, at about his on-screen grain
   };
   m.customProgramCacheKey = () => 'skin3d';
   return m;
@@ -132,7 +131,7 @@ function applyMat(it) {
   const m = it.mat, c = it.cur;
   SKIN_KEYS.NUM.forEach((n) => { if (n in m && n !== 'opacity') m[n] = c[n]; });
   m.opacity = c.opacity; m.color.copy(c.color); m.sheenColor.copy(c.sheenColor);
-  m.userData.u.uEdge.value.copy(c.edge); m.userData.u.uEdgeAmt.value = c.edgeAmt; m.userData.u.uFuzz.value = c.fuzz;
+  m.userData.u.uEdge.value.copy(c.edge); m.userData.u.uEdgeAmt.value = c.edgeAmt; m.userData.u.uFlockAmt.value = c.fuzz;
 }
 function colorOf(it) {
   const cs = getComputedStyle(it.el);

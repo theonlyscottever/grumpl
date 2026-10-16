@@ -5,7 +5,7 @@
 .skinned > svg, .skinned > span, .skinned > i, .skinned > b { position: relative; }
 
 #Cta .go { --skin: var(--c); --skin-edge: var(--c-edge); }
-#Cta .pop form button { --skin: var(--lemon); --skin-edge: #ffc46b; }
+#Cta .pop form button { --skin: var(--c); --skin-edge: var(--c-edge); }
 #Cta .close, #DropClose, #A-Close, #Menu .menu-x { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }
 #Cta .close.skinned svg, #DropClose.skinned svg, #Menu .menu-x.skinned svg { opacity: 0; }
 #A-Close.skinned::before, #A-Close.skinned::after { opacity: 0 !important; }
@@ -23,3 +23,4 @@
 
 /* Jason's iPad: a quick double tap on Jump zoomed the page. Taps on anything clickable are just taps. */
 button, a, [role="button"], #Dock, .hero-tools { touch-action: manipulation; }
+#Cta .cal { --skin: var(--paper); --skin-edge: var(--c-edge, var(--edge)); }

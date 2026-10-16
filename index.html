@@ -12,6 +12,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Fredoka:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://use.typekit.net/nsx2gny.css">
+<style>
+/* Bruce's Grumpl font (2026-10-16, on trial). Regular is v2; Bold is v1 and has no digits, so Bold borrows
+   Regular's numbers rather than falling back to another typeface. */
+@font-face { font-family: "Grumpl"; src: url(assets/fonts/Grumpl-Regular.woff2) format("woff2"); font-weight: 100 600; font-display: swap; }
+@font-face { font-family: "Grumpl"; src: url(assets/fonts/Grumpl-Bold.woff2) format("woff2"); font-weight: 700 900; font-display: swap; unicode-range: U+0-2F, U+3A-10FFFF; }
+@font-face { font-family: "Grumpl"; src: url(assets/fonts/Grumpl-Regular.woff2) format("woff2"); font-weight: 700 900; font-display: swap; unicode-range: U+30-39; }
+</style>
+<link rel="preload" href="assets/fonts/Grumpl-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/page.css">
 <link rel="stylesheet" href="assets/drops-site.css">
 <link rel="stylesheet" href="assets/colors.css">
@@ -28,7 +36,7 @@
 	--wash: #eef3fb;
 	--wash-deep: #dfe7f7;
 	--base: #56c2dc;
-	--font-cute: caraque-melted, "Chewy", "Fredoka", ui-rounded, system-ui, sans-serif;
+	--font-cute: "Grumpl", caraque-melted, "Chewy", "Fredoka", ui-rounded, system-ui, sans-serif;
 	--font-solid: caraque-solid, "Fredoka", ui-rounded, system-ui, sans-serif;
 	--ease: cubic-bezier(0.64, 1.5, 0.67, 1.125);
 	--trans: all 0.5s var(--ease);
@@ -85,6 +93,17 @@ body:not(.ready) #stage, body:not(.ready) #Logo3D, body:not(.ready) #HeroLogo { 
 #Cta .close { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: none; padding: 0; }
 #Cta .close svg { width: 16px; height: 16px; }
 #Cta .done { margin: 0; font: 400 20px/1.15 var(--font-cute); }
+#Cta .pop .lead { font: 400 22px/1.1 var(--font-cute); }
+#Cta .pop .what { margin: 10px 0 12px; font: 500 13px/1.35 var(--font-solid); color: color-mix(in oklab, var(--ink) 65%, transparent); }
+#Cta .cal { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px 8px 11px; border-radius: 999px; background: var(--paper); color: var(--ink);
+	font: 600 14px/1 var(--font-solid); text-decoration: none; border: 2.5px solid var(--ink); }
+#Cta .cal svg { width: 18px; height: 18px; }
+#Cta .cal[hidden], #Info .when[hidden] { display: none; }
+#Cta .pop.sent form, #Cta .pop.sent .what { display: none; }
+/* the drop date: a moment in time, big under his name */
+#Info .when { margin: 2px 0 8px; display: flex; flex-direction: column; gap: 2px; }
+#Info .when b { font: 400 clamp(20px, 2.6vw, 28px)/1 var(--font-cute); color: var(--ink); }
+#Info .when span { font: 600 12px/1.3 var(--font-solid); letter-spacing: 0.1em; text-transform: uppercase; color: color-mix(in oklab, var(--c-edge, var(--base)) 70%, var(--ink)); }
 
 #Tilt { margin-right: auto; margin-left: 4px; margin-top: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px 7px 9px; border: 0; border-radius: var(--tag-radius);
 	background: var(--ink); color: var(--paper); font: 400 18px/1 var(--font-cute); white-space: nowrap; transform: rotate(-2deg); animation: nudge 2.6s 2s ease-in-out infinite; }
@@ -104,7 +123,7 @@ body:not(.ready) #stage, body:not(.ready) #Logo3D, body:not(.ready) #HeroLogo { 
 #Info > * { opacity: 0; transform: translateY(10px); }
 #Info.in > * { opacity: 1; transform: none; transition: opacity .5s ease, transform .6s var(--ease); }
 #Info.in > :nth-child(2) { transition-delay: .06s; } #Info.in > :nth-child(3) { transition-delay: .12s; } #Info.in > :nth-child(4) { transition-delay: .18s; }
-#Info h1 { margin: 0 0 6px; font: 400 clamp(34px, 5vw, 54px)/0.92 var(--font-cute); letter-spacing: 0.01em; text-wrap: balance; }
+#Info h1 { margin: 0 0 6px; font: 700 clamp(34px, 5vw, 54px)/0.92 var(--font-cute); letter-spacing: 0.01em; text-wrap: balance; }
 #Info .drop, #Info .ed { margin: 0; font: 600 12px/1.5 var(--font-solid); letter-spacing: 0.12em; text-transform: uppercase; color: color-mix(in oklab, var(--ink) 55%, var(--wash-deep)); }
 #Info .more { pointer-events: auto; margin-top: 10px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 5px 6px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--paper);
 	font: 600 13px/1 var(--font-solid); transition: var(--trans); }
@@ -153,10 +172,12 @@ body:not(.ready) #stage, body:not(.ready) #Logo3D, body:not(.ready) #HeroLogo { 
 	<a id="Mark" href="#Hero" aria-label="Grumpl, back to the top"></a>
 	<div id="Cta">
 		<button class="go" type="button"></button>
-		<div class="pop" role="dialog" aria-label="Remind me">
+		<div class="pop" role="dialog" aria-label="Save the date">
 			<button class="close" type="button" aria-label="Close"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg></button>
-			<p>One email when this drop opens. Nothing else.</p>
+			<p class="lead"></p>
 			<form novalidate><input type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Email"><button type="submit">Ping me</button></form>
+			<p class="what">One email the day before, one when it opens. Nothing else.</p>
+			<a class="cal" href="#" download="grumpl-drop.ics"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span>Add it to your calendar</span></a>
 			<p class="done" hidden></p>
 		</div>
 	</div>
@@ -174,6 +195,7 @@ body:not(.ready) #stage, body:not(.ready) #Logo3D, body:not(.ready) #HeroLogo { 
 
 	<div id="Info" aria-live="polite">
 		<h1>Grumpl</h1>
+		<p class="when"><b></b><span></span></p>
 		<p class="drop"></p>
 		<p class="ed"></p>
 		<button class="more" type="button"><i>i</i>More about him</button>

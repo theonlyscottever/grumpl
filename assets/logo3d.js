@@ -6,7 +6,7 @@
 // same tilt, sway and puffs. It stops drawing when it's hidden, scrolled away or the tab is in the background.
 import * as THREE from 'three';
 import { ROOM, roomAim, turnRoom, setTurn, roomEnv, NEUTRAL_TM, turnEnv } from './room.js';
-import { finish, cursor, onCursor, CURSOR_LIGHT } from './finish.js';
+import { finish, cursor, onCursor, CURSOR_LIGHT, flockShader } from './finish.js';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PACK = 'assets/logo/cloud.pack.gz';
@@ -15,8 +15,9 @@ const PAD = { x: 0.07, y: 0.14 };       // room around the badge for the tilt an
 
 // lit by the shared warm room (room.js), exactly as the experiment was
 const envRot = { value: new THREE.Matrix3() };   // the room's turn plus the logo's own slow sway
+const flockU = { uFlockAmt: { value: 0 } };     // the flocked Grumpl's pile on the letters (finish.js), eased in and out
 function turnable(m) {
-  m.onBeforeCompile = (sh) => turnEnv(sh, envRot);
+  m.onBeforeCompile = (sh) => { turnEnv(sh, envRot); flockShader(sh, flockU, 0.3); };
   m.customProgramCacheKey = () => 'logo3d-room';
   return m;
 }
@@ -250,6 +251,7 @@ function frame() {
   S.tilt.rotation.x = -aim.y * 0.22 + sway * Math.sin(t * 0.33) * 0.03;
   setTurn(envRot, aim.x * 0.9 + S.sweep + sway * Math.sin(t * 0.2) * 0.25, aim.y * 0.25);
   const k = 1 - Math.exp(-dt * 5);
+  flockU.uFlockAmt.value += ((mode === 'flock' ? 1 : 0) - flockU.uFlockAmt.value) * k;
   for (const p of S.pieces) {
     if (now >= p.startAt) {
       NUM.forEach((n) => p.cur[n] += (p.target[n] - p.cur[n]) * k);

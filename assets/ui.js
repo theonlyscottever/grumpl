@@ -1,5 +1,5 @@
 // The page around the stage: page tint, the buy button, the floating name, the dot shelf, the details sheet.
-import { SECONDARY_URL } from './drop.js';
+import { SIGNUP_URL } from './drop.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -20,8 +20,35 @@ const ICON = {
   bell: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 2a5 5 0 0 0-5 5v3.6L3.3 13.8c-.3.6.1 1.2.7 1.2h12c.6 0 1-.6.7-1.2L15 10.6V7a5 5 0 0 0-5-5zm-2 14a2 2 0 0 0 4 0z"/></svg>',
   bag: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M4 7h12l-1 10H5zM7 7V6a3 3 0 0 1 6 0v1"/></svg>',
   out: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M7 4h9v9M16 4 5 15"/></svg>',
+  cal: '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
   x: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg>',
 };
+
+// ---- the drop date: one exact moment, in the visitor's own time zone
+const when = (d) => new Date(d);
+const fmtDay = (d) => when(d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+const fmtTime = (d) => { const t = when(d); return t.toLocaleTimeString(undefined, { hour: 'numeric', minute: t.getMinutes() ? '2-digit' : undefined, timeZoneName: 'short' }); };
+const fmtWhen = (d) => `${fmtDay(d)}, ${fmtTime(d)}`;
+function fmtLeft(d) {
+  const ms = when(d) - Date.now();
+  if (ms <= 0) return 'Open now';
+  const m = Math.round(ms / 60000), h = Math.round(ms / 3600000), dd = Math.floor(ms / 86400000);
+  if (dd >= 2) return `in ${dd} days`;
+  if (h >= 2) return `in ${h} hours`;
+  return `in ${Math.max(1, m)} minute${m === 1 ? '' : 's'}`;
+}
+// a calendar file: no backend, works everywhere (the event is the drop's first hour, with a reminder a day before)
+function icsFor(DROP) {
+  const z = (t) => new Date(t).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const start = when(DROP.date), end = new Date(+start + 3600000);
+  const url = location.origin + location.pathname;
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Grumpl//Drop//EN', 'BEGIN:VEVENT',
+    `UID:grumpl-drop-${DROP.n}@grumpl`, `DTSTAMP:${z(Date.now())}`, `DTSTART:${z(start)}`, `DTEND:${z(end)}`,
+    `SUMMARY:Grumpl drop ${DROP.n}: ${DROP.name}`, `DESCRIPTION:The ${DROP.name} Grumpls go on sale. ${url}`, `URL:${url}`,
+    'BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', `DESCRIPTION:Grumpl drop tomorrow`, 'END:VALARM',
+    'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', `DESCRIPTION:Grumpl drop in 15 minutes`, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+}
 
 // The hero's (i) opens the drop site's flavor popup (drops-site.js), the same one the drop cards open.
 export function openFlavorSheet(f) { dispatchEvent(new CustomEvent('grumpl-open-flavor', { detail: { id: f.id } })); }
@@ -67,9 +94,13 @@ export function initUI({ DROP, FLAVORS, focus, step, jump, motion, canMove }) {
     cta.classList.remove('open');
     const btn = $('.go', cta);
     if (st === 'live') { btn.innerHTML = `${ICON.bag}<span>Buy now</span>`; btn.dataset.href = f.url || ''; }
-    else if (st === 'soldout') { btn.innerHTML = `<span>Buy on secondary</span>${ICON.out}`; btn.dataset.href = f.url || SECONDARY_URL; }
-    else { btn.innerHTML = `${ICON.bell}<span>Remind me</span>`; btn.dataset.href = ''; }
-    $('.done', cta).hidden = true; $('form', cta).hidden = false;
+    else if (st === 'soldout') { btn.innerHTML = `${ICON.bell}<span>Get the next one</span>`; btn.dataset.href = ''; }
+    else { btn.innerHTML = `${ICON.cal}<span>Save the date</span>`; btn.dataset.href = ''; }
+    $('.lead', cta).textContent = st === 'soldout' ? `${f.name} is gone. Hear about the next drop first.`
+      : DROP.date ? `${f.name} drops ${fmtWhen(DROP.date)}.` : `Hear when ${f.name} drops.`;
+    $('.cal', cta).hidden = st !== 'upcoming' || !DROP.date;
+    $('.pop', cta).classList.remove('sent');
+    $('.done', cta).hidden = true;
     btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump');
   }
   $('.go', cta).addEventListener('click', (e) => {
@@ -83,12 +114,31 @@ export function initUI({ DROP, FLAVORS, focus, step, jump, motion, canMove }) {
     e.preventDefault();
     const email = $('input', cta).value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) { $('input', cta).focus(); return; }
-    // no backend yet: kept on this device until the drop list exists
-    try { const k = 'grumpl-remind'; const l = JSON.parse(localStorage.getItem(k) || '[]'); l.push({ email, flavor: cur.id, at: Date.now() }); localStorage.setItem(k, JSON.stringify(l)); } catch {}
-    $('form', cta).hidden = true; $('.done', cta).hidden = false;
-    $('.done', cta).textContent = `Got it. We'll tell you when ${cur.name} drops.`;
-    setTimeout(() => cta.classList.remove('open'), 2600);
+    const entry = { email, flavor: cur.id, drop: DROP.n, at: Date.now() };
+    try { const k = 'grumpl-remind'; const l = JSON.parse(localStorage.getItem(k) || '[]'); l.push(entry); localStorage.setItem(k, JSON.stringify(l)); } catch {}
+    if (SIGNUP_URL) fetch(SIGNUP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(entry) }).catch(() => {});
+    // the reward: you're in, and he's happy about it
+    $('.pop', cta).classList.add('sent');
+    $('.done', cta).hidden = false;
+    $('.done', cta).textContent = DROP.date ? `You're in. See you ${fmtDay(DROP.date)}.` : `You're in. We'll tell you when ${cur.name} drops.`;
+    window.__grumpl?.jump?.(); window.__grumpl?.puffRow?.();
   });
+  // the calendar file is made when it's asked for, so it's always the current date
+  $('.cal', cta).addEventListener('click', (e) => {
+    const a = e.currentTarget;
+    if (a.dataset.url) URL.revokeObjectURL(a.dataset.url);
+    a.href = a.dataset.url = URL.createObjectURL(new Blob([icsFor(DROP)], { type: 'text/calendar' }));
+    setTimeout(() => window.__grumpl?.jump?.(), 200);
+  });
+  // the date under his name, counting down
+  const paintWhen = () => {
+    const w = $('.when', info);
+    if (!DROP.date || (cur && (cur.status || DROP.status) !== 'upcoming')) { $('b', w).textContent = ''; $('span', w).textContent = ''; w.hidden = true; return; }
+    w.hidden = false;
+    $('b', w).textContent = `Drops ${fmtDay(DROP.date)}`;
+    $('span', w).textContent = `${fmtTime(DROP.date)} · ${fmtLeft(DROP.date)}`;
+  };
+  setInterval(paintWhen, 30000);
 
   function focusUI(f, i) {
     cur = f;
@@ -105,6 +155,7 @@ export function initUI({ DROP, FLAVORS, focus, step, jump, motion, canMove }) {
     $('h1', info).textContent = f.name;
     $('.drop', info).textContent = `Drop ${DROP.n} · ${DROP.name}`;
     $('.ed', info).textContent = `${f.size} · edition of ${f.edition}`;
+    paintWhen();
     info.classList.add('in');
     paintCta(f);
   }
