@@ -109,6 +109,38 @@ setInterval(() => {
   mark.classList.remove('hop'); void mark.offsetWidth; mark.classList.add('hop');
 }, 500);
 mark.addEventListener('animationend', (e) => { if (e.target.style.getPropertyValue('--i') === '5') mark.classList.remove('hop'); });
+/* the header cloud: once the page scrolls, a wide puffy cloud along the top holds the burger, logo and buy button.
+   Drawn at the window's width so its billows never repeat; deepest in the middle, where the logo hangs lowest. */
+const topCloud = document.createElement('div'); topCloud.id = 'TopCloud'; topCloud.setAttribute('aria-hidden', 'true');
+$('#Top').prepend(topCloud);
+let cloudW = 0;
+function drawCloud() {
+  const W = innerWidth; if (W === cloudW) return; cloudW = W;
+  const top = parseFloat(getComputedStyle(root).getPropertyValue('--top-pad')) || 12;
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const phone = W < 700, k = phone ? 0.62 : 1;
+  const base = (x) => top + (phone ? 44 : 50) + (phone ? 18 : 30) * Math.exp(-(((x - W / 2) / (phone ? 110 : 190)) ** 2));
+  // two rows of billows: a back row a little higher, then the front row over it; each is white on top and
+  // turns the clouds' lavender only underneath, so overlaps read as puffs and the top edge stays clean
+  const row = (lift, rmin, rmax, hang) => {
+    const c = [];
+    for (let x = -30 + rnd() * 20; x < W + 50;) {
+      const r = (rmin + rnd() * (rmax - rmin)) * k;
+      c.push([x, base(x) - lift - r * (1 - hang * (0.8 + rnd() * 0.4)), r]);
+      x += r * (1.15 + rnd() * 0.5);
+    }
+    return c;
+  };
+  const back = row(10, 30, 52, 0.22), front = row(0, 24, 58, 0.3).sort((p, q) => p[1] + p[2] - q[1] - q[2]);
+  const H = Math.ceil(Math.max(...front.map(([, y, r]) => y + r))) + 4;
+  const dot = ([x, y, r]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"/>`;
+  topCloud.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="TopPuff" x2="0" y2="1">`
+    + `<stop offset=".5" class="lit"/><stop offset="1" class="dim"/></linearGradient></defs>`
+    + `<rect class="body" x="-40" y="-10" width="${W + 80}" height="${top + (phone ? 30 : 34)}"/>`
+    + `<g class="puffs">${back.map(dot).join('')}${front.map(dot).join('')}</g></svg>`;
+}
+drawCloud();
+addEventListener('resize', drawCloud);
 addEventListener('scroll', stick, { passive: true });
 addEventListener('resize', stick);
 mark.addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
