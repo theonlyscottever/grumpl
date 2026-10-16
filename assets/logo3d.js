@@ -162,8 +162,10 @@ function layout() {
   if (!S || !rect) return;
   const px = rect.w / UNITS_W;
   const w = Math.round(rect.w * (1 + PAD.x * 2)), h = Math.round(rect.h * (1 + PAD.y * 2));
-  Object.assign(S.canvas.style, { left: `${rect.x + rect.w / 2 - w / 2}px`, top: `${rect.y + rect.h / 2 - h / 2}px`, width: `${w}px`, height: `${h}px` });
-  S.renderer.setPixelRatio(S.dpr);
+  Object.assign(S.canvas.style, { width: `${w}px`, height: `${h}px` });
+  if (!S.canvas.classList.contains('docked')) Object.assign(S.canvas.style, { left: `${rect.x + rect.w / 2 - w / 2}px`, top: `${rect.y + rect.h / 2 - h / 2}px` });
+  // docked small at the top it is drawn at the size it shows, not the hero's
+  S.renderer.setPixelRatio(S.dock && S.dock < 1 ? Math.min(S.dpr, Math.max(0.75, (devicePixelRatio || 1) * S.dock * 1.15)) : S.dpr);
   S.renderer.setSize(w, h, false);
   const cam = S.camera, hu = h / px, match = 0.5;            // the badge's mid-depth is where sizes match exactly
   cam.aspect = w / h;
@@ -201,6 +203,7 @@ function wire() {
   ['pointermove', 'pointerdown', 'keydown', 'wheel', 'scroll'].forEach((t) => addEventListener(t, () => { lastInput = performance.now(); wake(); }, { passive: true }));
   addEventListener('grumpl-logo', (e) => { rect = e.detail; layout(); visible(); });
   addEventListener('grumpl-logo-3d', (e) => { shown = !!e.detail?.show; visible(); });
+  addEventListener('grumpl-logo-dock', (e) => { S.dock = e.detail.scale; layout(); });
   document.addEventListener('visibilitychange', wake);
   const mo = new MutationObserver(wake);
   mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });

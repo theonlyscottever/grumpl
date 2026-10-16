@@ -115,7 +115,7 @@ export function mountArtists(el) {
     open.classList.add('active');
     closeX.classList.add('active');
     document.documentElement.style.overflow = 'hidden';
-    closeX.focus({ preventScroll: true });
+    closeX.focus({ preventScroll: true, focusVisible: false });
   }
   function hide() {
     if (!open) return;

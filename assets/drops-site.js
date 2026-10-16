@@ -206,7 +206,7 @@ function specRows(f) {
 }
 const COARSE = matchMedia('(pointer: coarse)').matches;
 const CAN_MOVE = COARSE && 'DeviceMotionEvent' in window;
-const MOTION_UI = `<button class="tilt" id="Tilt" type="button" ${CAN_MOVE ? '' : 'hidden'}>${'<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="2" width="9" height="16" rx="2.2" fill="none" stroke="currentColor" stroke-width="2.2" transform="rotate(-14 10 10)"/><path d="M2 7q-1.6 3 0 6M18 7q1.6 3 0 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'}<span>Tilt &amp; shake</span></button>
+const MOTION_UI = `<button class="tilt" id="DropTilt" type="button" ${CAN_MOVE ? '' : 'hidden'}>${'<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5.5" y="2" width="9" height="16" rx="2.2" fill="none" stroke="currentColor" stroke-width="2.2" transform="rotate(-14 10 10)"/><path d="M2 7q-1.6 3 0 6M18 7q1.6 3 0 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'}<span>Tilt &amp; shake</span></button>
 	<span class="hint" id="Hint" hidden></span>`;
 const haptic = (ms) => { try { navigator.vibrate?.(ms); } catch {} };
 function hint(text, ms = 3200) {
@@ -227,7 +227,7 @@ function offerFullPage() {
 	});
 }
 function wireMotion() {
-	const b = $('#Tilt'); if (!b) return;
+	const b = $('#DropTilt'); if (!b) return;   // not #Tilt: that id is the hero's own shake button
 	if (window.Grumpl3D?.motionOn) { b.hidden = true; return; }
 	if (!CAN_MOVE) { if (!wireMotion.told) { wireMotion.told = true; setTimeout(() => hint('Drag to spin him. Flick to toss him.'), 1400); } return; }
 	b.addEventListener('click', async () => {
@@ -313,7 +313,7 @@ async function openFlavor(id) {
 	closeX.classList.add('active');
 	await two();
 	sheet.classList.remove('arrive');
-	setTimeout(() => closeX.focus({ preventScroll: true }), 300);
+	setTimeout(() => closeX.focus({ preventScroll: true, focusVisible: byKeys }), 300);   // the focus ring is for keyboard users only
 }
 function closeOverlay() {
 	if (!overlays.classList.contains('active')) return;
@@ -364,6 +364,10 @@ sheet.addEventListener('pointerdown', (e) => { if (e.target.closest('.slide:not(
 addEventListener('pointerup', (e) => { if (sx === null) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 40) goSlide(slide + (dx < 0 ? 1 : -1)); });
 overlays.addEventListener('click', (e) => { if (e.target === overlays || e.target.classList.contains('overlay-bg') || e.target === sheet) closeOverlay(); });
 closeX.addEventListener('click', closeOverlay);
+// whether the last thing the visitor did was a key press (then the X shows its focus ring when a popup opens)
+let byKeys = false;
+addEventListener('keydown', () => { byKeys = true; closeX.classList.remove('quiet'); }, true);
+addEventListener('pointerdown', () => { byKeys = false; closeX.classList.add('quiet'); }, true);
 // phones: pull the popup down from the top to dismiss it
 let pull = null;
 overlays.addEventListener('touchstart', (e) => {

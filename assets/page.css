@@ -20,6 +20,11 @@ body.scrolled #Top::before { opacity: 1; }
 @keyframes letterhop { 40% { transform: translateY(-14%) scale(1.12) rotate(-4deg); } 100% { transform: none; } }
 body.spooky #Mark #letters path, body.spooky #Mark #drops path { fill: url(#candy); }
 body.menu-open #Mark { opacity: 0; }
+#Mark.hop #letters path, #Mark.hop #drops path { animation: letterpuff .52s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--i) * 110ms); }
+/* the chrome / gummy logo, docked at the top (page.js dock3D) */
+#Logo3D.docked { position: fixed; z-index: 13; pointer-events: none; }
+#Logo3D.docked.pinned.on { pointer-events: auto; }
+body.menu-open #Logo3D.docked { opacity: 0; }
 
 /* the hero's tools sit under the burger */
 .hero-tools { position: absolute; z-index: 5; top: calc(var(--top-pad) + 66px); right: var(--gut); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
@@ -81,6 +86,7 @@ body.menu-open #Mark { opacity: 0; }
 .gummy-burger { position: fixed; left: 0; top: 0; z-index: 12; pointer-events: none; }
 body.burger3d #Burger, body.burger3d #Burger:hover, body.burger3d #Burger[aria-expanded="true"] { transform: none; opacity: 1; }
 body.burger3d #Burger svg { visibility: hidden; }
+body:not(.burger3d):not(.burger2d) #Burger svg { visibility: hidden; }
 #Menu.g3d .layer { z-index: 1; }
 #Menu.g3d .layer .part { visibility: hidden; transform: none !important; transition: none; }
 #Menu .menu-drops { position: relative; display: flex; gap: 12px; padding: 10px var(--gut) 18px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }

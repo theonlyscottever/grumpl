@@ -42,7 +42,7 @@ fetch('assets/logo.svg').then((r) => r.text()).then((t) => {
   stick();
 });
 heroLogo.addEventListener('click', () => window.__grumpl?.cycleLogo?.());
-addEventListener('grumpl-logo-mode', (e) => { logoMode = e.detail.mode; heroLogo.classList.toggle('is3d', logoMode !== 'flat'); });
+addEventListener('grumpl-logo-mode', (e) => { logoMode = e.detail.mode; heroLogo.classList.toggle('is3d', logoMode !== 'flat'); stick(); });
 addEventListener('grumpl-puff', () => { heroLogo.classList.remove('puff'); void heroLogo.offsetWidth; heroLogo.classList.add('puff'); });
 heroLogo.addEventListener('animationend', (e) => { if (e.animationName === 'letterpuff' && e.target.style.getPropertyValue('--i') === '5') heroLogo.classList.remove('puff'); });
 addEventListener('grumpl-logo', (e) => {
@@ -61,19 +61,54 @@ function stick() {
   const vy = logoR.y + heroTop;                              // the 3D logo's top edge on screen right now
   const swapAt = top + logoR.h * 0.9;
   const finalW = clamp(logoR.w * 0.3, 92, 150);
-  if (vy > swapAt) { mark.classList.remove('on', 'pinned'); heroLogo.classList.remove('gone'); show3D(true); return; }
+  if (vy > swapAt) { mark.classList.remove('on', 'pinned'); heroLogo.classList.remove('gone'); undock3D(); show3D(true); return; }
   heroLogo.classList.add('gone');
   const p = clamp((swapAt - vy) / (logoR.h * 1.3), 0, 1);
   const e = p * p * (3 - 2 * p);
   const w = logoR.w + (finalW - logoR.w) * e;
   const cx = logoR.x + logoR.w / 2 + (innerWidth / 2 - logoR.x - logoR.w / 2) * e;
   const y = swapAt + (top - swapAt) * e;
+  // a chrome or gummy logo keeps its finish all the way up: the 3D canvas itself flies to the top and stays live
+  const c3 = logoMode !== 'flat' && $('#Logo3D');
+  if (c3) { mark.classList.remove('on', 'pinned'); show3D(true); dock3D(c3, cx, y, w / logoR.w, p >= 1); return; }
+  undock3D();
   mark.style.width = `${logoR.w}px`;
   mark.style.transform = `translate(${cx - logoR.w / 2}px, ${y}px) scale(${w / logoR.w})`;
   mark.classList.add('on');
   mark.classList.toggle('pinned', p >= 1);
   show3D(false);
 }
+// The 3D canvas covers the logo plus some room (logo3d.js PAD); docked, it moves out of the hero (which clips)
+// to sit fixed on the page, scaled about the logo's top centre exactly like the flat #Mark.
+const PAD3 = { x: 0.07, y: 0.14 };
+let docked3D = null, dockPinned = false;
+function dock3D(c, cx, y, s, pinned) {
+  const W = Math.round(logoR.w * (1 + PAD3.x * 2)), H = Math.round(logoR.h * (1 + PAD3.y * 2)), oy = (H - logoR.h) / 2;
+  if (docked3D !== c) { docked3D = c; c.classList.add('docked'); document.body.append(c); }
+  Object.assign(c.style, { left: `${cx - W / 2}px`, top: `${y - oy}px`, transformOrigin: `50% ${oy}px`, transform: `scale(${s})` });
+  c.classList.toggle('pinned', pinned);
+  if (pinned !== dockPinned) { dockPinned = pinned; dispatchEvent(new CustomEvent('grumpl-logo-dock', { detail: { scale: pinned ? s : 1 } })); }
+}
+function undock3D() {
+  const c = docked3D; if (!c) return;
+  docked3D = null;
+  const W = Math.round(logoR.w * (1 + PAD3.x * 2)), H = Math.round(logoR.h * (1 + PAD3.y * 2));
+  c.classList.remove('docked', 'pinned');
+  Object.assign(c.style, { left: `${logoR.x + logoR.w / 2 - W / 2}px`, top: `${logoR.y + logoR.h / 2 - H / 2}px`, transformOrigin: '', transform: '' });
+  $('#stage').after(c);
+  if (dockPinned) { dockPinned = false; dispatchEvent(new CustomEvent('grumpl-logo-dock', { detail: { scale: 1 } })); }
+}
+// the flat logo at the top keeps the hero's little letter puffs going when nobody is touching anything
+let markInput = performance.now(), markHopAt = 0;
+['pointermove', 'pointerdown', 'keydown', 'wheel', 'scroll', 'touchstart'].forEach((t) => addEventListener(t, () => { markInput = performance.now(); }, { passive: true }));
+setInterval(() => {
+  const now = performance.now();
+  if (reduce || document.hidden || !mark.classList.contains('pinned') || document.body.classList.contains('menu-open')) return;
+  if (now - markInput < 3500 || now < markHopAt) return;
+  markHopAt = now + 4200;
+  mark.classList.remove('hop'); void mark.offsetWidth; mark.classList.add('hop');
+}, 500);
+mark.addEventListener('animationend', (e) => { if (e.target.style.getPropertyValue('--i') === '5') mark.classList.remove('hop'); });
 addEventListener('scroll', stick, { passive: true });
 addEventListener('resize', stick);
 mark.addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
@@ -136,7 +171,8 @@ function flyFrom(els) {
 // that opens. Loaded once the page is up; until then, and wherever WebGL isn't there, the drawings stay.
 let gummy = null;
 function gummyBurger() {
-  if (gummy || !window.WebGLRenderingContext) return;
+  if (gummy) return;
+  if (!window.WebGLRenderingContext) { document.body.classList.add('burger2d'); return; }
   gummy = import('./gummy-burger.js')
     .then((m) => m.createGummyBurger({ button: burger, menu, slots: $$('.layer .part', menu), rows: $$('.layer', menu), keys: LAYERS.map((l) => l.k) }))
     .then((g) => {
@@ -146,10 +182,12 @@ function gummyBurger() {
       if (menuOpen) g.open();
       return g;
     })
-    .catch((e) => { console.warn('gummy burger', e); return null; });
+    .catch((e) => { console.warn('gummy burger', e); document.body.classList.add('burger2d'); return null; });
 }
-if (document.readyState === 'complete') setTimeout(gummyBurger, 200);
-else addEventListener('load', () => (window.requestIdleCallback || setTimeout)(gummyBurger, { timeout: 1500 }));
+// Start straight away, so the 3D burger is in the header when the hero's curtain lifts. The flat drawing stays
+// hidden meanwhile (no flash of the old icon) and only shows if the 3D one fails or is very late.
+gummyBurger();
+setTimeout(() => { if (!document.body.classList.contains('burger3d')) document.body.classList.add('burger2d'); }, 10000);
 function openMenu() {
   if (menuOpen) return;
   menuOpen = true;

@@ -153,7 +153,7 @@ body.ds-no-scroll { overflow: hidden; }
 #DropOverlays:not(.active) .info, :is(#Drops, #DropOverlays) .sheet.swap .info { opacity: 0; transform: translateX(40px) rotate(-6deg) scale(1.2); transition-delay: 0s; transition-duration: 0.6s; }
 :is(#Drops, #DropOverlays) .sheet.arrive .art { opacity: 0; transform: rotate(-10deg) translateX(-40px) translateY(60px) scale(0.9); transition: none; }
 :is(#Drops, #DropOverlays) .sheet.arrive .info { opacity: 0; transform: translateX(80px) rotate(8deg) translateY(40px) scale(0.9); transition: none; }
-:is(#Drops, #DropOverlays) .info .tag { top: -22px; left: 24px; font-size: 36px; }
+:is(#Drops, #DropOverlays) .info .tag { top: -22px; left: 24px; font-size: 36px; margin: 0; }   /* it is an h2: without margin 0 the page's heading margin pushed it down onto the eyebrow */
 :is(#Drops, #DropOverlays) .sheet .info.long { padding-top: 92px; }
 :is(#Drops, #DropOverlays) .info .eyebrow { margin-bottom: 10px; }
 :is(#Drops, #DropOverlays) .info p.desc { margin: 0 0 18px; font-size: 19px; line-height: 1.38; text-wrap: pretty; }
@@ -180,7 +180,7 @@ body.ds-no-scroll { overflow: hidden; }
 :is(#Drops, #DropOverlays) .remind .err { min-height: 1.3em; margin: 8px 2px 0; font-size: 14px; color: #b3123b; }
 :is(#Drops, #DropOverlays) .remind .done { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 3px solid var(--ink); border-radius: var(--radius); background: var(--lemon); font-size: 17px; line-height: 1.3; transform: rotate(-1deg); animation: ds-little-bounce 0.9s var(--ease) 1; --rest: rotate(-1deg); }
 :is(#Drops, #DropOverlays) .remind .done b { font: 400 24px/1 var(--font-cute); display: block; font-weight: 400; }
-:is(#Drops, #DropOverlays) .info .acts { position: absolute; bottom: -26px; left: 28px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); transform: rotate(-0.8deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15); font-size: 14px; font-weight: 600; }
+:is(#Drops, #DropOverlays) .info .acts { position: absolute; z-index: 4; bottom: -26px; left: 28px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); transform: rotate(-0.8deg); box-shadow: 2px 4px 0 rgba(0 0 0 / 0.15); font-size: 14px; font-weight: 600; }
 :is(#Drops, #DropOverlays) .info .acts span { min-width: 7ch; text-align: center; font-variant-numeric: tabular-nums; }
 :is(#Drops, #DropOverlays) .car { position: relative; aspect-ratio: 1; max-width: 100%; overflow: hidden; border-radius: var(--radius-in); background: var(--o-soft); touch-action: pan-y; }
 :is(#Drops, #DropOverlays) .track { display: flex; height: 100%; transition: transform 0.7s var(--ease); will-change: transform; }
@@ -302,6 +302,7 @@ body.ds-no-scroll { overflow: hidden; }
 :is(#Drops, #DropOverlays) :is(button, input) { font: inherit; color: inherit; }
 :is(#Drops, #DropOverlays) button { background: none; border: 0; padding: 0; cursor: pointer; }
 :is(#Drops, #DropOverlays, #DropClose) :focus-visible, #DropClose:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+#DropClose.quiet:focus-visible { outline: none; }   /* opened by a tap or click: no ring around the X */
 #Drops #DropMast p { margin-left: auto; }
 /* the page header is fixed at the top, so the sticky rail stops just under it */
 :is(#Drops, #DropOverlays) #Rail { top: calc(var(--top-pad, 12px) + 74px); }
