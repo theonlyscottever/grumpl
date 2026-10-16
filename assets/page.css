@@ -49,11 +49,10 @@ body.menu-open #Logo3D.docked { opacity: 0; }
 /* ---------- the exploded burger ---------- */
 #Menu { position: fixed; z-index: 40; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
 #Menu[hidden] { display: none; }
-/* a soft sky, no lines (Jason, Scott 2026-10-16): the flavor's wash fading into white, with big soft cloud light */
+/* paper down the left, behind the burger and its words, fading to nothing toward the right so the page shows
+   through (Scott's crit 13). It still covers the whole screen, so a tap anywhere off the menu closes it. */
 #Menu .menu-bg { position: fixed; inset: 0; opacity: 0; transition: opacity .35s;
-	background: radial-gradient(60% 45% at 18% 88%, rgba(255 255 255 / .95), transparent 70%), radial-gradient(55% 40% at 85% 95%, rgba(255 255 255 / .9), transparent 70%),
-		radial-gradient(70% 50% at 70% 20%, color-mix(in oklab, var(--wash-deep) 70%, transparent), transparent 75%),
-		radial-gradient(120% 90% at 50% 0%, var(--wash), color-mix(in oklab, var(--wash) 30%, var(--paper)) 60%, var(--paper)); }
+	background: linear-gradient(90deg, var(--paper) 0, var(--paper) min(440px, 52%), color-mix(in oklab, var(--paper) 55%, transparent) min(640px, 80%), transparent min(900px, 100%)); }
 #Menu.open .menu-bg { opacity: 1; }
 /* no backdrop blur: re-blurring the whole screen every frame of the fade made the burger's flight stutter */
 #Menu .menu-x { position: fixed; z-index: 3; top: var(--top-pad); left: var(--gut); width: 48px; height: 48px; border: 3px solid var(--ink); border-radius: var(--tag-radius);
@@ -90,14 +89,6 @@ body.burger3d #Burger svg { visibility: hidden; }
 body:not(.burger3d):not(.burger2d) #Burger svg { visibility: hidden; }
 #Menu.g3d .layer { z-index: 1; }
 #Menu.g3d .layer .part { visibility: hidden; transform: none !important; transition: none; }
-#Menu .menu-drops { position: relative; display: flex; gap: 12px; padding: 10px var(--gut) 18px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
-#Menu .menu-drops::-webkit-scrollbar { display: none; }
-#Menu .mdrop { flex: none; position: relative; width: 128px; aspect-ratio: 4/5; scroll-snap-align: start; border: 3px solid var(--ink); border-radius: var(--radius); overflow: hidden; text-decoration: none; color: var(--ink);
-	background: radial-gradient(circle at 50% 42%, color-mix(in oklab, var(--belly) 40%, var(--paper)) 0 18%, color-mix(in oklab, var(--base) 40%, var(--paper)) 55%, color-mix(in oklab, var(--edge) 40%, var(--paper)) 115%);
-	box-shadow: var(--card-shadow); transform: translate(var(--fx, 0), var(--fy, 0)) scale(var(--fs, .3)) rotate(calc(var(--r) * 4)); opacity: 0;
-	transition: transform .7s var(--ease), opacity .3s; transition-delay: calc(.12s + var(--i) * 60ms); }
-#Menu.open .mdrop { transform: rotate(var(--r)); opacity: 1; }
-#Menu.closing .mdrop { transition-delay: 0s; transition-duration: .4s; }
 /* closing runs in order: the words and leader lines leave first (bottom up, quick), the layers fly home,
    and only once the words are gone does the backdrop fade, so nothing is left floating over the page */
 #Menu.closing .layer .label { transform: translateX(-16px); transition: opacity .16s, transform .22s var(--ease); transition-delay: calc((6 - var(--i)) * 20ms); }
@@ -105,23 +96,12 @@ body:not(.burger3d):not(.burger2d) #Burger svg { visibility: hidden; }
 #Menu.closing .menu-fig, #Menu.closing .menu-sound { transition: opacity .16s; }
 #Menu.closing .menu-x { transition-duration: .22s; }
 #Menu.closing .menu-bg { transition: opacity .3s ease .3s; }
-#Menu .mdrop:hover { transform: rotate(calc(var(--r) * -1)) scale(1.06); transition-delay: 0s; }
-#Menu .mdrop img { position: absolute; inset: 10% 8% 22%; width: 84%; height: 68%; object-fit: contain; }
-#Menu .mdrop img.ph { inset: 0; width: 100%; height: 100%; object-fit: cover; }
-#Menu .mnum { position: absolute; top: 6px; left: 8px; font: 400 26px/1 var(--font-cute); z-index: 1; }
-#Menu .mname { position: absolute; left: 6px; right: 6px; bottom: 8px; z-index: 1; padding: 4px 6px 3px; background: var(--ink); color: var(--paper); font: 400 15px/1.05 var(--font-cute);
-	border-radius: var(--tag-radius); transform: rotate(-2deg); text-align: center; }
 #Menu .menu-sound { position: relative; margin: 0 var(--gut) calc(30px + env(safe-area-inset-bottom, 0px)); opacity: 0; transition: opacity .3s .4s; }
 #Menu.open .menu-sound { opacity: 1; }
-@media (min-width: 820px) {
-	#Menu { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr auto; align-content: center; }
-	#Menu[hidden] { display: none; }
-	#Menu .menu-fig { grid-column: 1 / -1; text-align: center; margin-top: calc(var(--top-pad) + 40px); }
-	#Menu .stack { grid-column: 2; grid-row: 2; align-self: center; padding-right: 6vw; }
-	#Menu .menu-drops { grid-column: 1; grid-row: 2; flex-wrap: wrap; justify-content: center; align-content: center; overflow: visible; padding: 20px 4vw; gap: 18px; }
-	#Menu .mdrop { width: 150px; }
-	#Menu .menu-sound { grid-column: 1 / -1; justify-self: center; }
-}
+/* the burger is a left-hand column at every width: the right side is left open (a mega menu goes there later) */
+#Menu .stack, #Menu .menu-fig { max-width: 680px; }
+#Menu .menu-sound { width: max-content; }
+#Menu .layer.deco { cursor: default; }
 
 /* ---------- shared section shell ---------- */
 .sec { position: relative; padding: 72px var(--gut); }
@@ -282,6 +262,30 @@ html.intro:not(.show) #Cta { translate: 0 -40px; }
 html.intro:not(.show) #Burger { translate: none; scale: none; }
 html.intro:not(.show) .gummy-burger { opacity: 0; }
 html.intro.show .gummy-burger { transition: opacity .45s ease .62s; }
+
+/* ---------- the hero flies off while the menu is open, and back on when it closes (Scott's crit 14) ----------
+   The Grumpl Artists page's enter/leave: transform and opacity over .5s on its bouncy --ease, staggered. Uses the
+   individual translate/scale properties (like the entrance above) so the pieces' own transforms are untouched.
+   body.menu-fly holds the transitions from the moment the menu opens until the last piece has landed again. */
+body.menu-fly :is(#Info, .hero-tools, #Cta, #Dock, #Logo3D, #HeroLogo) {
+	transition: opacity .5s var(--ease) var(--md, 0s), translate .5s var(--ease) var(--md, 0s), scale .5s var(--ease) var(--md, 0s) !important; }
+body.menu-open :is(#Info, .hero-tools, #Cta, #Dock, #Logo3D, #HeroLogo) { opacity: 0 !important; scale: .6; pointer-events: none !important; }
+body.menu-open :is(#Logo3D, #HeroLogo) { translate: 0 -60px; }
+body.menu-open #Info { translate: -60px 30px; }
+body.menu-open .hero-tools { translate: 60px 0; }
+body.menu-open #Cta { translate: 0 -50px; }
+body.menu-open #Dock { translate: 0 60px; }
+/* off: logo first, then the words, the flavor dock, the tools, the buy button. back on: the menu clears first, then the same order */
+body.menu-open :is(#Logo3D, #HeroLogo) { --md: 0s; }
+body.menu-open #Info { --md: .06s; }
+body.menu-open .hero-tools { --md: .12s; }
+body.menu-open #Cta { --md: .18s; }
+body.menu-open #Dock { --md: .1s; }
+body.menu-fly:not(.menu-open) :is(#Logo3D, #HeroLogo) { --md: .25s; }
+body.menu-fly:not(.menu-open) #Info { --md: .36s; }
+body.menu-fly:not(.menu-open) .hero-tools { --md: .46s; }
+body.menu-fly:not(.menu-open) #Cta { --md: .54s; }
+body.menu-fly:not(.menu-open) #Dock { --md: .42s; }
 
 /* no blueprint (Jason, Scott 2026-10-16): no caption, part numbers or leader lines; the burger just flies apart */
 #Menu .menu-fig, #Menu .layer .lead, #Menu .layer small { visibility: hidden; }

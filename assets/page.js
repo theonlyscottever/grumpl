@@ -133,7 +133,8 @@ mark.addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, b
 
 /* ======================= the burger ======================= */
 // A real burger. Tap it and it comes apart like an exploded diagram: every layer is a way into the page,
-// and the drops come flying out of it as cards.
+// The burger drops straight down the left side under the button, one layer per row, with its word beside it;
+// the right side stays open for a mega menu later (Scott's crit 12-13). The drop cards are out of the menu for now.
 const LAYERS = [
   { k: 'bun-top', label: 'The new drop', part: 'Top bun', go: '#Hero',
     svg: '<path d="M8 56c0-26 26-44 62-44s62 18 62 44z" fill="#f2b36a" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/><path d="M22 46c6-16 24-26 48-26" fill="none" stroke="#fff4dc" stroke-width="5" stroke-linecap="round" opacity=".7"/><g fill="#fff4dc" stroke="#0b0a0c" stroke-width="2"><ellipse cx="50" cy="30" rx="4" ry="2.6" transform="rotate(-20 50 30)"/><ellipse cx="72" cy="24" rx="4" ry="2.6"/><ellipse cx="94" cy="31" rx="4" ry="2.6" transform="rotate(20 94 31)"/><ellipse cx="62" cy="42" rx="4" ry="2.6" transform="rotate(10 62 42)"/><ellipse cx="86" cy="44" rx="4" ry="2.6" transform="rotate(-12 86 44)"/><ellipse cx="38" cy="45" rx="4" ry="2.6" transform="rotate(-30 38 45)"/></g>' },
@@ -145,7 +146,9 @@ const LAYERS = [
     svg: '<path d="M10 30h120l-10 8-6 16-10-14-14 6-8-6-16 18-8-18-14 8-10-8-10 12-8-12z" fill="#ffd23f" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>' },
   { k: 'patty', label: 'The artists', part: 'Patty', go: '#Artists',
     svg: '<rect x="8" y="24" width="124" height="30" rx="15" fill="#8a4b3a" stroke="#0b0a0c" stroke-width="5"/><path d="M24 34h14M48 42h18M78 32h12M100 42h16" stroke="#5e3026" stroke-width="4" stroke-linecap="round"/>' },
-  { k: 'pickle', label: 'Lights out', part: 'Pickle', toggle: 'night', small: true,
+  // the pickle stays in the burger, but it isn't a way in any more (Lights out left the menu, crit 11; the
+  // night itself still comes from typing "boo" or ?spooky=1)
+  { k: 'pickle', part: 'Pickle', deco: true, small: true,
     svg: '<ellipse cx="70" cy="38" rx="26" ry="16" fill="#9cc34a" stroke="#0b0a0c" stroke-width="5"/><ellipse cx="70" cy="38" rx="15" ry="8" fill="#c8e27a"/><g fill="#6f9a2c"><circle cx="64" cy="35" r="2"/><circle cx="76" cy="41" r="2"/><circle cx="72" cy="32" r="2"/></g>' },
   { k: 'bun-bottom', label: 'Brand book', part: 'Bottom bun', go: 'brand/', ext: true,
     svg: '<path d="M10 26h120c0 16-10 26-24 26H34c-14 0-24-10-24-26z" fill="#f2b36a" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>' },
@@ -156,24 +159,16 @@ menu.innerHTML = `
   <button class="menu-x" type="button" aria-label="Close the menu"><svg viewBox="0 0 20 20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M5 5l10 10M15 5 5 15"/></svg></button>
   <p class="menu-fig">Fig. 1 · One Grumpl burger, exploded</p>
   <nav class="stack" aria-label="Site">
-    ${LAYERS.map((l, i) => `<a class="layer ${l.k}${l.small ? ' small' : ''}" href="${l.go || '#'}" ${l.ext ? 'target="_blank" rel="noopener"' : ''} ${l.toggle ? `data-toggle="${l.toggle}" role="button"` : ''} style="--i:${i}">
+    ${LAYERS.map((l, i) => l.deco ? `<span class="layer ${l.k} deco${l.small ? ' small' : ''}" aria-hidden="true" style="--i:${i}">
+      <svg class="part" viewBox="0 0 140 70">${l.svg}</svg>
+    </span>` : `<a class="layer ${l.k}${l.small ? ' small' : ''}" href="${l.go || '#'}" ${l.ext ? 'target="_blank" rel="noopener"' : ''} style="--i:${i}">
       <svg class="part" viewBox="0 0 140 70" aria-hidden="true">${l.svg}</svg>
       <span class="lead" aria-hidden="true"></span>
       <span class="label"><small>${String(i + 1).padStart(2, '0')} · ${l.part}</small><b>${l.label}</b></span>
     </a>`).join('')}
   </nav>
-  <div class="menu-drops" aria-label="Drops">
-    ${DROPS.map((d, i) => {
-      const f = d.flavors[0];
-      return `<a class="mdrop" href="#drop-${d.n}" style="--i:${i};--r:${(rnd(i + 2) * 10 - 5).toFixed(1)}deg;--base:${hex(f.base)};--edge:${hex(f.edge)};--belly:${hex(f.belly)}">
-        <span class="mnum">${d.n}</span>
-        ${f.cut || f.photos?.[0] ? `<img src="${img(f.cut || f.photos[0])}" alt="" loading="lazy"${f.cut ? '' : ' class="ph"'}>` : ''}
-        <span class="mname">${d.name}</span>
-      </a>`;
-    }).join('')}
-  </div>
   <button class="menu-sound sound-btn" type="button" data-sound><span></span></button>`;
-let menuOpen = false;
+let menuOpen = false, flyOff = 0;
 function flyFrom(els) {
   // every piece starts inside the little burger and flies to its place in the diagram
   // (all the measuring first, then all the writing: one layout, not one per piece)
@@ -195,8 +190,6 @@ function gummyBurger() {
     .then((m) => m.createGummyBurger({ button: burger, menu, slots: $$('.layer .part', menu), rows: $$('.layer', menu), keys: LAYERS.map((l) => l.k) }))
     .then((g) => {
       document.body.classList.add('burger3d'); menu.classList.add('g3d');
-      // fetch and decode the menu's drop pictures now, not in the middle of the menu's first opening
-      $$('.mdrop img', menu).forEach((im) => { im.loading = 'eager'; im.decode?.().catch(() => {}); });
       if (menuOpen) g.open();
       return g;
     })
@@ -210,9 +203,12 @@ function openMenu() {
   if (menuOpen) return;
   menuOpen = true;
   menu.hidden = false;
-  document.body.classList.add('menu-open');
+  // the hero (words, tools, buy button, 3D logo) flies off while the menu is open and back on after it
+  // (page.css "menu-open"); menu-fly carries the transitions and stays until the last one is home
+  clearTimeout(flyOff);
+  document.body.classList.add('menu-fly', 'menu-open');
   burger.setAttribute('aria-expanded', 'true');
-  flyFrom($$(menu.classList.contains('g3d') ? '.mdrop' : '.part, .mdrop', menu));
+  if (!menu.classList.contains('g3d')) flyFrom($$('.part', menu));
   menu.classList.remove('open'); void menu.offsetWidth;
   menu.classList.add('open');
   gummy?.then((g) => g?.open());
@@ -222,12 +218,13 @@ function openMenu() {
 function closeMenu(then) {
   if (!menuOpen) return;
   menuOpen = false;
-  flyFrom($$(menu.classList.contains('g3d') ? '.mdrop' : '.part, .mdrop', menu));
+  if (!menu.classList.contains('g3d')) flyFrom($$('.part', menu));
   gummy?.then((g) => g?.close());
   menu.classList.remove('open');
   menu.classList.add('closing');
   burger.setAttribute('aria-expanded', 'false');
   document.body.classList.remove('menu-open');
+  flyOff = setTimeout(() => document.body.classList.remove('menu-fly'), 1400);
   setTimeout(() => { menu.hidden = true; menu.classList.remove('closing'); then?.(); }, reduce ? 10 : 640);
   burger.focus({ preventScroll: true });
 }
