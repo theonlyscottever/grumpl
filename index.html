@@ -64,7 +64,7 @@ body:not(.ready) #stage, body:not(.ready) #Logo3D, body:not(.ready) #HeroLogo { 
 #Cta { position: relative; display: flex; justify-content: flex-end; }
 #Cta .go { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px 11px 15px; border: 3px solid var(--ink); border-radius: 12px 9px 7px 15px;
 	background: var(--c, var(--base)); color: var(--c-ink, var(--ink)); font: 400 21px/1 var(--font-cute); letter-spacing: 0.01em;
-	box-shadow: 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / 0.12); transform: rotate(1.5deg); transition: var(--trans), background-color .6s ease; white-space: nowrap; }
+	box-shadow: var(--edge-glow), 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / 0.12); transform: rotate(1.5deg); transition: var(--trans), background-color .6s ease, box-shadow .6s ease; white-space: nowrap; }
 #Cta .go svg { width: 18px; height: 18px; flex: none; }
 #Cta .go:hover { transform: rotate(-2deg) scale(1.06); }
 #Cta .go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
@@ -78,7 +78,9 @@ body:not(.ready) #stage, body:not(.ready) #Logo3D, body:not(.ready) #HeroLogo { 
 #Cta form { display: flex; gap: 8px; }
 #Cta input { flex: 1; min-width: 0; padding: 10px 12px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px; font: 500 16px var(--font-solid); background: #fff; }
 #Cta input:focus { outline: 3px solid var(--c, var(--base)); outline-offset: 1px; }
-#Cta form button { padding: 0 14px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px; background: var(--c, var(--base)); color: var(--c-ink, var(--ink)); font: 400 18px var(--font-cute); }
+#Cta form button { padding: 0 14px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px; background: var(--c, var(--base)); color: var(--c-ink, var(--ink)); font: 400 18px var(--font-cute); box-shadow: var(--edge-glow); }
+/* the Grumpl's secondary color airbrushed in from the button's edges, the way it pools in his creases */
+#Cta { --edge-glow: inset 0 0 11px 1px color-mix(in oklab, var(--c-edge, var(--c, var(--base))) 72%, transparent), inset 0 0 3px 1px color-mix(in oklab, var(--c-edge, var(--c, var(--base))) 38%, transparent); }
 #Cta .close { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: none; padding: 0; }
 #Cta .close svg { width: 16px; height: 16px; }
 #Cta .done { margin: 0; font: 400 20px/1.15 var(--font-cute); }

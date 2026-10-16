@@ -193,7 +193,7 @@ body.spooky #Hero::before { opacity: 0; }
 body.spooky #Top::before { background: linear-gradient(to bottom, rgba(12 10 15 / .92) 55%, transparent); }
 body.spooky #Dock { background: #1d1824; box-shadow: 0 0 0 2px #3a3046, 0 10px 30px rgba(0 0 0 / .5); }
 body.spooky #Info .more, body.spooky .sound-btn:not(.on) { background: #1d1824; }
-body.spooky #Cta .go { box-shadow: 2px 3px 0 #000, 0 0 22px color-mix(in oklab, var(--c) 40%, transparent); }
+body.spooky #Cta .go { box-shadow: var(--edge-glow), 2px 3px 0 #000, 0 0 22px color-mix(in oklab, var(--c) 40%, transparent); }
 body.spooky #Cta .pop, body.spooky #Sheet .card { background: #16121b; }
 body.spooky #Sheet .x { background: #2a2233; color: var(--ink); }
 body.spooky .fcard { filter: brightness(.8) saturate(.9); }

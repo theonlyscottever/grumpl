@@ -81,8 +81,10 @@
 
 :is(#Colors, #Studio) .cl-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
 :is(#Colors, #Studio) .cl-go { grid-column: 1 / -1; min-height: 56px; padding: 12px 18px 11px; border: 3px solid var(--ink); border-radius: var(--cl-r); background: var(--cl-c); color: var(--cl-c-ink);
-	font: 400 25px/1 var(--font-cute); letter-spacing: .01em; box-shadow: 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / .12); transform: rotate(-.8deg);
-	transition: transform .5s var(--ease), background-color .3s; }
+	font: 400 25px/1 var(--font-cute); letter-spacing: .01em; transform: rotate(-.8deg);
+	/* his secondary color airbrushed in from the edges, as on the hero's button */
+	box-shadow: inset 0 0 12px 1px color-mix(in oklab, var(--cl-edge) 72%, transparent), inset 0 0 3px 1px color-mix(in oklab, var(--cl-edge) 38%, transparent), 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / .12);
+	transition: transform .5s var(--ease), background-color .3s, box-shadow .3s; }
 :is(#Colors, #Studio) .cl-go:hover { transform: rotate(1.5deg) scale(1.03); }
 :is(#Colors, #Studio) .cl-go:active { transform: translate(2px, 3px); box-shadow: 0 0 0 var(--ink); }
 :is(#Colors, #Studio) .cl-go:disabled { opacity: .6; cursor: progress; }

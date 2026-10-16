@@ -61,6 +61,7 @@ export function initUI({ DROP, FLAVORS, focus, step, jump, motion, canMove }) {
     const st = f.status || DROP.status;
     const dark = lum(f.base) > 0.33;
     cta.style.setProperty('--c', hex(f.base));
+    cta.style.setProperty('--c-edge', hex(f.edge));
     cta.style.setProperty('--c-ink', dark ? '#1b1620' : '#ffffff');
     cta.dataset.status = st;
     cta.classList.remove('open');
