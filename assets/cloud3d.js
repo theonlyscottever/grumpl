@@ -11,7 +11,7 @@ export async function drawTopCloud(host, W, top) {
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   // the hem (Scott round 4): a soft, rolling edge, many low overlapping billows of nearly one size along a line that
   // sags gently in the middle, where the bigger docked logo hangs
-  const base = (x) => top + (phone ? 34 : 40) + (phone ? 30 : 50) * Math.exp(-(((x - W / 2) / (phone ? 130 : 230)) ** 2));
+  const base = (x) => top + (phone ? 34 : 40) + (phone ? 44 : 50) * Math.exp(-(((x - W / 2) / (phone ? 130 : 230)) ** 2));
   const puffs = [];
   for (let x = -30 + rnd() * 20; x < W + 60;) {
     const r = (phone ? 26 : 34) + rnd() * (phone ? 8 : 12);

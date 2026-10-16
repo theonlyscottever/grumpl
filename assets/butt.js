@@ -349,7 +349,7 @@ export function mountButt(el, { FLAVORS }) {
       f.dropped = true;
       st.little = f.next;
       littles.forEach((l, i) => { l.group.visible = i === st.little; });
-      st.drop = { y: 5.5, vy: -3, yaw: 0, w: f.dir * 7, target: f.dir * Math.PI * 2, hit: false, ground: false,
+      st.drop = { y: 9, vy: -4, yaw: 0, w: f.dir * 7, target: f.dir * Math.PI * 2, hit: false, ground: false,
         sq: 0, sqv: 0, tilt: 0, tiltv: 0 };
     }
     if (e >= 1 && !f.landed) {
