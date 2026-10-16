@@ -54,9 +54,11 @@ body.menu-open #Logo3D.docked { opacity: 0; }
 /* ---------- the exploded burger ---------- */
 #Menu { position: fixed; z-index: 40; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
 #Menu[hidden] { display: none; }
-#Menu .menu-bg { position: fixed; inset: 0; background: color-mix(in oklab, var(--paper) 86%, var(--wash)); opacity: 0; transition: opacity .35s;
-	background-image: linear-gradient(color-mix(in oklab, #4f8bff 9%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, #4f8bff 9%, transparent) 1px, transparent 1px);
-	background-size: 24px 24px; }
+/* a soft sky, no lines (Jason, Scott 2026-10-16): the flavor's wash fading into white, with big soft cloud light */
+#Menu .menu-bg { position: fixed; inset: 0; opacity: 0; transition: opacity .35s;
+	background: radial-gradient(60% 45% at 18% 88%, rgba(255 255 255 / .95), transparent 70%), radial-gradient(55% 40% at 85% 95%, rgba(255 255 255 / .9), transparent 70%),
+		radial-gradient(70% 50% at 70% 20%, color-mix(in oklab, var(--wash-deep) 70%, transparent), transparent 75%),
+		radial-gradient(120% 90% at 50% 0%, var(--wash), color-mix(in oklab, var(--wash) 30%, #fff) 60%, #fff); }
 #Menu.open .menu-bg { opacity: 1; }
 /* no backdrop blur: re-blurring the whole screen every frame of the fade made the burger's flight stutter */
 #Menu .menu-x { position: fixed; z-index: 3; top: var(--top-pad); left: var(--gut); width: 48px; height: 48px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px;
@@ -254,3 +256,7 @@ html.intro #Cta { --d: .72s; }
 html.intro .hero-tools { --d: .86s; }
 html.intro #Burger, html.intro #Cta { translate: 0 0; }
 html.intro:not(.show) :is(#Burger, #Cta) { translate: 0 -40px; }
+
+/* no blueprint (Jason, Scott 2026-10-16): no caption, part numbers or leader lines; the burger just flies apart */
+#Menu .menu-fig, #Menu .layer .lead, #Menu .layer small { visibility: hidden; }
+#Menu .layer small { height: 0; }

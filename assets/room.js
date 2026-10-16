@@ -7,7 +7,10 @@
 import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
-export const ROOM = { url: new URL('./hdri/forest-512.hdr', import.meta.url).href, exposure: 1.1, rot: 4 * Math.PI / 3 };
+// ?room=forest|soft picks a room for side-by-side comparisons (Scott, 2026-10-16: the forest is too busy)
+const ROOMS = { forest: 'forest-512.hdr', soft: 'forest-soft-512.hdr' };
+const roomQ = new URLSearchParams(location.search).get('room');
+export const ROOM = { url: new URL(`./hdri/${ROOMS[roomQ] || ROOMS.forest}`, import.meta.url).href, exposure: 1.1, rot: 4 * Math.PI / 3 };
 
 // where the cursor or the phone's tilt points, -1..1 (the hero writes it), and the room's turn from it
 export const roomWant = new THREE.Vector2();

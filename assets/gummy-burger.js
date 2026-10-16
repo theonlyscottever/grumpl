@@ -82,9 +82,11 @@ function bits(count, place, color, mat) {
 // menuY: a nudge so the candy sits centred on its menu row. h: height, for the squash.
 function buildLayers() {
   const out = {};
-  const MILKY = [0.12, 0, 0.3], SEED = [0, 0, 0.55], CLEAR = [1, 0, 0.85], SOUR = [0.65, 1, 0.3];
+  // Jason (2026-10-16): the logo's translucent neon gummy, not clip art: every layer is see-through jelly with a
+  // wet gloss, in candy-bright colors
+  const MILKY = [0.75, 0, 0.8], SEED = [0.2, 0, 0.7], CLEAR = [1, 0, 0.9], SOUR = [0.85, 0.8, 0.6];
   {
-    const tone = mixHex('#fde8c4', '#e99a3f');
+    const tone = mixHex('#ffd98a', '#ff8a1f');
     const geo = paint(slab({ R: (t) => 1.02 * (1 + 0.012 * Math.sin(3 * t)), top: 0.5, bot: 0.08, nTop: 2.3, nBot: 5, seg: 44, rows: 16 }),
       (v, c) => tone(smooth(0.04, 0.42, v.y), c), MILKY);
     const gold = 2.39996;
@@ -101,7 +103,7 @@ function buildLayers() {
   }
   {
     const R = (t) => 1.1 * (1 + 0.035 * Math.sin(7 * t) + 0.02 * Math.sin(13 * t + 1));
-    const tone = mixHex('#a6e05c', '#2f9e22');
+    const tone = mixHex('#c4ff5a', '#28d43c');
     const geo = paint(slab({ R, top: 0.04, bot: 0.04, nTop: 2.4, nBot: 2.4, seg: 120, rows: 6, deform: (v, t) => {
       const r = Math.hypot(v.x, v.z);
       v.y += 0.08 * smooth(0.6, 1.12, r) * Math.sin(9 * t + 0.9 * Math.sin(3 * t)) + 0.022 * smooth(0.7, 1.15, r) * Math.sin(21 * t);
@@ -109,7 +111,7 @@ function buildLayers() {
     out.lettuce = { geo, h: 0.3, menuY: 0, stackY: 1.1 };
   }
   {
-    const tone = mixHex('#ff6a4a', '#d8101a');
+    const tone = mixHex('#ff6f5a', '#ff1340');
     const geo = paint(slab({ R: (t) => 0.93 * (1 + 0.015 * Math.sin(5 * t)), top: 0.09, bot: 0.09, nTop: 3, nBot: 3, seg: 40, rows: 10 }),
       (v, c) => tone(smooth(0.2, 0.85, Math.hypot(v.x, v.z)), c), CLEAR);
     const seeds = bits(18, (i) => {
@@ -125,7 +127,7 @@ function buildLayers() {
     const R = (t) => 1.0 / Math.pow(Math.pow(Math.abs(Math.cos(t - rot)), p) + Math.pow(Math.abs(Math.sin(t - rot)), p), 1 / p);
     const geo = paint(slab({ R, top: 0.05, bot: 0.05, nTop: 3, nBot: 3, seg: 64, rows: 12, deform: (v) => {
       v.y -= 0.42 * Math.pow(smooth(0.78, 1.42, Math.hypot(v.x, v.z)), 1.3);
-    } }), '#ffcf00', [0.15, 0.4, 0.45]);
+    } }), '#ffe11a', [0.8, 0.4, 0.8]);
     out.cheese = { geo, h: 0.3, menuY: 0.08, stackY: 0.86, stackS: 0.9 };
   }
   {
@@ -134,7 +136,7 @@ function buildLayers() {
       const k = noise3(v.x * 4.2, v.y * 4.2, v.z * 4.2) - 0.5;
       const len = Math.hypot(v.x, v.y * 2.5, v.z) || 1, s = 0.05 * k;
       v.x += (v.x / len) * s; v.y += (v.y * 2.5 / len) * s * 0.8; v.z += (v.z / len) * s;
-    } }), '#8c3a14', [0.7, 0, 1]);
+    } }), '#b8501c', [0.95, 0, 1]);
     out.patty = { geo, h: 0.4, menuY: 0, stackY: 0.68 };
   }
   {
@@ -142,13 +144,13 @@ function buildLayers() {
     const m4 = new THREE.Matrix4(), e = new THREE.Euler();
     [[-0.45, 0.04, 0.22, 0.1], [0.45, -0.02, -0.16, -0.08]].forEach(([x, y, rz, rx], j) => {
       m4.compose(new THREE.Vector3(x, y, j ? 0.05 : -0.05), new THREE.Quaternion().setFromEuler(e.set(rx, j * 2, rz)), new THREE.Vector3(1, 1, 1));
-      parts.push(paint(slab({ R: (t) => 0.5 * (1 + 0.03 * Math.sin(16 * t)), top: 0.07, bot: 0.07, nTop: 2.6, nBot: 2.6, seg: 40, rows: 8 }), '#6ccc2e', SOUR).applyMatrix4(m4));
+      parts.push(paint(slab({ R: (t) => 0.5 * (1 + 0.03 * Math.sin(16 * t)), top: 0.07, bot: 0.07, nTop: 2.6, nBot: 2.6, seg: 40, rows: 8 }), '#7dff3a', SOUR).applyMatrix4(m4));
       parts.push(paint(slab({ R: (t) => 0.33 * (1 + 0.05 * Math.sin(7 * t + 1)), top: 0.076, bot: 0.076, nTop: 2.4, nBot: 2.4, seg: 24, rows: 6 }), '#e6f5ae', [0.2, 0.4, 0.3]).applyMatrix4(m4));
     });
     out.pickle = { geo: mergeGeometries(parts), h: 0.2, menuY: 0, stackY: 0.47 };
   }
   {
-    const tone = mixHex('#e99a3f', '#fde8c4');
+    const tone = mixHex('#ff8a1f', '#ffd98a');
     const geo = paint(slab({ R: (t) => 1.0 * (1 + 0.01 * Math.sin(4 * t)), top: 0.12, bot: 0.27, nTop: 3.2, nBot: 2.6, seg: 44, rows: 12 }),
       (v, c) => tone(smooth(0.02, 0.11, v.y), c), MILKY);
     out['bun-bottom'] = { geo, h: 0.36, menuY: 0.04, stackY: 0.27 };
@@ -281,6 +283,13 @@ export async function createGummyBurger({ button, menu, slots, rows, keys }) {
   button.addEventListener('pointerleave', () => { hoverBtn = false; wake(); });
   button.addEventListener('pointerdown', () => { if (!reduce && !full) { wob.bv -= 5; L.forEach((l) => (l.sv += 2.5)); wake(); } });
 
+  // idle: now and then the closed burger jiggles top to bottom, like the logo's letters puffing
+  if (!reduce) setInterval(() => {
+    if (full || document.hidden || menu.classList.contains('open')) return;
+    L.forEach((l) => setTimeout(() => kick(l, 2.4, l.i % 2 ? 3 : -3), l.i * 70));
+    wob.bv += 4;
+  }, 5200);
+
   // ---------- open / close: every layer tweens e from 0 (stacked in the button) to 1 (on its row) ----------
   let closing = false;
   function go(to) {
@@ -322,8 +331,8 @@ export async function createGummyBurger({ button, menu, slots, rows, keys }) {
           if (l.e1) kick(l, 2.2, l.i % 2 ? 2.5 : -2.5); else kick(l, 1.2, 0);
         } else busy = true;
       }
-      l.sv += (-230 * l.s - 9 * l.sv) * dt; l.s += l.sv * dt;
-      l.wv += (-150 * l.w - 7 * l.wv) * dt; l.w += l.wv * dt;
+      l.sv += (-230 * l.s - 6 * l.sv) * dt; l.s += l.sv * dt;      // loose, jelly-like springs
+      l.wv += (-150 * l.w - 5 * l.wv) * dt; l.w += l.wv * dt;
       const liftTo = l.hover && full ? 0.16 : 0;
       l.liftV += (-(l.lift - liftTo) * 160 - 14 * l.liftV) * dt; l.lift += l.liftV * dt;
       if (Math.abs(l.s) + Math.abs(l.sv) + Math.abs(l.w) + Math.abs(l.wv) + Math.abs(l.liftV) + Math.abs(l.lift - liftTo) > 2e-3) busy = true;
