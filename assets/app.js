@@ -318,6 +318,20 @@ const IDLE_MOVES = {
   bounce:  (t) => ({ y: Math.abs(Math.sin(Math.PI * 2 * t)) * 0.3 * (1 - t * 0.4), roll: Math.sin(Math.PI * 2 * t) * 0.12 * (1 - t) }),
 };
 Object.assign(MOVES, IDLE_MOVES);
+// the entrance: dropped in from above, a squashy landing and a little bounce (staggered per Grumpl)
+MOVES.arrive = (t) => {
+  const f = 0.5;
+  if (t < f) { const k = t / f; return { y: 5 * (1 - k * k), yaw: (1 - k) * 1.2 }; }
+  const k = (t - f) / (1 - f);
+  return { y: Math.abs(Math.sin(Math.PI * 2 * k)) * 0.35 * (1 - k) };
+};
+addEventListener('grumpl-arrive', () => {
+  if (reduceMotion) return;
+  const now = performance.now();
+  slots.forEach((s, i) => { s.trick = { name: 'arrive', t0: now + (i === ring.f ? 0 : 140 + 160 * ((i - ring.f + N) % N)), dur: 1250 }; });
+  nextHop = now + 6000;
+  poke(10);
+});
 const swapMoves = { in: 'spin', out: 'hops' };
 const _mq = new THREE.Quaternion(), _me = new THREE.Euler();
 function applyMove(g, name, t) {

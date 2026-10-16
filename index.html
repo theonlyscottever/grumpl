@@ -1,6 +1,15 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>
+// The entrance (Scott + Jason, 2026-10-16): the Grumpls land on their clouds first, then the logo, the name and the
+// buttons flow in. Skipped for anyone back within ten minutes, anyone landing part-way down the page, and reduced
+// motion; ?intro always plays it. page.js runs it.
+try {
+  const q = new URLSearchParams(location.search).has('intro'), seen = +localStorage.getItem('grumpl-intro') || 0;
+  if (q || (Date.now() - seen > 600000 && !location.hash && !matchMedia('(prefers-reduced-motion: reduce)').matches)) document.documentElement.classList.add('intro');
+} catch {}
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Grumpl</title>
@@ -13,13 +22,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Fredoka:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://use.typekit.net/nsx2gny.css">
 <style>
-/* Bruce's Grumpl font (2026-10-16, on trial). Regular is v2; Bold is v1 and has no digits, so Bold borrows
-   Regular's numbers rather than falling back to another typeface. */
-@font-face { font-family: "Grumpl"; src: url(assets/fonts/Grumpl-Regular.woff2) format("woff2"); font-weight: 100 600; font-display: swap; }
-@font-face { font-family: "Grumpl"; src: url(assets/fonts/Grumpl-Bold.woff2) format("woff2"); font-weight: 700 900; font-display: swap; unicode-range: U+0-2F, U+3A-10FFFF; }
-@font-face { font-family: "Grumpl"; src: url(assets/fonts/Grumpl-Regular.woff2) format("woff2"); font-weight: 700 900; font-display: swap; unicode-range: U+30-39; }
+/* Bruce's Grumpl font (2026-10-16, on trial). The heavy cut (V2, with digits) is the face everywhere; the thin
+   Regular is only for weights 300 and lighter, where a light weight is actually wanted. */
+@font-face { font-family: "Grumpl"; src: url(assets/fonts/Grumpl-Bold.woff2) format("woff2"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "Grumpl"; src: url(assets/fonts/Grumpl-Regular.woff2) format("woff2"); font-weight: 100 300; font-display: swap; }
 </style>
-<link rel="preload" href="assets/fonts/Grumpl-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/Grumpl-Bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/page.css">
 <link rel="stylesheet" href="assets/drops-site.css">
 <link rel="stylesheet" href="assets/colors.css">

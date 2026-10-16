@@ -469,4 +469,28 @@ function makeEyes(cv) {
 if (location.hash && location.hash.length > 1) setTimeout(() => { try { $(location.hash)?.scrollIntoView(); } catch {} }, 300);
 
 // every clickable thing wears the selected Grumpl's finish in 3D (skins.js)
-initSkins();
+if (!new URLSearchParams(location.search).has('noskin')) initSkins();
+
+// ---------- the entrance ----------
+// The Grumpls land on their clouds (app.js, 'grumpl-arrive'), then the logo, name and buttons flow up in turn:
+// on the first touch, key or scroll, or after a few seconds of nobody doing anything.
+(function runIntro() {
+  if (!root.classList.contains('intro')) return;
+  const start = () => {
+    dispatchEvent(new Event('grumpl-arrive'));
+    let done = false;
+    const reveal = () => {
+      if (done) return; done = true;
+      ['pointerdown', 'keydown', 'wheel', 'scroll', 'touchstart'].forEach((t) => removeEventListener(t, reveal, true));
+      root.classList.add('show');
+      setTimeout(() => window.__grumpl?.puffRow?.(), 250);
+      try { localStorage.setItem('grumpl-intro', String(Date.now())); } catch {}
+      setTimeout(() => root.classList.remove('intro', 'show'), 2600);
+    };
+    ['pointerdown', 'keydown', 'wheel', 'scroll', 'touchstart'].forEach((t) => addEventListener(t, reveal, { capture: true, passive: true }));
+    setTimeout(reveal, 3200);
+  };
+  if (document.body.classList.contains('ready')) start();
+  else new MutationObserver((_, mo) => { if (document.body.classList.contains('ready')) { mo.disconnect(); start(); } })
+    .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+})();

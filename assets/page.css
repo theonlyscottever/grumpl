@@ -241,3 +241,16 @@ body.logo-loading #stage { cursor: progress; }
 body.spooky #HeroLogo #letters path, body.spooky #HeroLogo #drops path { fill: url(#candy-h); }
 body.spooky #HeroLogo { filter: brightness(.82) drop-shadow(0 0 16px rgba(255 154 60 / .25)); }
 #Artists-Layer { z-index: 30 !important; }   /* artist bios open above the sticky header */
+
+/* ---------- the entrance (page.js runIntro): everything but the Grumpls waits, then flows up in turn ---------- */
+html.intro:not(.show) :is(#Burger, #Cta, .hero-tools, #Info, #Dock, #Logo3D, #HeroLogo, #Hint) { opacity: 0 !important; translate: 0 40px; scale: 0.6; pointer-events: none !important; }
+html.intro.show :is(#Burger, #Cta, .hero-tools, #Info, #Dock, #Logo3D, #HeroLogo) {
+	transition: opacity .45s ease var(--d, 0s), translate .9s var(--ease) var(--d, 0s), scale .9s var(--ease) var(--d, 0s) !important; }
+html.intro #Logo3D, html.intro #HeroLogo { --d: 0s; }
+html.intro #Info { --d: .28s; }
+html.intro #Dock { --d: .46s; }
+html.intro #Burger { --d: .62s; }
+html.intro #Cta { --d: .72s; }
+html.intro .hero-tools { --d: .86s; }
+html.intro #Burger, html.intro #Cta { translate: 0 0; }
+html.intro:not(.show) :is(#Burger, #Cta) { translate: 0 -40px; }
