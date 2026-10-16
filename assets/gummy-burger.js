@@ -201,7 +201,7 @@ export async function createGummyBurger({ button, menu, slots, rows, keys }) {
   // ---------- where things are (CSS px; world units are CSS px with y flipped) ----------
   const btn = { x: 0, y: 0, ppu: 20 };
   let ppuM = 60, full = false, region = { x: 0, y: 0, w: 1, h: 1 }, pr = 1;
-  const dprCap = Math.min(devicePixelRatio || 1, coarse ? 1.5 : 2);
+  const dprCap = Math.min(devicePixelRatio || 1, coarse ? 1.25 : 1.5);   // the open menu's big canvas: soft candy needs fewer pixels (final crit: open faster)
   let dprFull = dprCap;
   function measure() {
     const b = button.getBoundingClientRect();

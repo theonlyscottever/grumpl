@@ -190,7 +190,8 @@ const nightU = { value: 0 };
 const lampU = { value: new THREE.Vector3(0, 0, 0) };
 const logoMaskU = { value: null };
 const logoRectU = { value: new THREE.Vector4(0, 0, 1, 1) };   // centre xy, size xy in the front cloud's own space
-function makeCloudMat({ fade = true, front = false } = {}) {
+const hemCutU = { value: -2 };   // NDC y below which only the hem draws (placeHem)
+function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
   // The clouds only use their lighting for a brightness (shade, below), so they get the cheap version of the rig:
   // standard instead of physical (no sheen), and the two rim strips, which barely touch a cloud's front, are left
   // out. The clouds cover most of the screen, so this is where per-pixel cost adds up.
@@ -198,7 +199,7 @@ function makeCloudMat({ fade = true, front = false } = {}) {
     envMapIntensity: 1.25, vertexColors: true, toneMapped: false });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uOcc = occU; sh.uniforms.uPress = pressU; sh.uniforms.uSky = skyU; sh.uniforms.uTint = tintU;
-    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU;
+    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU;
     const DENT = `
       uniform vec4 uPress; uniform sampler2D uMask; uniform vec4 uRect;
       float dentH( vec2 q ) {
@@ -229,7 +230,7 @@ function makeCloudMat({ fade = true, front = false } = {}) {
       .replace('#include <worldpos_vertex>',
         '#include <worldpos_vertex>\n vCW = (modelMatrix * vec4(transformed, 1.0)).xyz; vCN = normalize(mat3(modelMatrix) * objectNormal);')
       .replace('#include <project_vertex>', '#include <project_vertex>\n vSY = gl_Position.y / gl_Position.w;');
-    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight;\n' + AO_GLSL + `
+    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut;\n' + AO_GLSL + `
       float cHash( vec3 p ) { p = fract( p * 0.1031 ); p += dot( p, p.zyx + 31.32 ); return fract( ( p.x + p.y ) * p.z ); }
       float cloudNoise( vec3 p ) {
         vec3 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
@@ -238,6 +239,7 @@ function makeCloudMat({ fade = true, front = false } = {}) {
       }
     ` + sh.fragmentShader
       .replace('#include <color_fragment>', `
+        ${hem ? '' : 'if ( vSY < uHemCut ) discard;                  // below the fold only the hem\'s billows draw, so their dips stay open'}
         float puffAO = vColor.r;`)
       .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('defined( RE_Direct_RectArea )', 'defined( RE_Direct_RectArea ) && 0'))
       .replace('#include <opaque_fragment>', `
@@ -267,11 +269,47 @@ function makeCloudMat({ fade = true, front = false } = {}) {
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         ${fade ? 'gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( vec3( 1.0 ), vec3( 0.047, 0.039, 0.059 ), uNight ), smoothstep( -0.2, -0.75, vSY ) );' : ''}`);
   };
-  m.customProgramCacheKey = () => `cloud-${fade}-${front}`;
+  m.customProgramCacheKey = () => `cloud-${fade}-${front}-${hem}`;
   return m;
 }
 const cloudMat = makeCloudMat();
 const frontMat = makeCloudMat({ fade: false, front: true });
+
+// ---------- The hem ----------
+// Scott's final crit: the header has to sit on the hero's own clouds, not on a separate drawing. The hero runs a
+// little past the bottom of the screen (--hem, nav.css), and along its bottom a row of billows in the same cloud
+// material, in this scene and this light, gives the cloud mass a soft rolling edge. Once you scroll, the hero
+// sticks with just that band showing, and the burger, logo and Save the date sit on it.
+const HEM_Z = 3.3;
+const hemMat = makeCloudMat({ fade: false, hem: true });
+const hemBall = new THREE.SphereGeometry(1, 40, 20);
+hemBall.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(hemBall.attributes.position.count * 3).fill(1), 3));
+const hemGroup = new THREE.Group();
+scene.add(hemGroup);
+function placeHem(w, hc, hem, portrait) {
+  hemGroup.clear();
+  hemCutU.value = hem ? 1 - 2 * (hc - hem) / hc : -2;
+  if (!hem) return;
+  const P = (x, y) => screenToPlaneZ(x / w * 2 - 1, 1 - y / hc * 2, HEM_Z, new THREE.Vector3());
+  const upp = P(w, hc).x - P(0, hc).x;                     // world units across the screen at the hem's depth
+  const px = upp / w;
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const r0 = hem * (portrait ? 1.3 : 1.25);
+  // three rows of uneven, wide billows like the bank's: the front one makes the edge, the ones behind fill the
+  // dips between its tops
+  for (const [lift, size, z] of [[0, 1, 0], [0.55, 1.2, 0.3], [1.0, 1.0, 0.55]]) {
+    for (let x = -r0 * (1 + rnd()); x < w + r0 * 1.5;) {
+      const r = r0 * size * (0.7 + rnd() * 0.6), ry = r * (0.62 + rnd() * 0.18);
+      const bottom = hc - 2 - rnd() * 16 - lift * r0;
+      const c = P(x, bottom - ry);
+      const m = new THREE.Mesh(hemBall, hemMat);
+      m.scale.set(r * px * (1.3 + rnd() * 0.3), ry * px, r * px * 0.7);
+      m.position.set(c.x, c.y, HEM_Z - z - r * px * 0.2);
+      hemGroup.add(m);
+      x += r * (1.5 + rnd() * 0.5);
+    }
+  }
+}
 
 const meshOf = (o, material) => {
   if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
@@ -998,8 +1036,12 @@ function screenToPlaneZ(nx, ny, z, out) {
   return out.copy(raycaster.ray.origin).addScaledVector(raycaster.ray.direction, t);
 }
 function resize() {
-  const w = innerWidth, h = stage.clientHeight || innerHeight;
-  renderer.setSize(w, h, false);
+  const w = innerWidth, hc = stage.clientHeight || innerHeight;
+  renderer.setSize(w, hc, false);
+  // the hero runs a cloud's hem (--hem, nav.css) past the bottom of the screen: frame for the screen, then let the
+  // camera see that much further down, so the first screen is unchanged and the hem is more of the same clouds
+  const hem = Math.min(hc * 0.2, parseFloat(getComputedStyle(stage).getPropertyValue('--hem')) || 0);
+  const h = hc - hem;
   const aspect = w / h;
   camera.aspect = aspect;
   const tanH = Math.tan(THREE.MathUtils.degToRad(16));
@@ -1013,6 +1055,7 @@ function resize() {
   camBase.set(0, lookAt.y + dist * 0.13, dist);
   camera.position.copy(camBase).add(par.cur);
   camera.lookAt(lookAt);
+  if (hem > 0) camera.setViewOffset(w, h, 0, 0, w, hc); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
   // walls at the screen's edges, measured where he stands
@@ -1036,8 +1079,9 @@ function resize() {
     front.group.position.set(_r.x - LOGO_C.x * front.s, _r.y - LOGO_C.y * front.s, FRONT_Z - LOGO_Z * front.s);
     const over = logoRect().y1 - (dockTop - gapPx);
     if (over <= 0.5) break;
-    ny += over / h * 2;
+    ny += over / hc * 2;
   }
+  placeHem(w, hc, hem, portrait);
   ui.layout?.({ portrait });
   sendLogoRect();
   poke(4);
@@ -1117,7 +1161,7 @@ resize();
 
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 1 / 20);
-  if (!slots[0].set || !heroOn || covered()) return;
+  if (!slots[0].set || !heroOn || covered() || document.body.classList.contains('hero-pinned')) return;
   if (grip && dt > 0) hand.velocity.set((handTarget.x - hand.position.x) / dt * 0.6, (handTarget.y - hand.position.y) / dt * 0.6, (handTarget.z - hand.position.z) / dt * 0.6);
   motion.tick();
   if (motion.on) {

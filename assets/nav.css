@@ -1,0 +1,29 @@
+/* The header lives on the hero's own clouds (Scott 2026-10-16, final crit: "exactly the rendering of the hero
+   clouds", no separate strip, no bobbing, tall enough for the buy button). The hero is a little taller than the
+   screen and ends in a soft, rolling cloud edge; once you scroll past it, the hero sticks with only its bottom band
+   showing, so the real 3D clouds hold the burger, logo and Save the date. app.js frames the camera so the first
+   screen looks exactly as before (the extra --hem below the fold is more of the same clouds). Loaded last. */
+:root { --hem: 56px; --nav-band: calc(var(--top-pad) + 70px + var(--hem)); --nav-clear: calc(var(--top-pad) + 70px + var(--hem) * 0.6); }
+@media (max-width: 560px) { :root { --hem: 40px; --nav-band: calc(var(--top-pad) + 64px + var(--hem)); --nav-clear: calc(var(--top-pad) + 64px + var(--hem) * 0.6); } }
+html { scroll-padding-top: var(--nav-band); }
+
+#Hero { position: sticky; z-index: 11; height: calc(max(100svh, 560px) + var(--hem)); min-height: 0;
+	top: calc(var(--nav-band) - max(100svh, 560px) - var(--hem));
+	/* the canvas draws the rolling edge (app.js placeHem); the page's paper stops above it so the dips between the
+	   billows are open */
+	background-size: 100% calc(100% - var(--hem)); background-repeat: no-repeat; }
+body.spooky #Hero { background-size: 100% calc(100% - var(--hem)); background-repeat: no-repeat; }
+
+/* everything that sat on the bottom of the screen stays where it was */
+#Dock { bottom: calc(14px + var(--hem) + env(safe-area-inset-bottom, 0px)); }
+#Hint { bottom: calc(80px + var(--hem) + env(safe-area-inset-bottom, 0px)); }
+@media (min-aspect-ratio: 4/5) { #Info { bottom: calc(110px + 4vh + var(--hem)); } }
+/* the flavor dock leaves before the hero's bottom becomes the header */
+#Dock { transition: opacity .3s ease, translate .45s var(--ease); }
+body.scrolled #Dock { opacity: 0; translate: 0 24px; pointer-events: none; }
+
+/* things that stick under the header clear the cloud band */
+:is(#Drops, #DropOverlays) #Rail { top: var(--nav-clear); }
+@media (max-width: 560px) { :is(#Drops, #DropOverlays) #Rail { top: var(--nav-clear); } }
+#Book { --stick: calc(var(--nav-clear) + 16px); }
+#Make #Studio .st-stagecol { top: var(--nav-clear); }

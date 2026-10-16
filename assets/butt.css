@@ -1,20 +1,24 @@
 /* The butt hill footer: see assets/butt.js */
-/* Scott, crit 23: the hero's clouds come back behind the hill, sitting right on the artists' purple with a crisp
-   edge, and his head breaks up into the purple. #Butt reaches up over the artists' bottom padding by --butt-lap
-   (that strip of the canvas is see-through, so the purple shows above the clouds); below it the footer is paper,
-   hidden behind the cloud mass. The canvas places the scene from this margin (butt.js layout). */
-#Foot { --butt-lap: 210px; background: linear-gradient(to bottom, transparent var(--butt-lap), var(--paper) var(--butt-lap)); }
-@media (min-width: 768px) { #Foot { --butt-lap: 220px; } }
-#Butt { position: relative; z-index: 1; margin-top: calc(-1 * var(--butt-lap));
-	height: calc(56vh + var(--butt-lap)); height: calc(56svh + var(--butt-lap)); min-height: calc(360px + var(--butt-lap)); overflow: hidden; background: transparent;
+#Butt { position: relative; height: 70vh; height: 70svh; min-height: 420px; overflow: hidden; background: var(--paper);
 	cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; isolation: isolate; }
-@media (min-width: 768px) { #Butt { height: calc(clamp(440px, 54vh, 560px) + var(--butt-lap)); } }
+@media (min-width: 768px) { #Butt { height: clamp(520px, 64vh, 640px); } }
 #Butt canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: manipulation;
-	opacity: 0; transition: opacity .8s ease; }
+	opacity: 0; transition: opacity .8s ease;
+	-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16%); mask-image: linear-gradient(to bottom, transparent 0, #000 16%); }
 #Butt.butt-ready canvas { opacity: 1; }
+/* Scott's final crit: the hill stays at the bottom of the screen as it always was. The canvas reaches up over the
+   artists' purple (--lap, see-through) so the hero's clouds can rise behind the hill with their tops in the purple,
+   and a Grumpl that drops in or spins comes from the top of the screen instead of being cut off at an edge. */
+#Butt { --lap: max(240px, 42vh); overflow: visible; z-index: 1;
+	/* the artists' purple carries on behind the clouds and turns to paper where the cloud mass is white */
+	background: linear-gradient(var(--majesty, #8d71b3) 0 70%, var(--paper, #fff) 70%); }
+#Butt canvas { inset: auto 0 0 0; height: calc(100% + var(--lap)); pointer-events: none; -webkit-mask-image: none; mask-image: none; }
 #Butt .butt-tag { position: absolute; z-index: 2; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); margin: 0;
 	padding: 9px 14px 8px; border-radius: var(--tag-radius, 7px 5px 8px 6px); background: var(--ink, #0b0a0c); color: var(--paper, #fff);
 	font: 400 19px/1 var(--font-cute, "Chewy", "Fredoka", ui-rounded, system-ui, sans-serif); white-space: nowrap; pointer-events: none;
 	transform: translateX(-50%) rotate(-2.5deg); box-shadow: 2px 3px 0 rgba(0 0 0 / 0.16); }
 @media (min-width: 768px) { #Butt .butt-tag { font-size: 22px; bottom: 30px; } }
 @media (prefers-reduced-motion: reduce) { #Butt canvas { transition: none; } }
+/* the same charcoal grain the artists' purple wears, so the two purples meet without a seam */
+#Butt::before { content: ""; position: absolute; z-index: -1; inset: 0 0 30% 0; pointer-events: none;
+	background: black url("../artists/charcoal.webp") repeat right top/20%; mix-blend-mode: overlay; opacity: 0.125; }

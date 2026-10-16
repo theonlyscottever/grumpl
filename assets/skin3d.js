@@ -292,8 +292,9 @@ function draw(it) {
   // the cursor light, placed where the pointer is relative to this button, a little in front of the screen
   const r = it.el.getBoundingClientRect();
   light.position.set(cursor.x - (r.left + r.width / 2), -(cursor.y - (r.top + r.height / 2)), 260);
-  // the flavor bar is housing: matte plastic the cursor light never reaches
-  light.intensity = it.kind === 'matte' ? 0 : CURSOR_LIGHT;
+  // the flavor bar is housing: matte plastic the cursor light never reaches. On the glossy jelly buttons the
+  // point light made a hard white dot under the pointer (Scott's final crit), so they only glow from inside on hover.
+  light.intensity = it.kind === 'matte' || it.kind === 'jelly' ? 0 : CURSOR_LIGHT;
   it.mat.userData.u.uGlow.value = (it.glow || 0) * 0.9 + (it.kind === 'jelly' ? it.hover * 0.3 : 0);
   // The base sits fixed down and right of the element's box, by the resting depth along the shear; it never moves.
   // Hover lifts the face a little; a press pushes the face (and the label riding on it) down into the base.

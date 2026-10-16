@@ -13,10 +13,9 @@ const MODEL_URL = new URL('./models/grumpl.glb', import.meta.url).href;
 // The hero's cloud bank (already in the browser's cache from the hero) comes back as the backdrop: its back rows
 // stand behind the hill, their tops cutting a crisp line across the purple the artists end on (Scott, crit 23).
 const BANK_URL = new URL('./models/cloud-bank.glb', import.meta.url).href;
-// sx/sy/sz: stretch of the bank; z0: pushed back behind the hill; line: the world height at the crest (his
-// shoulders) that the bank's top (top, at depth topZ in the bank) lines up with on screen, so his head and
-// shoulders break up into the purple.
-const CLOUD = { sx: 2.0, sy: 1.15, sz: 1.1, z0: -3.2, line: 1.32, top: 0.32, topZ: -5.6 };
+// sx/sy/sz: scale of the bank (big, so the puffs read at the hero's size, not as foam); z0: pushed back behind the
+// hill; top/topZ: the bank's top in its own units, which layout() lines up with `line` (his shoulders) on screen.
+const CLOUD = { sx: 2.3, sy: 1.7, sz: 1.5, z0: -3.6, top: 0.32, topZ: -5.6, line: 1.32 };
 
 // The cheek: turn the model so `dir` points straight up; apex is the cheek's highest point (model space).
 // yaw turns the whole hill so we look at the butt three-quarters on: the crack and the other cheek come into view.
@@ -134,11 +133,10 @@ function makeCloudMat(skyU) {
         float fold = ( 1.0 - smoothstep( 0.4, 1.0, puffAO ) ) * 0.75 + ( 1.0 - smoothstep( -0.6, 0.3, cN.y ) ) * 0.2;
         shade *= 1.0 - clamp( fold, 0.0, 1.0 ) * 0.7;
         vec3 lit = mix( mix( uSky, vec3( 1.0 ), 0.25 ), vec3( 1.0 ), smoothstep( 0.1, 0.9, shade ) );
-        float wisp = cloudNoise( vCW * 3.1 ) * 0.6 + cloudNoise( vCW * 7.3 ) * 0.4;
-        float edge = smoothstep( 0.5, 0.92, ( 1.0 - abs( dot( cN, cV ) ) ) + ( wisp - 0.5 ) * 0.35 );
+        float edge = smoothstep( 0.6, 0.97, 1.0 - abs( dot( cN, cV ) ) );
         lit = mix( lit, vec3( 1.0 ), edge );
         lit = mix( lit, vec3( 1.0 ), smoothstep( 14.0, 34.0, length( cameraPosition - vCW ) ) * 0.7 );
-        lit = mix( lit, vec3( 1.0 ), smoothstep( -0.75, -1.05, vLY ) );
+        lit = mix( lit, vec3( 1.0 ), smoothstep( -0.45, -0.95, vLY ) );
         outgoingLight = lit;
         #include <opaque_fragment>`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
@@ -349,7 +347,7 @@ export function mountButt(el, { FLAVORS }) {
       f.dropped = true;
       st.little = f.next;
       littles.forEach((l, i) => { l.group.visible = i === st.little; });
-      st.drop = { y: 9, vy: -4, yaw: 0, w: f.dir * 7, target: f.dir * Math.PI * 2, hit: false, ground: false,
+      st.drop = { y: dropY, vy: -4, yaw: 0, w: f.dir * 7, target: f.dir * Math.PI * 2, hit: false, ground: false,
         sq: 0, sqv: 0, tilt: 0, tiltv: 0 };
     }
     if (e >= 1 && !f.landed) {
@@ -447,40 +445,40 @@ export function mountButt(el, { FLAVORS }) {
     renderer.render(scene, camera);
     frames++;
   }
+  let dropY = 9;
   function layout() {
     if (!renderer) return;
-    const w = el.clientWidth || 1, h = el.clientHeight || 1;
-    renderer.setSize(w, h, false);
+    // the hill is framed for #Butt's own box exactly as it always was; the canvas runs `lap` px higher (butt.css),
+    // which the camera sees as more of the same view above
+    const w = el.clientWidth || 1, h = el.clientHeight || 1, hc = Math.max(h, renderer.domElement.clientHeight || h), lap = hc - h;
+    renderer.setSize(w, hc, false);
     const aspect = w / h;
     camera.aspect = aspect;
     const tanH = Math.tan(THREE.MathUtils.degToRad(16));
     const portrait = aspect < 0.9;
-    // Shot nearly level, the cheek a round mound under him that melts away into the page. The canvas reaches up
-    // over the artists' purple by `lap` px (the CSS's negative margin) and he stands high in it: the top of his
-    // head up in the purple, the clouds' top line behind his shoulders, just above where the purple ends, so the
-    // cloud mass hides that edge.
-    const lap = Math.max(0, -parseFloat(getComputedStyle(el).marginTop) || 0);
-    const ppu = portrait ? Math.min(88, w / 4.4) : Math.min(104, h / 6.4);   // px per world unit at the crest
-    const head = Math.max(24, lap * (portrait ? 0.5 : 0.42));                // px from the canvas top to his head
-    const dist = h / (2 * tanH * ppu);
-    // looking down on the crest at about the old angle; aim so the top of his head lands `head` px down
-    camera.position.set(0, dist * 0.2, dist);
+    // shot like the prototype: nearly level, he stands a little above the middle, the cheek a round mound
+    // under him that melts away into the page
+    const dist = portrait ? Math.max(10, 2.6 / (2 * tanH * aspect)) : 8.6;
+    camera.position.set(0, 1.7, dist);
+    camera.lookAt(0, portrait ? 0.72 : 0.55, 0);
+    if (lap > 0) camera.setViewOffset(w, h, 0, -lap, w, hc); else camera.clearViewOffset();
     camera.updateProjectionMatrix();
-    const want = 1 - 2 * head / h;
-    let lookY = 0;
-    for (let i = 0; i < 4; i++) {
-      camera.lookAt(0, lookY, 0);
-      camera.updateMatrixWorld();
-      lookY -= (want - _v.set(0, 1.78 - SINK, 0).project(camera).y) * h / 2 / ppu;
-    }
-    camera.lookAt(0, lookY, 0);
     camera.updateMatrixWorld();
+    // a newcomer starts falling from above the top of the canvas
+    _v.set(0, 1, 0.5).unproject(camera).sub(camera.position).normalize();
+    dropY = camera.position.y + _v.y * (camera.position.z / -_v.z) + 1.4;
     if (bank) {
-      // line the bank's top up with his shoulders as seen from here: the ray from the camera through (0, line, 0)
-      const zr = CLOUD.z0 + CLOUD.topZ * CLOUD.sz, cy = camera.position.y;
-      bank.position.y = cy + (CLOUD.line - cy) * (dist - zr) / dist - CLOUD.top * CLOUD.sy;
+      // the clouds' top line runs behind his shoulders, so his head breaks up into the purple above them; the
+      // cloud mass covers the line where #Butt's purple turns to paper (butt.css)
+      const want = _v.set(0, CLOUD.line, 0).project(camera).y;
+      const zr = CLOUD.z0 + CLOUD.topZ * CLOUD.sz;
+      const yAt = (y) => _v.set(0, y, zr).project(camera).y;
+      let lo = -20, hi = 30;
+      for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (yAt(mid) < want) lo = mid; else hi = mid; }
+      bank.position.y = (lo + hi) / 2 - CLOUD.top * CLOUD.sy;
     }
   }
+
 
   // ---- running: only while on screen, and only while something moves ----
   function frame(now) {

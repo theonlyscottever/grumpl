@@ -7,8 +7,6 @@ html { scroll-padding-top: 84px; }
 #Top { position: fixed; z-index: 12; top: 0; left: 0; right: 0; height: calc(var(--top-pad) + 62px); padding: var(--top-pad) var(--gut) 0;
 	display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
 #Top > * { pointer-events: auto; }
-/* the hero cloud's hem: page.js moves it with the hero's bottom edge, then it pins at the top */
-#TopCloud { position: fixed; z-index: -1; top: 0; left: 0; pointer-events: none; line-height: 0; transform: translateY(100vh); will-change: transform; }
 #Burger[aria-expanded="true"] { opacity: 0; transform: scale(.6); }
 #Mark { position: fixed; z-index: 13; left: 0; top: 0; transform-origin: 50% 0; opacity: 0; pointer-events: none; display: block; line-height: 0; }
 #Mark.on { opacity: 1; }
@@ -199,7 +197,6 @@ body.spooky {
 }
 body.spooky #Hero { background: radial-gradient(110% 70% at 50% 30%, #1d1824 0%, #120f16 55%, #0c0a0f 85%); }
 body.spooky #Hero::before { opacity: 0; }
-body.spooky #TopCloud canvas { filter: brightness(.13) saturate(.7); }
 body.spooky #Dock { background: #1d1824; box-shadow: 0 0 0 2px #3a3046, 0 10px 30px rgba(0 0 0 / .5); }
 body.spooky #Info .more, body.spooky .sound-btn:not(.on) { background: #1d1824; }
 body.spooky #Cta .go { box-shadow: var(--edge-glow), 2px 3px 0 #000, 0 0 22px color-mix(in oklab, var(--c) 40%, transparent); }
@@ -291,3 +288,5 @@ body.menu-fly:not(.menu-open) #Dock { --md: .42s; }
 #Menu .menu-fig, #Menu .layer .lead, #Menu .layer small { visibility: hidden; }
 #Menu .layer small { height: 0; }
 
+/* the story cards fly in from 80px off to the side: on a phone that widened the page and let it pan sideways */
+#Story { overflow-x: clip; }

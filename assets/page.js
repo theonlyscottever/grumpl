@@ -58,7 +58,7 @@ function stick() {
   const scrolled = scrollY > innerHeight * 0.55;
   document.body.classList.toggle('scrolled', scrolled);
   if (!logoR || !mark.firstChild) { mark.classList.toggle('on', scrolled); return; }
-  const heroTop = hero.getBoundingClientRect().top;
+  const heroTop = -scrollY;                                  // where the hero would be if it didn't stick (nav.css)
   const vy = logoR.y + heroTop;                              // the 3D logo's top edge on screen right now
   // Scott round 4: the logo docks later in the scroll (once the cloud hem has pinned) and 50% bigger than before
   const swapAt = top + logoR.h * 0.35;
@@ -103,30 +103,12 @@ setInterval(() => {
   mark.classList.remove('hop'); void mark.offsetWidth; mark.classList.add('hop');
 }, 500);
 mark.addEventListener('animationend', (e) => { if (e.target.style.getPropertyValue('--i') === '5') mark.classList.remove('hop'); });
-/* the header cloud (Scott round 4: no new element): the hero's cloud mass ends in a soft, rolling hem, and as the
-   hero scrolls away that hem stays at the top to hold the burger, logo and buy button. It rides up with the hero's
-   bottom edge and pins there. Drawn at the window's width; deepest in the middle, where the logo hangs. */
-const topCloud = document.createElement('div'); topCloud.id = 'TopCloud'; topCloud.setAttribute('aria-hidden', 'true');
-$('#Top').prepend(topCloud);
-// the header's cloud is rendered in 3D (cloud3d.js), once per width, after the hero has loaded
-let cloudW = 0, cloudT = 0;
-function drawCloud() {
-  const W = innerWidth; if (W === cloudW) return; cloudW = W;
-  const top = parseFloat(getComputedStyle(root).getPropertyValue('--top-pad')) || 12;
-  clearTimeout(cloudT);
-  cloudT = setTimeout(() => import('./cloud3d.js').then((m) => m.drawTopCloud(topCloud, W, top)).catch(() => {}), 120);
-}
-addEventListener('grumpl-hero-ready', drawCloud, { once: true });
-setTimeout(drawCloud, 6000);
-addEventListener('resize', () => { if (cloudW) drawCloud(); });
-function hem() {
-  const b = hero.getBoundingClientRect().bottom;
-  topCloud.style.transform = `translateY(${Math.max(0, Math.round(b) - 2)}px)`;
-  topCloud.classList.toggle('pinned', b <= 2);
-}
-hem();
-addEventListener('scroll', hem, { passive: true });
-addEventListener('resize', hem);
+/* the header sits on the hero's own clouds: once only the hero's bottom band is left, the hero sticks (nav.css)
+   and stops drawing, so the band is a still of the real clouds */
+function pin() { document.body.classList.toggle('hero-pinned', hero.getBoundingClientRect().bottom <= (parseFloat(getComputedStyle(hero).top) + hero.offsetHeight) + 1); }
+pin();
+addEventListener('scroll', pin, { passive: true });
+addEventListener('resize', pin);
 addEventListener('scroll', stick, { passive: true });
 addEventListener('resize', stick);
 mark.addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
