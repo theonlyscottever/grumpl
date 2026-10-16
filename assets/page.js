@@ -2,6 +2,7 @@
 // the make-your-own sections, the artists, the butt-hill footer, sound, and Lights out (Halloween).
 import { DROPS } from './drops.js';
 import './drops-site.js';
+import { initSkins } from './skins.js';
 import { sound } from './sound.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -466,3 +467,6 @@ function makeEyes(cv) {
 
 // deep links (#Drops, #drop-01...) land after the layout settles
 if (location.hash && location.hash.length > 1) setTimeout(() => { try { $(location.hash)?.scrollIntoView(); } catch {} }, 300);
+
+// every clickable thing wears the selected Grumpl's finish in 3D (skins.js)
+initSkins();

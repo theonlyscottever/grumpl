@@ -48,7 +48,7 @@ export function buildStudioEnv(renderer, eyesOnly = false) {
   return tex;
 }
 
-const EYES = { color: 0x080809, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.02, specularIntensity: 1, envMapIntensity: 1.0 };
+const EYES = { color: 0x030304, roughness: 0.03, clearcoat: 0.6, clearcoatRoughness: 0.01, specularIntensity: 1, envMapIntensity: 0.3 };
 const TEETH = { color: 0xf6f0e3, roughness: 0.5, envMapIntensity: 0.9 };
 export function finishFor(f) {
   if (f.kind === 'gummy') return {
@@ -206,12 +206,13 @@ export function makeSet(f, lightU, eyeEnv) {
   const set = { U, body: new THREE.MeshPhysicalMaterial(), eyes: new THREE.MeshPhysicalMaterial(), teeth: new THREE.MeshPhysicalMaterial() };
   set.body.onBeforeCompile = bodyCompile(U);
   set.body.customProgramCacheKey = () => 'grumpl-body';
-  set.eyes.envMap = eyeEnv;                         // the eyes keep their two crisp studio catchlights
-  set.eyes.onBeforeCompile = eyesCompile;
+  // the eyes are glossy black marbles (Jason, 2026-10-16): they reflect the same forest as everything else,
+  // so the sky gives them a clear highlight and the rest stays deep black
+  set.eyes.onBeforeCompile = (sh) => { eyesCompile(sh); turnEnv(sh); };
   // body and teeth reflect the site's one room (room.js); buildFigure hands it to them per renderer
   set.teeth.onBeforeCompile = (sh) => turnEnv(sh);
   set.teeth.customProgramCacheKey = () => 'grumpl-teeth';
-  for (const m of [set.body, set.teeth]) m.userData.room = true;
+  for (const m of [set.body, set.teeth, set.eyes]) m.userData.room = true;
   set.eyes.customProgramCacheKey = () => 'grumpl-eyes';
   const fin = finishFor(f);
   for (const part of ['body', 'eyes', 'teeth']) {
@@ -246,7 +247,7 @@ export function makeSet(f, lightU, eyeEnv) {
 }
 // hand the room to a set's body and teeth now (before compiling), instead of waiting for their first draw
 export function roomSet(set, tex) {
-  for (const m of [set.body, set.teeth]) if (m.userData.room && m.envMap !== tex) { m.envMap = tex; m.needsUpdate = true; }
+  for (const m of [set.body, set.teeth, set.eyes]) if (m.userData.room && m.envMap !== tex) { m.envMap = tex; m.needsUpdate = true; }
 }
 // recolor an existing set (same kind of finish) without recompiling
 export function paintSet(set, f) {

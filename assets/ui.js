@@ -97,6 +97,7 @@ export function initUI({ DROP, FLAVORS, focus, step, jump, motion, canMove }) {
     root.style.setProperty('--wash', `hsl(${h.toFixed(0)} ${Math.min(70, s * 100 * 0.55).toFixed(0)}% 93%)`);
     root.style.setProperty('--wash-deep', `hsl(${h.toFixed(0)} ${Math.min(60, s * 100 * 0.45).toFixed(0)}% 86%)`);
     root.style.setProperty('--base', hex(f.base));
+    root.style.setProperty('--edge', hex(f.edge));
     $('meta[name=theme-color]')?.setAttribute('content', `hsl(${h.toFixed(0)} ${Math.min(70, s * 55).toFixed(0)}% 93%)`);
     dock.querySelectorAll('[data-i]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
     $('.lbl b', dock).textContent = f.name;

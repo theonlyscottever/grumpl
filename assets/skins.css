@@ -1,0 +1,25 @@
+/* The 3D skins (skin3d.js): the element's own box goes; the cushion drawn behind its label takes its place.
+   --skin is the cushion's color, --skin-edge the airbrushed rim (defaults to the same color). */
+.skinned { background: none !important; border-color: transparent !important; box-shadow: none !important; isolation: isolate; }
+.skin3d { position: absolute; z-index: -1; pointer-events: none; display: block; }
+.skinned > svg, .skinned > span, .skinned > i, .skinned > b { position: relative; }
+
+#Cta .go { --skin: var(--c); --skin-edge: var(--c-edge); }
+#Cta .pop form button { --skin: var(--lemon); --skin-edge: #ffc46b; }
+#Cta .close, #DropClose, #A-Close, #Menu .menu-x { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }
+#Cta .close.skinned svg, #DropClose.skinned svg, #Menu .menu-x.skinned svg { opacity: 0; }
+#A-Close.skinned::before, #A-Close.skinned::after { opacity: 0 !important; }
+.sound-btn, #Foot [data-sound] { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }
+#Tilt { --skin: var(--ink); --skin-edge: #4b4256; }
+#Info .more { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }
+#Info .more.skinned:hover { --skin: var(--lemon); }
+#Dock { --skin: var(--ink); --skin-edge: #3d3547; }
+#Dock .arw { --skin: #3a3242; --skin-edge: #574b63; }
+#Jump { --skin: var(--lemon); --skin-edge: #ffbf5e; }
+:is(#Drops, #DropOverlays) .remind button.go { --skin: var(--lemon); --skin-edge: #ffbf5e; }
+:is(#Drops, #DropOverlays) .tilt { --skin: var(--ink); --skin-edge: #4b4256; }
+/* the dots keep their flavor's color; the chosen one rides higher and bigger */
+#Dock .ds button { --skin: var(--base); --skin-edge: var(--edge); }
+
+/* Jason's iPad: a quick double tap on Jump zoomed the page. Taps on anything clickable are just taps. */
+button, a, [role="button"], #Dock, .hero-tools { touch-action: manipulation; }

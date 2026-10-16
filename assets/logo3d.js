@@ -6,6 +6,7 @@
 // same tilt, sway and puffs. It stops drawing when it's hidden, scrolled away or the tab is in the background.
 import * as THREE from 'three';
 import { ROOM, roomAim, turnRoom, setTurn, roomEnv, NEUTRAL_TM, turnEnv } from './room.js';
+import { finish, cursor, onCursor, CURSOR_LIGHT } from './finish.js';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PACK = 'assets/logo/cloud.pack.gz';
@@ -23,14 +24,23 @@ function turnable(m) {
 // ---- Finishes (the experiment's presets for these two)
 const C = (s) => new THREE.Color(s);
 const ROSE = '#f2c9b8';
+// name: the focused Grumpl's finish (vinyl, chrome, flock; gummy for a season). The letters take that Grumpl's
+// colors in its finish: base on the letters, the airbrushed edge color on the drips. The cloud badge stays white
+// in the same finish. kind: 'puff' (the badge), 'letter' or 'drop'.
 function preset(name, kind, base) {
   const letter = kind !== 'puff';
-  const p = { color: C(base), metalness: 0, roughness: 0.4, clearcoat: 0, clearcoatRoughness: 0.1, transmission: 0, thickness: 0.6,
+  const f = finish.flavor;
+  const col = f && name !== 'gummy' ? (kind === 'drop' ? f.edge : f.base) : base;
+  const p = { color: C(col), metalness: 0, roughness: 0.4, clearcoat: 0, clearcoatRoughness: 0.1, transmission: 0, thickness: 0.6,
     ior: 1.5, sheen: 0, sheenRoughness: 0.5, sheenColor: C('#000000'), attenuationColor: C('#ffffff'), attenuationDistance: 1, envMapIntensity: 1 };
   if (!letter) {
     if (name === 'chrome') Object.assign(p, { color: C('#f3ebe7'), roughness: 0.42, sheen: 1, sheenColor: C('#ffffff'), sheenRoughness: 0.35, clearcoat: 0.25, clearcoatRoughness: 0.3 });
+    else if (name === 'flock') Object.assign(p, { color: C('#f4f2ef'), roughness: 1, sheen: 1, sheenColor: C('#ffffff'), sheenRoughness: 0.8, envMapIntensity: 0.9 });
+    else if (name === 'vinyl') Object.assign(p, { color: C('#f7f5f2'), roughness: 0.55, sheen: 0.6, sheenColor: C('#ffffff'), sheenRoughness: 0.5, clearcoat: 0.15, clearcoatRoughness: 0.3 });
     else Object.assign(p, { color: C('#fad6da'), roughness: 0.55, sheen: 1, sheenColor: C('#ffffff'), sheenRoughness: 0.6 });
-  } else if (name === 'chrome') Object.assign(p, { color: C(ROSE), metalness: 1, roughness: 0.05, envMapIntensity: 1.2 });
+  } else if (name === 'chrome') Object.assign(p, { color: C(f ? f.base : ROSE), metalness: 1, roughness: 0.05, envMapIntensity: 1.2 });
+  else if (name === 'flock') Object.assign(p, { roughness: 1, sheen: 1, sheenRoughness: 0.75, sheenColor: C(col).lerp(C('#ffffff'), 0.55), envMapIntensity: 0.9 });
+  else if (name === 'vinyl') Object.assign(p, { roughness: 0.5, sheen: 0.6, sheenRoughness: 0.5, sheenColor: C(col).lerp(C('#ffffff'), 0.6), clearcoat: 0.3, clearcoatRoughness: 0.25, envMapIntensity: 0.8 });
   else Object.assign(p, { roughness: 0.12, transmission: 1, thickness: 0.9, ior: 1.45, attenuationColor: C(base), attenuationDistance: 0.6,
     clearcoat: 0.8, clearcoatRoughness: 0.1, color: C(base).lerp(C('#ffffff'), 0.55) });
   return p;
@@ -89,7 +99,9 @@ export function initLogo3D(opts) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(28, 1, 0.5, 100);
   const tilt = new THREE.Group(); scene.add(tilt);
-  S = { canvas, renderer, scene, camera, tilt, pieces: [], dpr: Math.min(devicePixelRatio || 1, 2), sweep: 0, sweepTo: 0, sign: 1 };
+  // the soft light that follows the cursor or finger (finish.js): you see it travel across the letters
+  const cursorLight = new THREE.PointLight(0xffffff, CURSOR_LIGHT * 1.6, 0, 0); scene.add(cursorLight);
+  S = { canvas, renderer, scene, camera, tilt, cursorLight, pieces: [], dpr: Math.min(devicePixelRatio || 1, 2), sweep: 0, sweepTo: 0, sign: 1 };
   window.__grumplLogo = S;   // for testing
   S.ready = Promise.all([
     gunzipFetch(PACK),
@@ -129,8 +141,8 @@ function applyMat(p) { NUM.forEach((k) => p.mat[k] = p.cur[k]); COL.forEach((k) 
 function kick(p, amt, delay = 0) { if (reduce) return; setTimeout(() => { p.v += amt * 9; wake(); }, delay); }
 
 // Finish changes sweep left to right, each piece puffing as its new finish arrives
-export function setLogo3DMode(m) {
-  const was = mode; mode = m;
+export function setLogo3DMode(m, recolor = false) {
+  const was = recolor ? m : mode; mode = m;
   if (!S?.pieces.length) return;
   if (m !== 'flat') {
     const instant = was === 'flat';
@@ -143,6 +155,8 @@ export function setLogo3DMode(m) {
   }
   visible();
 }
+// the same finish in another flavor's colors (vinyl to vinyl): sweep the new colors across like a finish change
+export function refreshLogo3D() { if (mode !== 'flat') setLogo3DMode(mode, true); }
 export function puffLogo3D() {
   if (!S?.idle) return;
   S.idle.forEach((p) => kick(p, p.kind === 'letter' ? 0.6 : 0.45, ((p.pivot.position.x + UNITS_W / 2) / UNITS_W) * 520));
@@ -245,6 +259,11 @@ function frame() {
     }
     p.v += (-180 * p.s - 10 * p.v) * dt; p.s += p.v * dt;
     p.pivot.scale.set(1 + p.s * 0.09, 1 + p.s * 0.09, 1 + p.s * 0.5);
+  }
+  // the cursor light sits where the pointer is, in the badge's units, a little in front of it
+  if (rect) {
+    const cr = S.canvas.getBoundingClientRect(), px = rect.w * (S.canvas.classList.contains('docked') ? (S.dock || 1) : 1) / UNITS_W;
+    S.cursorLight.position.set((cursor.x - (cr.left + cr.width / 2)) / px, -(cursor.y - (cr.top + cr.height / 2)) / px, 6);
   }
   pace(now);
   S.renderer.render(S.scene, S.camera);
