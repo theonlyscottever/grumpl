@@ -260,7 +260,11 @@ html.intro #Burger { --d: .62s; }
 html.intro #Cta { --d: .72s; }
 html.intro .hero-tools { --d: .86s; }
 html.intro #Burger, html.intro #Cta { translate: 0 0; }
-html.intro:not(.show) :is(#Burger, #Cta) { translate: 0 -40px; }
+html.intro:not(.show) #Cta { translate: 0 -40px; }
+/* the 3D burger is drawn from #Burger's measured box, so the button only fades (never moves) and its canvas fades with it */
+html.intro:not(.show) #Burger { translate: none; scale: none; }
+html.intro:not(.show) .gummy-burger { opacity: 0; }
+html.intro.show .gummy-burger { transition: opacity .45s ease .62s; }
 
 /* no blueprint (Jason, Scott 2026-10-16): no caption, part numbers or leader lines; the burger just flies apart */
 #Menu .menu-fig, #Menu .layer .lead, #Menu .layer small { visibility: hidden; }
