@@ -16,22 +16,70 @@ const PAD = { x: 0.07, y: 0.14 };       // room around the badge for the tilt an
 // lit by the shared warm room (room.js), exactly as the experiment was
 const envRot = { value: new THREE.Matrix3() };   // the room's turn plus the logo's own slow sway
 const flockU = { uFlockAmt: { value: 0 } };     // the flocked Grumpl's pile on the letters (finish.js), eased in and out
-function turnable(m) {
-  m.onBeforeCompile = (sh) => { turnEnv(sh, envRot); flockShader(sh, flockU, 0.6); };
+// One color like the Grumpl (Jason + Scott 2026-10-16): letters and drips both take the flavor's base color, and
+// the airbrushed edge color sits only in the crevices, where letters and drips run into each other (aSeam, worked
+// out once from the mesh) and, softer, low on the walls where they press into the cloud.
+function turnable(m, U) {
+  m.onBeforeCompile = (sh) => {
+    turnEnv(sh, envRot); flockShader(sh, flockU, 0.6);
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSeam; varying float vSeam; varying float vAZ;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeam = aSeam; vAZ = position.z;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uEdge; uniform float uTop, uAir; varying float vSeam; varying float vAZ;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float air = max(vSeam, (1.0 - smoothstep(0.0, uTop * 0.5, vAZ)) * 0.7) * uAir;
+        diffuseColor.rgb = mix(diffuseColor.rgb, uEdge, air * 0.95);`);
+  };
   m.customProgramCacheKey = () => 'logo3d-room';
   return m;
+}
+// how close each letter/drip vertex is to another piece: 1 where they meet, 0 beyond R (a grid keeps it quick)
+function seams(pieces, R = 0.3) {
+  const parts = pieces.filter((p) => p.kind !== 'puff'), grid = new Map(), key = (x, y, z) => `${x},${y},${z}`;
+  const world = (p, i, P) => [P[i * 3] + p.pivot.position.x, P[i * 3 + 1] + p.pivot.position.y, P[i * 3 + 2] + p.pivot.position.z];
+  parts.forEach((p, pi) => {
+    const P = p.mesh.geometry.attributes.position.array;
+    for (let i = 0; i < P.length / 3; i++) {
+      const [x, y, z] = world(p, i, P), k = key(Math.floor(x / R), Math.floor(y / R), Math.floor(z / R));
+      let b = grid.get(k); if (!b) grid.set(k, b = []); b.push(x, y, z, pi);
+    }
+  });
+  for (const p of pieces) {
+    const P = p.mesh.geometry.attributes.position.array, n = P.length / 3, out = new Float32Array(n), pi = parts.indexOf(p);
+    if (pi >= 0) for (let i = 0; i < n; i++) {
+      const [x, y, z] = world(p, i, P), gx = Math.floor(x / R), gy = Math.floor(y / R), gz = Math.floor(z / R);
+      let best = R * R;
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) {
+        const B = grid.get(key(gx + a, gy + b, gz + c)); if (!B) continue;
+        for (let j = 0; j < B.length; j += 4) if (B[j + 3] !== pi) {
+          const dx = B[j] - x, dy = B[j + 1] - y, dz = B[j + 2] - z, d = dx * dx + dy * dy + dz * dz;
+          if (d < best) best = d;
+        }
+      }
+      const t = 1 - Math.sqrt(best) / R; out[i] = t * t * (3 - 2 * t) * (p.kind === 'drop' ? 0.6 : 1);   // a drip only blushes where it joins
+    }
+    p.mesh.geometry.setAttribute('aSeam', new THREE.BufferAttribute(out, 1));
+  }
+}
+// the edge color each piece airbrushes with in the current finish (none on the badge, none on gummy)
+function airbrush(p, name) {
+  const f = finish.flavor;
+  p.U.uAir.value = p.kind !== 'puff' && f && name !== 'gummy' ? 1 : 0;
+  if (f) p.U.uEdge.value.set(f.edge);
 }
 
 // ---- Finishes (the experiment's presets for these two)
 const C = (s) => new THREE.Color(s);
 const ROSE = '#f2c9b8';
 // name: the focused Grumpl's finish (vinyl, chrome, flock; gummy for a season). The letters take that Grumpl's
-// colors in its finish: base on the letters, the airbrushed edge color on the drips. The cloud badge stays white
+// colors in its finish: base on the letters and the drips alike (never the edge color on the drips, Jason + Scott
+// 2026-10-16), with the edge color airbrushed into the crevices (turnable). The cloud badge stays white
 // in the same finish. kind: 'puff' (the badge), 'letter' or 'drop'.
 function preset(name, kind, base) {
   const letter = kind !== 'puff';
   const f = finish.flavor;
-  const col = f && name !== 'gummy' ? (kind === 'drop' ? f.edge : f.base) : base;
+  const col = f && name !== 'gummy' ? f.base : base;
   const p = { color: C(col), metalness: 0, roughness: 0.4, clearcoat: 0, clearcoatRoughness: 0.1, transmission: 0, thickness: 0.6,
     ior: 1.5, sheen: 0, sheenRoughness: 0.5, sheenColor: C('#000000'), attenuationColor: C('#ffffff'), attenuationDistance: 1, envMapIntensity: 1 };
   if (!letter) {
@@ -125,7 +173,9 @@ export function initLogo3D(opts) {
         c.z = z / nb;
       }
       geo.translate(-c.x, -c.y, -c.z);
-      const p = { id: rawId, kind, base, s: 0, v: 0, startAt: 0, mat: turnable(new THREE.MeshPhysicalMaterial()) };
+      geo.computeBoundingBox();
+      const U = { uEdge: { value: new THREE.Color() }, uTop: { value: Math.max(0.05, geo.boundingBox.max.z) }, uAir: { value: 0 } };
+      const p = { id: rawId, kind, base, U, s: 0, v: 0, startAt: 0, mat: turnable(new THREE.MeshPhysicalMaterial(), U) };
       p.target = preset('gummy', kind, base); p.cur = { ...p.target }; COL.forEach((k) => p.cur[k] = p.target[k].clone());
       applyMat(p);
       // the cloud badge is white on its own (Scott 2026-10-16: it went grey wherever the cursor light wasn't)
@@ -136,6 +186,7 @@ export function initLogo3D(opts) {
       tilt.add(p.pivot);
       S.pieces.push(p);
     }
+    seams(S.pieces);
     S.tappable = S.pieces.filter((p) => p.kind !== 'puff');
     S.idle = [...S.tappable].sort((a, b) => a.pivot.position.x - b.pivot.position.x);
     wire();
@@ -157,6 +208,7 @@ export function setLogo3DMode(m, recolor = false) {
     for (const p of S.pieces) {
       const x = (p.pivot.position.x + UNITS_W / 2) / UNITS_W;
       p.target = preset(m, p.kind, p.base);
+      airbrush(p, m);
       p.startAt = performance.now() + (instant || reduce ? 0 : x * 520 + (p.kind === 'drop' ? 80 : 0));
       if (instant) { p.cur = { ...p.target }; COL.forEach((k) => p.cur[k] = p.target[k].clone()); applyMat(p); }
     }

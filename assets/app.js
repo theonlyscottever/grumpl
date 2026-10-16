@@ -189,6 +189,7 @@ const tintU = { value: new THREE.Color(0x56c2dc) };
 const nightU = { value: 0 };
 const lampU = { value: new THREE.Vector3(0, 0, 0) };
 const logoMaskU = { value: null };
+const logoLineU = { value: null };   // a tighter silhouette for the crisp line where the logo is pressed in
 const logoRectU = { value: new THREE.Vector4(0, 0, 1, 1) };   // centre xy, size xy in the front cloud's own space
 const hemCutU = { value: -2 };   // NDC y below which only the hem draws (placeHem)
 function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
@@ -199,7 +200,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
     envMapIntensity: 1.25, vertexColors: true, toneMapped: false });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uOcc = occU; sh.uniforms.uPress = pressU; sh.uniforms.uSky = skyU; sh.uniforms.uTint = tintU;
-    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU;
+    sh.uniforms.uMask = logoMaskU; sh.uniforms.uLine = logoLineU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU;
     const DENT = `
       uniform vec4 uPress; uniform sampler2D uMask; uniform vec4 uRect;
       float dentH( vec2 q ) {
@@ -230,7 +231,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
       .replace('#include <worldpos_vertex>',
         '#include <worldpos_vertex>\n vCW = (modelMatrix * vec4(transformed, 1.0)).xyz; vCN = normalize(mat3(modelMatrix) * objectNormal);')
       .replace('#include <project_vertex>', '#include <project_vertex>\n vSY = gl_Position.y / gl_Position.w;');
-    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut;\n' + AO_GLSL + `
+    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut; uniform sampler2D uLine;\n' + AO_GLSL + `
       float cHash( vec3 p ) { p = fract( p * 0.1031 ); p += dot( p, p.zyx + 31.32 ); return fract( ( p.x + p.y ) * p.z ); }
       float cloudNoise( vec3 p ) {
         vec3 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
@@ -252,12 +253,18 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
         shade *= 1.0 - clamp( fold, 0.0, 1.0 ) * 0.7;
         shade *= 1.0 - clamp( press * 1.3, 0.0, 1.0 ) * 0.7;
         ${front ? `shade = mix( shade, 1.0, 0.45 );                                    // it faces us and the key: brighter than the bank
-        shade *= 1.0 - smoothstep( 0.05, 0.9, vLogo ) * 0.18;                  // the faint shade of the dip it rests in` : ''}
+        shade *= 1.0 - smoothstep( 0.05, 0.9, vLogo ) * 0.3;                   // the shade of the dip it rests in
+        // the line where it's pressed in (Jason + Scott 2026-10-16): a narrow crease hugging the badge, so the white
+        // badge reads against the white cloud
+        vec2 lnUv = ( vLogoUv - 0.5 ) / 1.15 + 0.5;                          // its mask has room around the badge
+        float lM = all( greaterThan( lnUv, vec2( 0.0 ) ) ) && all( lessThan( lnUv, vec2( 1.0 ) ) ) ? texture2D( uLine, lnUv ).r : 0.0;
+        float crease = smoothstep( 0.04, 0.24, lM ) * ( 1.0 - smoothstep( 0.42, 0.66, lM ) );` : ''}
         vec3 shadowCol = mix( uSky, uSky * 0.55 + uTint * 0.6, clamp( press * 1.4, 0.0, 1.0 ) );
         vec3 lit = mix( mix( shadowCol, vec3( 1.0 ), 0.25 ), vec3( 1.0 ), smoothstep( 0.1, 0.9, shade ) );
         float wisp = ${hem ? '0.5' : 'cloudNoise( vCW * 3.1 ) * 0.6 + cloudNoise( vCW * 7.3 ) * 0.4'};   // the hem is smooth: no wisps
         float edge = smoothstep( 0.5, 0.92, ( 1.0 - abs( dot( cN, cV ) ) ) + ( wisp - 0.5 ) * 0.35 );
         lit = mix( lit, vec3( 1.0 ), edge * ( 1.0 - clamp( press * 1.5, 0.0, 1.0 ) ) ${front ? '* ( 1.0 - smoothstep( 0.05, 0.5, vLogo ) )' : ''} );
+        ${front ? 'lit = mix( lit, mix( uSky, uSky * 0.5 + uTint * 0.6, 0.75 ), crease * 0.6 );' : ''}
         lit = mix( lit, vec3( 1.0 ), smoothstep( 9.0, 22.0, length( cameraPosition - vCW ) ) * 0.85 );
         outgoingLight = lit;
         if ( uNight > 0.0 ) {
@@ -518,6 +525,7 @@ async function buildLogo() {
     return t;
   };
   logoMaskU.value = mk(16, 1.02);
+  logoLineU.value = mk(3, 1.035 / 1.15);
   const rimTex = mk(9, 0.96);
 
   const logoMat = new THREE.ShaderMaterial({
