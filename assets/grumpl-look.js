@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
-import { roomEnv, roomOnly } from './room.js';
+import { roomEnv, roomOnly, turnEnv } from './room.js';
 
 // ---------- The light: one fixed product-photography setup ----------
 // Shot like a vinyl toy on a white sweep:
@@ -93,6 +93,7 @@ export const makeLightU = () => ({
 });
 export const bodyCompile = (U) => (sh) => {
   Object.assign(sh.uniforms, U);
+  turnEnv(sh);                                      // the site's one room (room.js), turned like everything else
   sh.vertexShader = sh.vertexShader
     .replace('#include <common>', `#include <common>
       attribute vec4 color;
@@ -205,8 +206,12 @@ export function makeSet(f, lightU, eyeEnv) {
   const set = { U, body: new THREE.MeshPhysicalMaterial(), eyes: new THREE.MeshPhysicalMaterial(), teeth: new THREE.MeshPhysicalMaterial() };
   set.body.onBeforeCompile = bodyCompile(U);
   set.body.customProgramCacheKey = () => 'grumpl-body';
-  set.eyes.envMap = eyeEnv;
+  set.eyes.envMap = eyeEnv;                         // the eyes keep their two crisp studio catchlights
   set.eyes.onBeforeCompile = eyesCompile;
+  // body and teeth reflect the site's one room (room.js); buildFigure hands it to them per renderer
+  set.teeth.onBeforeCompile = (sh) => turnEnv(sh);
+  set.teeth.customProgramCacheKey = () => 'grumpl-teeth';
+  for (const m of [set.body, set.teeth]) m.userData.room = true;
   set.eyes.customProgramCacheKey = () => 'grumpl-eyes';
   const fin = finishFor(f);
   for (const part of ['body', 'eyes', 'teeth']) {
@@ -238,6 +243,10 @@ export function makeSet(f, lightU, eyeEnv) {
     set.chrome = true;
   }
   return set;
+}
+// hand the room to a set's body and teeth now (before compiling), instead of waiting for their first draw
+export function roomSet(set, tex) {
+  for (const m of [set.body, set.teeth]) if (m.userData.room && m.envMap !== tex) { m.envMap = tex; m.needsUpdate = true; }
 }
 // recolor an existing set (same kind of finish) without recompiling
 export function paintSet(set, f) {

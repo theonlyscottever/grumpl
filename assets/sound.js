@@ -1,6 +1,7 @@
 // Site sound: off until someone turns it on (browsers block audio before a tap anyway).
 // Effects are synthesized, so there are no files to load: the box rattle when he hits a wall,
 // a soft cushion thump when he lands, and a squeak when he presses against the glass.
+// Turning sound on also plays the Grumpl beat (the song from the old Grumpl Artists site), looped, under the effects.
 const KEY = 'grumpl-sound';
 let ctx = null, master = null, noise = null;
 const subs = new Set();
@@ -38,14 +39,25 @@ function tone({ at = 0, f0 = 120, f1 = 60, dur = 0.12, gain = 0.4, type = 'sine'
   o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02);
 }
 
+// the song: one element for the whole page; the artists' dancing Grumpl is a second switch for it
+const beat = new Audio(new URL('../artists/grumplbeat.mp3', import.meta.url).href);
+beat.loop = true; beat.volume = 0.4; beat.preload = 'none';
+const playBeat = () => beat.play().catch(() => {
+  // sound was left on from an earlier visit: browsers hold audio until the first tap or key
+  const go = () => { if (state.on) beat.play().catch(() => {}); };
+  addEventListener('pointerdown', go, { once: true, capture: true }); addEventListener('keydown', go, { once: true, capture: true });
+});
+if (state.on) playBeat();
+
 const ready = () => state.on && audio() && ctx.state !== 'closed';
 
 export const sound = {
   get on() { return state.on; },
+  beat,
   set(on) {
     state.on = !!on;
     try { localStorage.setItem(KEY, on ? '1' : '0'); } catch {}
-    if (on) { audio(); ctx?.resume(); this.boop(); }
+    if (on) { audio(); ctx?.resume(); this.boop(); playBeat(); } else beat.pause();
     subs.forEach((f) => f(state.on));
   },
   toggle() { this.set(!state.on); return state.on; },

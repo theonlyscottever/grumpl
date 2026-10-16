@@ -11,7 +11,8 @@ import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 
-export const WARM_ROOM = { url: new URL('./hdri/warm-room-512.hdr', import.meta.url).href, exposure: 1.1, rotation: 4 * Math.PI / 3 };
+import { ROOM } from './room.js';
+export const WARM_ROOM = { url: ROOM.url, exposure: ROOM.exposure, rotation: ROOM.rot };   // the site's one room (room.js)
 
 let hdrPromise = null;
 const rooms = new WeakMap();

@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
-import { buildStudioEnv, makeLightU, buildFigure } from './grumpl-look.js';
+import { buildStudioEnv, makeLightU, buildFigure, roomSet } from './grumpl-look.js';
 import { turnRoom, roomEnv } from './room.js';
 
 // One renderer, carried into whichever flavor popup is open. He is lit and shaded exactly like the hero:
@@ -278,7 +278,7 @@ function frame(now) {
 	lightC.el += (lightT.el - lightC.el) * ease;
 	if (camT.distanceTo(camC) > 1e-4) moving = true;
 	camC.lerp(camT, ec);
-	if (shown?.set.chrome && turnRoom(now)) moving = true; // the rose chrome's room follows the cursor, as in the hero
+	if (turnRoom(now)) moving = true; // the room follows the cursor, as in the hero
 	if (!moving) return; // nothing changed: skip the frame entirely
 	kick = Math.max(0, kick - 1);
 	camera.position.set(camC.x, 1.35 + camC.y, 7.2);
@@ -303,10 +303,7 @@ window.Grumpl3D = {
 	get motionOn() { return motion.on; },
 	async still(f, angle) {
 		const fg = figFor(f);
-		if (fg.set.chrome && !fg.set.body.envMap) {      // a still can't wait for the warm room to stream in mid-frame
-			const t = await roomEnv(renderer);
-			for (const m of [fg.set.body, fg.set.teeth]) { m.envMap = t; m.needsUpdate = true; }
-		}
+		if (!fg.set.body.envMap) roomSet(fg.set, await roomEnv(renderer));   // a still can't wait for the room to stream in mid-frame
 		const keep = { rot: spin.rotation.y, az: lightC.az, el: lightC.el, q: rig.quaternion.clone(), pos: rig.position.clone(), aspect: camera.aspect, fov: camera.fov };
 		renderer.setPixelRatio(1); renderer.setSize(640, 640, false);
 		camera.aspect = 1; camera.fov = 24; camera.updateProjectionMatrix();
@@ -338,7 +335,7 @@ unpack().then((buf) => new GLTFLoader().parse(buf, '', (gltf) => {
 		const env = await roomEnv(renderer);
 		for (const f of FLAVORS) {
 			const fg = figFor(f);
-			if (fg.set.chrome) for (const m of [fg.set.body, fg.set.teeth]) { m.envMap = env; m.needsUpdate = true; }
+			roomSet(fg.set, env);
 			fg.group.visible = true;
 		}
 		// compile starts every program now (all of them in view for that instant), then finishes in the background

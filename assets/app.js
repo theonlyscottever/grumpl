@@ -6,7 +6,7 @@
 // - a page tint taken from the focused Grumpl's secondary color.
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { buildStudioEnv, makeLightU, buildFigure, loadGLB } from './grumpl-look.js';
+import { buildStudioEnv, makeLightU, buildFigure, loadGLB, roomSet } from './grumpl-look.js';
 import { roomWant, turnRoom, roomEnv } from './room.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { DROP, FLAVORS } from './drop.js';
@@ -511,7 +511,7 @@ const room = { want: roomWant };          // where the cursor or the phone's til
 const hasChrome = FLAVORS.some((f) => f.kind === 'chrome');
 addEventListener('grumpl-room-ready', () => poke(10));
 addEventListener('pointermove', (e) => {
-  if ((logo3D.mode === 'flat' && !hasChrome) || (coarse && motion?.on)) return;
+  if (coarse && motion?.on) return;
   const r = stage.getBoundingClientRect();
   room.want.set(THREE.MathUtils.clamp((e.clientX - r.left) / r.width * 2 - 1, -1, 1), THREE.MathUtils.clamp(-((e.clientY - r.top) / r.height * 2 - 1), -1, 1));
 }, { passive: true });
@@ -580,9 +580,7 @@ const ready = Promise.all([
   hold(8000);
   const firstLogo = pickLogo();
   const warm = [];
-  if (hasChrome) warm.push(roomEnv(renderer).then((t) => slots.forEach(({ set }) => {
-    if (set.chrome) for (const m of [set.body, set.teeth]) { m.envMap = t; m.needsUpdate = true; }
-  })));
+  warm.push(roomEnv(renderer).then((t) => slots.forEach(({ set }) => roomSet(set, t))));
   if (firstLogo !== 'flat') warm.push(setLogoFinish(firstLogo, { puff: false }));
   await Promise.race([Promise.all(warm), new Promise((r) => setTimeout(r, 8000))]);
   try { await renderer.compileAsync(scene, camera); } catch { renderer.compile(scene, camera); }
@@ -1067,7 +1065,7 @@ renderer.setAnimationLoop(() => {
   updateSmoosh(dt);
   g.scale.set(1 + 0.32 * squash.a, 1 + 0.2 * squash.a, Math.max(0.2, 1 - 0.62 * squash.a));
   updateNight(dt);
-  if (hasChrome && turnRoom()) poke(2);           // the chrome Grumpl's reflections follow the cursor
+  if (turnRoom()) poke(2);                        // the room (and every reflection in it) follows the cursor
   // fixed key, aimed at the focused Grumpl (at night the key is the lamp: see updateNight)
   if (!night.on) {
     const flat = Math.cos(KEY.el) * KEY.r;

@@ -1,12 +1,13 @@
-// The warm room: one light for every chrome and gummy thing on the page (the 3D logo and the rose chrome
-// Grumpl), so they read as one set. It is the puff-logo experiment's lighting (grumpl/logo/grumpl-puff-logo.html):
-// Poly Haven's st_fagans_interior HDRI, turned 240°, Khronos Neutral tone mapping at exposure 1.1, and the
-// room swings with the cursor (or the phone's tilt) the same way for everything lit by it.
+// The room: ONE environment for every 3D thing on the site (Scott, 2026-10-16): every Grumpl in every view
+// (hero, info box, studio, butt hill), the 3D logo and the gummy burger, so a colorway renders the same
+// everywhere. It is a bright forest (Poly Haven's forest_slope, CC0, 512 px), which the rose chrome mirrors.
+// The chrome and gummy pieces use Khronos Neutral tone mapping at exposure 1.1 (roomOnly), and the room
+// swings with the cursor (or the phone's tilt) the same way for everything lit by it.
 // r160 has no Neutral tone mapping and no environment rotation, so both go in by hand (the maths of r162+).
 import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
-export const ROOM = { url: 'assets/hdri/warm-room-512.hdr', exposure: 1.1, rot: 4 * Math.PI / 3 };
+export const ROOM = { url: new URL('./hdri/forest-512.hdr', import.meta.url).href, exposure: 1.1, rot: 4 * Math.PI / 3 };
 
 // where the cursor or the phone's tilt points, -1..1 (the hero writes it), and the room's turn from it
 export const roomWant = new THREE.Vector2();

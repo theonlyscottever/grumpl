@@ -1,6 +1,7 @@
 // The artists section: the 2022 Grumpl artists page, folded into the site.
 // mountArtists(el) fills the given <section id="Artists">. The bio overlays mount on body so they can cover the page.
 import { GEN, ONE } from '../artists/data.js';
+import { sound } from './sound.js';
 
 const DIR = new URL('../artists/', import.meta.url).href;
 const $ = (s, el = document) => el.querySelector(s);
@@ -137,14 +138,9 @@ export function mountArtists(el) {
   overlays.addEventListener('click', (e) => { if (!e.target.closest('.card')) hide(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
 
-  const beat = new Audio(`${DIR}grumplbeat.mp3`);
-  beat.volume = 0.4;
-  beat.loop = true;
-  beat.preload = 'none';
-  const sound = $('#A-Sound', el);
-  sound.addEventListener('click', () => {
-    if (beat.paused) beat.play(); else beat.pause();
-  });
-  beat.addEventListener('play', () => { $('img', sound).src = `${DIR}grumpl-skip-big.gif`; sound.setAttribute('aria-pressed', 'true'); });
-  beat.addEventListener('pause', () => { $('img', sound).src = `${DIR}grumpl-stand.png`; sound.setAttribute('aria-pressed', 'false'); });
+  // the dancing Grumpl is the site's sound switch too: it plays the beat with the rest of the sound
+  const btn = $('#A-Sound', el);
+  btn.addEventListener('click', () => sound.toggle());
+  const paint = () => { const on = !sound.beat.paused; $('img', btn).src = `${DIR}${on ? 'grumpl-skip-big.gif' : 'grumpl-stand.png'}`; btn.setAttribute('aria-pressed', String(on)); };
+  sound.beat.addEventListener('play', paint); sound.beat.addEventListener('pause', paint);
 }
