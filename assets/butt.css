@@ -1,10 +1,16 @@
 /* The butt hill footer: see assets/butt.js */
-#Butt { position: relative; height: 70vh; height: 70svh; min-height: 420px; overflow: hidden; background: var(--paper);
+/* Scott, crit 23: the hero's clouds come back behind the hill, sitting right on the artists' purple with a crisp
+   edge, and his head breaks up into the purple. #Butt reaches up over the artists' bottom padding by --butt-lap
+   (that strip of the canvas is see-through, so the purple shows above the clouds); below it the footer is paper,
+   hidden behind the cloud mass. The canvas places the scene from this margin (butt.js layout). */
+#Foot { --butt-lap: 210px; background: linear-gradient(to bottom, transparent var(--butt-lap), var(--paper) var(--butt-lap)); }
+@media (min-width: 768px) { #Foot { --butt-lap: 220px; } }
+#Butt { position: relative; z-index: 1; margin-top: calc(-1 * var(--butt-lap));
+	height: calc(56vh + var(--butt-lap)); height: calc(56svh + var(--butt-lap)); min-height: calc(360px + var(--butt-lap)); overflow: hidden; background: transparent;
 	cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; isolation: isolate; }
-@media (min-width: 768px) { #Butt { height: clamp(520px, 64vh, 640px); } }
+@media (min-width: 768px) { #Butt { height: calc(clamp(440px, 54vh, 560px) + var(--butt-lap)); } }
 #Butt canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: manipulation;
-	opacity: 0; transition: opacity .8s ease;
-	-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16%); mask-image: linear-gradient(to bottom, transparent 0, #000 16%); }
+	opacity: 0; transition: opacity .8s ease; }
 #Butt.butt-ready canvas { opacity: 1; }
 #Butt .butt-tag { position: absolute; z-index: 2; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); margin: 0;
 	padding: 9px 14px 8px; border-radius: var(--tag-radius, 7px 5px 8px 6px); background: var(--ink, #0b0a0c); color: var(--paper, #fff);

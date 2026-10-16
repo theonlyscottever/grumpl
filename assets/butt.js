@@ -10,6 +10,13 @@ import { buildStudioEnv, makeLightU, makeSet, buildFigure, bodyCompile, loadGLB 
 import { roomEnv } from './room.js';
 
 const MODEL_URL = new URL('./models/grumpl.glb', import.meta.url).href;
+// The hero's cloud bank (already in the browser's cache from the hero) comes back as the backdrop: its back rows
+// stand behind the hill, their tops cutting a crisp line across the purple the artists end on (Scott, crit 23).
+const BANK_URL = new URL('./models/cloud-bank.glb', import.meta.url).href;
+// sx/sy/sz: stretch of the bank; z0: pushed back behind the hill; line: the world height at the crest (his
+// shoulders) that the bank's top (top, at depth topZ in the bank) lines up with on screen, so his head and
+// shoulders break up into the purple.
+const CLOUD = { sx: 2.0, sy: 1.15, sz: 1.1, z0: -3.2, line: 1.32, top: 0.32, topZ: -5.6 };
 
 // The cheek: turn the model so `dir` points straight up; apex is the cheek's highest point (model space).
 // yaw turns the whole hill so we look at the butt three-quarters on: the crack and the other cheek come into view.
@@ -93,6 +100,54 @@ function hillCompile(U) {
   };
 }
 
+// The hero's cloud look (assets/app.js makeCloudMat), cut down for a backdrop: no dent, logo, lamp or contact shading.
+// Lighting is only used for a brightness; folds (baked in the vertex colour) and undersides take the sky's blue.
+// The bank's flat undersides would draw a hard line where the purple ends, so below its belly (bank y < -1) the
+// puffs are drawn out downwards like a curtain and melt to white: the white of the page below.
+function makeCloudMat(skyU) {
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0,
+    envMapIntensity: 1.25, vertexColors: true, toneMapped: false });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uSky = skyU;
+    sh.vertexShader = 'varying vec3 vCW, vCN; varying float vSY, vLY;\n' + sh.vertexShader
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vLY = position.y;
+        transformed.y -= max( -1.0 - position.y, 0.0 ) * 8.0;`)
+      .replace('#include <worldpos_vertex>',
+        '#include <worldpos_vertex>\n vCW = (modelMatrix * vec4(transformed, 1.0)).xyz; vCN = normalize(mat3(modelMatrix) * objectNormal);')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n vSY = gl_Position.y / gl_Position.w;');
+    sh.fragmentShader = `varying vec3 vCW, vCN; varying float vSY, vLY; uniform vec3 uSky;
+      float cHash( vec3 p ) { p = fract( p * 0.1031 ); p += dot( p, p.zyx + 31.32 ); return fract( ( p.x + p.y ) * p.z ); }
+      float cloudNoise( vec3 p ) {
+        vec3 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
+        return mix( mix( mix( cHash( i ), cHash( i + vec3( 1, 0, 0 ) ), f.x ), mix( cHash( i + vec3( 0, 1, 0 ) ), cHash( i + vec3( 1, 1, 0 ) ), f.x ), f.y ),
+                    mix( mix( cHash( i + vec3( 0, 0, 1 ) ), cHash( i + vec3( 1, 0, 1 ) ), f.x ), mix( cHash( i + vec3( 0, 1, 1 ) ), cHash( i + vec3( 1, 1, 1 ) ), f.x ), f.y ), f.z );
+      }
+    ` + sh.fragmentShader
+      .replace('#include <color_fragment>', 'float puffAO = vColor.r;')
+      .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('defined( RE_Direct_RectArea )', 'defined( RE_Direct_RectArea ) && 0'))
+      .replace('#include <opaque_fragment>', `
+        vec3 cN = normalize( vCN );
+        vec3 cV = normalize( cameraPosition - vCW );
+        float lum = dot( outgoingLight, vec3( 0.2126, 0.7152, 0.0722 ) );
+        float shade = 0.35 + 0.65 * smoothstep( 0.1, 1.5, lum );
+        float fold = ( 1.0 - smoothstep( 0.4, 1.0, puffAO ) ) * 0.75 + ( 1.0 - smoothstep( -0.6, 0.3, cN.y ) ) * 0.2;
+        shade *= 1.0 - clamp( fold, 0.0, 1.0 ) * 0.7;
+        vec3 lit = mix( mix( uSky, vec3( 1.0 ), 0.25 ), vec3( 1.0 ), smoothstep( 0.1, 0.9, shade ) );
+        float wisp = cloudNoise( vCW * 3.1 ) * 0.6 + cloudNoise( vCW * 7.3 ) * 0.4;
+        float edge = smoothstep( 0.5, 0.92, ( 1.0 - abs( dot( cN, cV ) ) ) + ( wisp - 0.5 ) * 0.35 );
+        lit = mix( lit, vec3( 1.0 ), edge );
+        lit = mix( lit, vec3( 1.0 ), smoothstep( 14.0, 34.0, length( cameraPosition - vCW ) ) * 0.7 );
+        lit = mix( lit, vec3( 1.0 ), smoothstep( -0.75, -1.05, vLY ) );
+        outgoingLight = lit;
+        #include <opaque_fragment>`)
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        gl_FragColor = vec4( mix( gl_FragColor.rgb, vec3( 1.0 ), smoothstep( -0.45, -1.0, vSY ) ), 1.0 );`);
+  };
+  m.customProgramCacheKey = () => 'butt-cloud';
+  return m;
+}
+
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 export function mountButt(el, { FLAVORS }) {
@@ -106,13 +161,15 @@ export function mountButt(el, { FLAVORS }) {
   tag.textContent = "It's butts all the way down";
   el.appendChild(tag);
 
-  let renderer = null, scene, camera, key, rims, lightU, eyeEnv, rigEnv;
+  let renderer = null, scene, camera, key, rims, lightU, eyeEnv, rigEnv, bank = null, skyFor = -1;
+  const skyU = { value: new THREE.Color(0x9fbcf0) };
   let littles = [], rigs = [], spare = null, fig = null;
   let ready = false, destroyed = false, visible = false, raf = 0, timer = 0, last = 0, acc = 0;
   let dbg = false, dbgBase = null, frames = 0;
   const pressU = { value: new THREE.Vector4(0, 0, 0, 0) };
   const occU = { value: OCC_LOCAL.map(() => new THREE.Vector4()) };
   const backDirW = new THREE.Vector3(0, 0.25, -1).normalize();
+  const _c = new THREE.Color();
   const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _a = new THREE.Vector3(), _v = new THREE.Vector3();
   const X_AXIS = new THREE.Vector3(1, 0, 0), Y_AXIS = new THREE.Vector3(0, 1, 0);
 
@@ -162,8 +219,25 @@ export function mountButt(el, { FLAVORS }) {
     });
     lightU = makeLightU();
 
-    fig = await loadGLB(MODEL_URL);
+    let bankGLB;
+    [fig, bankGLB] = await Promise.all([loadGLB(MODEL_URL), loadGLB(BANK_URL).catch((e) => { console.warn('butt: no clouds', e); return null; })]);
     if (destroyed) return;
+    if (bankGLB) {
+      // the bank's back, middle and far rows, and the hero puff that fills the middle; the front rows would stand
+      // in front of the hill
+      const mat = makeCloudMat(skyU);
+      bank = new THREE.Group();
+      bankGLB.scene.traverse((o) => {
+        if (!o.isMesh || o.name.startsWith('front')) return;
+        if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+        const m = new THREE.Mesh(o.geometry, mat);
+        m.applyMatrix4(o.matrixWorld);
+        bank.add(m);
+      });
+      bank.scale.set(CLOUD.sx, CLOUD.sy, CLOUD.sz);
+      bank.position.z = CLOUD.z0;
+      scene.add(bank);
+    }
     littles = FLAVORS.map((f) => {
       const fg = buildFigure(fig, f, lightU, eyeEnv, f.kind === 'gummy' ? (coarse ? 5000 : 9000) : 0);
       fg.group.visible = false;
@@ -360,6 +434,10 @@ export function mountButt(el, { FLAVORS }) {
     if (!ready || destroyed) return;
     const vm = camera.matrixWorldInverse;
     const g = littles[st.little].group;
+    if (skyFor !== st.little) {                     // the clouds' shade takes the little one's colour, as in the hero
+      skyFor = st.little;
+      skyU.value.set(0x9fbcf0).lerp(_c.set(FLAVORS[st.little].edge ?? 0x9fbcf0), 0.22);
+    }
     lightU.uKeyPosV.value.copy(key.position).applyMatrix4(vm);
     rims.forEach((r, i) => lightU.uRimDirV.value[i].copy(_v.copy(r.position).sub(g.position).normalize().transformDirection(vm)));
     lightU.uBackDirV.value.copy(backDirW).transformDirection(vm);
@@ -377,13 +455,31 @@ export function mountButt(el, { FLAVORS }) {
     camera.aspect = aspect;
     const tanH = Math.tan(THREE.MathUtils.degToRad(16));
     const portrait = aspect < 0.9;
-    // shot like the prototype: nearly level, he stands a little above the middle, the cheek a round mound
-    // under him that melts away into the page
-    const dist = portrait ? Math.max(10, 2.6 / (2 * tanH * aspect)) : 8.6;
-    camera.position.set(0, 1.7, dist);
-    camera.lookAt(0, portrait ? 0.72 : 0.55, 0);
+    // Shot nearly level, the cheek a round mound under him that melts away into the page. The canvas reaches up
+    // over the artists' purple by `lap` px (the CSS's negative margin) and he stands high in it: the top of his
+    // head up in the purple, the clouds' top line behind his shoulders, just above where the purple ends, so the
+    // cloud mass hides that edge.
+    const lap = Math.max(0, -parseFloat(getComputedStyle(el).marginTop) || 0);
+    const ppu = portrait ? Math.min(88, w / 4.4) : Math.min(104, h / 6.4);   // px per world unit at the crest
+    const head = Math.max(24, lap * (portrait ? 0.5 : 0.42));                // px from the canvas top to his head
+    const dist = h / (2 * tanH * ppu);
+    // looking down on the crest at about the old angle; aim so the top of his head lands `head` px down
+    camera.position.set(0, dist * 0.2, dist);
     camera.updateProjectionMatrix();
+    const want = 1 - 2 * head / h;
+    let lookY = 0;
+    for (let i = 0; i < 4; i++) {
+      camera.lookAt(0, lookY, 0);
+      camera.updateMatrixWorld();
+      lookY -= (want - _v.set(0, 1.78 - SINK, 0).project(camera).y) * h / 2 / ppu;
+    }
+    camera.lookAt(0, lookY, 0);
     camera.updateMatrixWorld();
+    if (bank) {
+      // line the bank's top up with his shoulders as seen from here: the ray from the camera through (0, line, 0)
+      const zr = CLOUD.z0 + CLOUD.topZ * CLOUD.sz, cy = camera.position.y;
+      bank.position.y = cy + (CLOUD.line - cy) * (dist - zr) / dist - CLOUD.top * CLOUD.sy;
+    }
   }
 
   // ---- running: only while on screen, and only while something moves ----
