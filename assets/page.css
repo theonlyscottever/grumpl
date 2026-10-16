@@ -151,15 +151,10 @@ body.burger3d #Burger svg { visibility: hidden; }
 /* ---------- make your own ---------- */
 #Make { padding: 0; }   /* the studio is its own band, with its own heading */
 #Make #Studio .st-stagecol { top: calc(var(--top-pad) + 70px); }   /* side by side: stick just under the fixed header */
-/* Phones: no sticky stage (it ended up covering the controls). The whole studio fits one screen instead: him on
-   top, the tabs under him, and only the tab's own content scrolls, so he is always in view while you work. */
+/* Phones: no sticky stage (it covered the controls). The preview stays full size with the controls stacked
+   under it, and the page does all the scrolling. */
 @media (max-width: 559px) {
-	#Make #Studio .st-app { --st-h: calc(100svh - var(--top-pad) - 86px); height: var(--st-h); grid-template-rows: auto minmax(0, 1fr); gap: 10px; }
 	#Make #Studio .st-stagecol { position: relative; top: auto; }
-	#Make #Studio .st-stage { aspect-ratio: auto; height: calc(var(--st-h) * 0.44); }
-	#Make #Studio .st-panel { display: flex; flex-direction: column; min-height: 0; }
-	#Make #Studio .st-tabs { flex: none; }
-	#Make #Studio .st-pane:not([hidden]) { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; margin: 0 -12px -12px; padding: 0 12px 12px; }
 }
 #Colors, #Studio { min-height: 200px; }
 #Colors.failed::after, #Studio.failed::after, #Artists.failed::after { content: "This part didn't load. Reload to try again."; display: block; padding: 40px var(--gut); text-align: center; color: var(--muted); }
