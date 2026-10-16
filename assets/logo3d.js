@@ -232,7 +232,9 @@ function wire() {
   addEventListener('grumpl-logo', (e) => { rect = e.detail; layout(); visible(); });
   addEventListener('grumpl-logo-3d', (e) => { shown = !!e.detail?.show; visible(); });
   document.addEventListener('visibilitychange', wake);
-  new MutationObserver(wake).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  const mo = new MutationObserver(wake);
+  mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  if (menuEl()) mo.observe(menuEl(), { attributes: true, attributeFilter: ['hidden'] });
 }
 
 // ---- Loop: runs only while the logo is on screen; the slow sway keeps the room's reflections alive
@@ -240,7 +242,8 @@ const clock = new THREE.Clock();
 const _e = new THREE.Euler(), _m = new THREE.Matrix4();
 const aim = new THREE.Vector2();
 let raf = 0, t = 0;
-const covered = () => document.body.classList.contains('menu-open') || document.body.classList.contains('ds-no-scroll');
+const menuEl = () => document.getElementById('Menu');
+const covered = () => menuEl()?.hidden === false || document.body.classList.contains('ds-no-scroll');
 function wake() { if (!raf && S) { clock.getDelta(); raf = requestAnimationFrame(frame); } }
 function frame() {
   raf = 0;

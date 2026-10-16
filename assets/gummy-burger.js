@@ -376,7 +376,12 @@ export async function createGummyBurger({ button, menu, slots, rows, keys }) {
     open() {
       closing = false; measure(); setRegion(true);
       L.forEach((l) => { l.hover = false; });
-      go(1); wake();
+      // grow the canvas and draw one still frame now; the flight starts on the next frame, so the cost of
+      // the resize never lands inside the animation as a jump
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      frame(performance.now());
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      requestAnimationFrame(() => { go(1); wake(); });
     },
     close() {
       measure(); closing = true; go(0); wake();

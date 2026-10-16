@@ -49,7 +49,7 @@ body.menu-open #Mark { opacity: 0; }
 	background-image: linear-gradient(color-mix(in oklab, #4f8bff 9%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, #4f8bff 9%, transparent) 1px, transparent 1px);
 	background-size: 24px 24px; }
 #Menu.open .menu-bg { opacity: 1; }
-@supports (backdrop-filter: blur(1px)) { #Menu .menu-bg { background-color: color-mix(in oklab, var(--paper) 80%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); } }
+/* no backdrop blur: re-blurring the whole screen every frame of the fade made the burger's flight stutter */
 #Menu .menu-x { position: fixed; z-index: 3; top: var(--top-pad); left: var(--gut); width: 48px; height: 48px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px;
 	background: #fff3d6; color: #1b1620; display: grid; place-items: center; transform: rotate(-6deg) scale(.4); opacity: 0; transition: var(--trans); }
 #Menu .menu-x svg { width: 18px; height: 18px; }

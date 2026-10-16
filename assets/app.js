@@ -992,8 +992,11 @@ function sendLogoRect() {
 let heroOn = true;
 new IntersectionObserver(([e]) => { heroOn = e.isIntersecting; if (heroOn) poke(6); }).observe(document.getElementById('Hero'));
 // ...and while the menu or a drop popup covers it (they get the GPU to themselves)
-const covered = () => document.body.classList.contains('menu-open') || document.body.classList.contains('ds-no-scroll');
-new MutationObserver(() => { if (!covered()) poke(6); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+const menuEl = () => document.getElementById('Menu');
+const covered = () => menuEl()?.hidden === false || document.body.classList.contains('ds-no-scroll');
+const uncover = new MutationObserver(() => { if (!covered()) { hold(); poke(6); } });
+uncover.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+if (menuEl()) uncover.observe(menuEl(), { attributes: true, attributeFilter: ['hidden'] });
 addEventListener('resize', resize);
 
 // ---------- Frame loop ----------

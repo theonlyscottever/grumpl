@@ -121,12 +121,15 @@ menu.innerHTML = `
   </div>
   <button class="menu-sound sound-btn" type="button" data-sound><span></span></button>`;
 let menuOpen = false;
-function flyFrom(el) {
+function flyFrom(els) {
   // every piece starts inside the little burger and flies to its place in the diagram
-  const b = burger.getBoundingClientRect(), r = el.getBoundingClientRect();
-  const dx = b.left + b.width / 2 - (r.left + r.width / 2), dy = b.top + b.height / 2 - (r.top + r.height / 2);
-  el.style.setProperty('--fx', `${dx}px`); el.style.setProperty('--fy', `${dy}px`);
-  el.style.setProperty('--fs', (b.width / Math.max(40, r.width)).toFixed(3));
+  // (all the measuring first, then all the writing: one layout, not one per piece)
+  const b = burger.getBoundingClientRect(), rs = els.map((el) => el.getBoundingClientRect());
+  els.forEach((el, i) => {
+    const r = rs[i], dx = b.left + b.width / 2 - (r.left + r.width / 2), dy = b.top + b.height / 2 - (r.top + r.height / 2);
+    el.style.setProperty('--fx', `${dx}px`); el.style.setProperty('--fy', `${dy}px`);
+    el.style.setProperty('--fs', (b.width / Math.max(40, r.width)).toFixed(3));
+  });
 }
 // The burger is gummy and 3D (assets/gummy-burger.js): the same seven candies are the header button
 // (stacked, small) and the menu (pulled apart, one per row), on one canvas, so the thing you tap is the thing
@@ -138,6 +141,8 @@ function gummyBurger() {
     .then((m) => m.createGummyBurger({ button: burger, menu, slots: $$('.layer .part', menu), rows: $$('.layer', menu), keys: LAYERS.map((l) => l.k) }))
     .then((g) => {
       document.body.classList.add('burger3d'); menu.classList.add('g3d');
+      // fetch and decode the menu's drop pictures now, not in the middle of the menu's first opening
+      $$('.mdrop img', menu).forEach((im) => { im.loading = 'eager'; im.decode?.().catch(() => {}); });
       if (menuOpen) g.open();
       return g;
     })
@@ -151,7 +156,7 @@ function openMenu() {
   menu.hidden = false;
   document.body.classList.add('menu-open');
   burger.setAttribute('aria-expanded', 'true');
-  $$('.part, .mdrop', menu).forEach(flyFrom);
+  flyFrom($$(menu.classList.contains('g3d') ? '.mdrop' : '.part, .mdrop', menu));
   menu.classList.remove('open'); void menu.offsetWidth;
   menu.classList.add('open');
   gummy?.then((g) => g?.open());
@@ -161,7 +166,7 @@ function openMenu() {
 function closeMenu(then) {
   if (!menuOpen) return;
   menuOpen = false;
-  $$('.part, .mdrop', menu).forEach(flyFrom);
+  flyFrom($$(menu.classList.contains('g3d') ? '.mdrop' : '.part, .mdrop', menu));
   gummy?.then((g) => g?.close());
   menu.classList.remove('open');
   menu.classList.add('closing');

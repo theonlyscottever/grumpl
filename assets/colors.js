@@ -14,7 +14,7 @@ const LS_VOTES = 'grumpl-color-votes';  // [id] the requests this visitor has +1
 const SEED_URL = new URL('./color-requests.json', import.meta.url);
 
 export const STARTERS = [
-  ['Blue Raspberry', '#56c2dc'], ['Strawberry Gummy', '#ff5a50'], ['Clover', '#4ca63e'],
+  ['Blue Raspberry', '#56c2dc'], ['Clover', '#4ca63e'],
   ['Lunchbutter', '#e3c45c'], ['Fleshberry', '#f0a99a'], ['Mosssnootfruit', '#8f9d38'],
   ['Cement Juice', '#9b9a93'], ['Grape Bruise', '#7350a8'], ['Gravy', '#8a5634'],
   ['Pool Water', '#47d6c4'], ['Bubblegum', '#ff8fc8'], ['Tar', '#2a2530'],
@@ -81,7 +81,7 @@ export function deriveTones(hex) {
 
 /* ---------------- names ---------------- */
 // Real flavors for the vibe: Fleshberry, Mosssnootfruit, Color That Tastes Like Obo's Foot, Lunchbutter,
-// Cement Juice, Bagfasehed Speshul, Blue Raspberry, Strawberry Gummy, Clover.
+// Cement Juice, Bagfasehed Speshul, Blue Raspberry, Clover.
 const W = {
   red: ['ketchup', 'scab', 'cherry', 'radish', 'jam', 'tomato', 'beet', 'hot sauce', 'rash', 'gum', 'salami', 'licorice', 'pimento', 'cough drop', 'sunburn'],
   pink: ['flesh', 'ham', 'tongue', 'gum', 'shrimp', 'bubblegum', 'piggy', 'earlobe', 'nose', 'taffy', 'bologna', 'cheek', 'toe bean', 'eraser', 'lunchmeat'],
