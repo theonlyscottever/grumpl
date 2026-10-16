@@ -8,4 +8,4 @@
 	background: linear-gradient(to bottom, var(--paper), var(--join-c) 160px, var(--join-c) calc(100% - 160px), var(--paper)); }
 #Studio { --join-c: color-mix(in oklab, var(--st-belly, #cdeec2) 26%, var(--st-paper));
 	background: linear-gradient(to bottom, var(--st-paper), var(--join-c) 140px, var(--join-c) calc(100% - 140px), var(--st-paper)); }
-#Artists { background: linear-gradient(to bottom, var(--paper, #fff), var(--light) 160px, var(--chantilly), var(--cold-purple), var(--majesty) calc(100% - 260px), #fff); }
+#Artists { background: linear-gradient(to bottom, var(--paper, #fff), var(--light) 160px, var(--chantilly), var(--cold-purple), var(--majesty) calc(100% - 260px), var(--paper)); }

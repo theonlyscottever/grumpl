@@ -6,7 +6,8 @@
 
 #Cta .go { --skin: var(--c); --skin-edge: var(--c-edge); }
 #Cta .pop form button { --skin: var(--c); --skin-edge: var(--c-edge); }
-#Cta .close, #DropClose, #A-Close, #Menu .menu-x { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }
+#Cta .close, #DropClose, #A-Close { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }
+#Menu .menu-x { --skin: var(--lemon); --skin-edge: #ffd23f; }
 #Cta .close.skinned svg, #DropClose.skinned svg, #Menu .menu-x.skinned svg { opacity: 0; }
 #A-Close.skinned::before, #A-Close.skinned::after { opacity: 0 !important; }
 .sound-btn, #Foot [data-sound] { --skin: var(--paper); --skin-edge: var(--edge, #c9cdf0); }

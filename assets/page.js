@@ -151,19 +151,19 @@ mark.addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, b
 // and the drops come flying out of it as cards.
 const LAYERS = [
   { k: 'bun-top', label: 'The new drop', part: 'Top bun', go: '#Hero',
-    svg: '<path d="M8 56c0-26 26-44 62-44s62 18 62 44z" fill="#f2b36a" stroke="#1b1620" stroke-width="5" stroke-linejoin="round"/><path d="M22 46c6-16 24-26 48-26" fill="none" stroke="#fff4dc" stroke-width="5" stroke-linecap="round" opacity=".7"/><g fill="#fff4dc" stroke="#1b1620" stroke-width="2"><ellipse cx="50" cy="30" rx="4" ry="2.6" transform="rotate(-20 50 30)"/><ellipse cx="72" cy="24" rx="4" ry="2.6"/><ellipse cx="94" cy="31" rx="4" ry="2.6" transform="rotate(20 94 31)"/><ellipse cx="62" cy="42" rx="4" ry="2.6" transform="rotate(10 62 42)"/><ellipse cx="86" cy="44" rx="4" ry="2.6" transform="rotate(-12 86 44)"/><ellipse cx="38" cy="45" rx="4" ry="2.6" transform="rotate(-30 38 45)"/></g>' },
+    svg: '<path d="M8 56c0-26 26-44 62-44s62 18 62 44z" fill="#f2b36a" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/><path d="M22 46c6-16 24-26 48-26" fill="none" stroke="#fff4dc" stroke-width="5" stroke-linecap="round" opacity=".7"/><g fill="#fff4dc" stroke="#0b0a0c" stroke-width="2"><ellipse cx="50" cy="30" rx="4" ry="2.6" transform="rotate(-20 50 30)"/><ellipse cx="72" cy="24" rx="4" ry="2.6"/><ellipse cx="94" cy="31" rx="4" ry="2.6" transform="rotate(20 94 31)"/><ellipse cx="62" cy="42" rx="4" ry="2.6" transform="rotate(10 62 42)"/><ellipse cx="86" cy="44" rx="4" ry="2.6" transform="rotate(-12 86 44)"/><ellipse cx="38" cy="45" rx="4" ry="2.6" transform="rotate(-30 38 45)"/></g>' },
   { k: 'lettuce', label: 'Every drop', part: 'Lettuce', go: '#Drops',
-    svg: '<path d="M6 40c8-10 14 4 22-4s14 6 22-2 14 6 22-2 14 6 22-2 14 6 22-2 12 4 18 0c-2 10-12 12-20 10-8 6-16-2-24 2s-16-4-24 2-16-4-24 2-16-4-24 0C8 44 4 46 6 40z" fill="#7bc96f" stroke="#1b1620" stroke-width="5" stroke-linejoin="round"/>' },
+    svg: '<path d="M6 40c8-10 14 4 22-4s14 6 22-2 14 6 22-2 14 6 22-2 14 6 22-2 12 4 18 0c-2 10-12 12-20 10-8 6-16-2-24 2s-16-4-24 2-16-4-24 2-16-4-24 0C8 44 4 46 6 40z" fill="#7bc96f" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>' },
   { k: 'tomato', label: 'The story', part: 'Tomato', go: '#Story',
-    svg: '<rect x="16" y="28" width="50" height="18" rx="9" fill="#ff5a4a" stroke="#1b1620" stroke-width="5"/><rect x="72" y="28" width="52" height="18" rx="9" fill="#ff5a4a" stroke="#1b1620" stroke-width="5"/><g fill="#ffd0c4"><circle cx="32" cy="37" r="2.5"/><circle cx="48" cy="37" r="2.5"/><circle cx="90" cy="37" r="2.5"/><circle cx="106" cy="37" r="2.5"/></g>' },
+    svg: '<rect x="16" y="28" width="50" height="18" rx="9" fill="#ff5a4a" stroke="#0b0a0c" stroke-width="5"/><rect x="72" y="28" width="52" height="18" rx="9" fill="#ff5a4a" stroke="#0b0a0c" stroke-width="5"/><g fill="#ffd0c4"><circle cx="32" cy="37" r="2.5"/><circle cx="48" cy="37" r="2.5"/><circle cx="90" cy="37" r="2.5"/><circle cx="106" cy="37" r="2.5"/></g>' },
   { k: 'cheese', label: 'Make your own', part: 'Cheese', go: '#Make',
-    svg: '<path d="M10 30h120l-10 8-6 16-10-14-14 6-8-6-16 18-8-18-14 8-10-8-10 12-8-12z" fill="#ffd23f" stroke="#1b1620" stroke-width="5" stroke-linejoin="round"/>' },
+    svg: '<path d="M10 30h120l-10 8-6 16-10-14-14 6-8-6-16 18-8-18-14 8-10-8-10 12-8-12z" fill="#ffd23f" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>' },
   { k: 'patty', label: 'The artists', part: 'Patty', go: '#Artists',
-    svg: '<rect x="8" y="24" width="124" height="30" rx="15" fill="#8a4b3a" stroke="#1b1620" stroke-width="5"/><path d="M24 34h14M48 42h18M78 32h12M100 42h16" stroke="#5e3026" stroke-width="4" stroke-linecap="round"/>' },
+    svg: '<rect x="8" y="24" width="124" height="30" rx="15" fill="#8a4b3a" stroke="#0b0a0c" stroke-width="5"/><path d="M24 34h14M48 42h18M78 32h12M100 42h16" stroke="#5e3026" stroke-width="4" stroke-linecap="round"/>' },
   { k: 'pickle', label: 'Lights out', part: 'Pickle', toggle: 'night', small: true,
-    svg: '<ellipse cx="70" cy="38" rx="26" ry="16" fill="#9cc34a" stroke="#1b1620" stroke-width="5"/><ellipse cx="70" cy="38" rx="15" ry="8" fill="#c8e27a"/><g fill="#6f9a2c"><circle cx="64" cy="35" r="2"/><circle cx="76" cy="41" r="2"/><circle cx="72" cy="32" r="2"/></g>' },
+    svg: '<ellipse cx="70" cy="38" rx="26" ry="16" fill="#9cc34a" stroke="#0b0a0c" stroke-width="5"/><ellipse cx="70" cy="38" rx="15" ry="8" fill="#c8e27a"/><g fill="#6f9a2c"><circle cx="64" cy="35" r="2"/><circle cx="76" cy="41" r="2"/><circle cx="72" cy="32" r="2"/></g>' },
   { k: 'bun-bottom', label: 'Brand book', part: 'Bottom bun', go: 'brand/', ext: true,
-    svg: '<path d="M10 26h120c0 16-10 26-24 26H34c-14 0-24-10-24-26z" fill="#f2b36a" stroke="#1b1620" stroke-width="5" stroke-linejoin="round"/>' },
+    svg: '<path d="M10 26h120c0 16-10 26-24 26H34c-14 0-24-10-24-26z" fill="#f2b36a" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>' },
 ];
 const menu = $('#Menu'), burger = $('#Burger');
 menu.innerHTML = `
@@ -270,10 +270,10 @@ function goTo(hash) {
 /* ======================= the storybook ======================= */
 // A first draft of the lore for Jason to rewrite. Pages pile up like a book as you scroll.
 const PAGES = [
-  { art: 'grumpl-stand.png', line: true, h: 'This is a Grumpl.',
+  { art: 'grumpl-stand.png', line: true, h: 'This is a Grumpl.', hand: { t: 'actual size (ish)', at: 'tl' },
     p: ['He is about as tall as your hand, a little taller after lunch. Nobody knows how old he is, including him.',
         'He frowns at birds, weather and most people. Stay still long enough and he will sit on your foot anyway.'] },
-  { art: 'story-eat', bg: '#ffd23f', h: 'What they eat',
+  { art: 'story-eat', bg: '#ffd23f', h: 'What they eat', hand: { t: 'not his burger', at: 'tl' },
     p: ['Burgers, mostly. Somebody else’s burger, ideally, the kind that’s been in the bag a while.',
         'Also pocket lint, the heel of the bread, ketchup packets with the packet still on, and socks when nobody is looking.',
         'They won’t eat a vegetable. They will hold a pickle for an hour to make a point.'] },
@@ -294,20 +294,23 @@ const PAGES = [
         'The Grumpls don’t talk about it. They come back smelling like fries and go straight to sleep.'] },
 ];
 const SOCK = `<svg viewBox="0 0 240 240" class="sock" aria-hidden="true">
-  <defs><pattern id="knit" width="16" height="12" patternUnits="userSpaceOnUse"><path d="M0 0l8 8 8-8" fill="none" stroke="#1b1620" stroke-opacity=".18" stroke-width="2"/></pattern></defs>
-  <path d="M70 40c-14 8-12 22-8 30-18 12-30 40-26 76 4 40 34 64 84 64s80-24 84-64c4-36-8-64-26-76 4-8 6-22-8-30-12-6-22 2-26 8-10-4-26-4-38 0-6-6-16-14-36-8z" fill="#fff8ec" stroke="#1b1620" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M44 120c10-10 30-14 76-14s66 4 76 14l-4 52c-12 14-36 22-72 22s-60-8-72-22z" fill="#ff8f6b" stroke="#1b1620" stroke-width="5" stroke-linejoin="round"/>
+  <defs><pattern id="knit" width="16" height="12" patternUnits="userSpaceOnUse"><path d="M0 0l8 8 8-8" fill="none" stroke="#0b0a0c" stroke-opacity=".18" stroke-width="2"/></pattern></defs>
+  <path d="M70 40c-14 8-12 22-8 30-18 12-30 40-26 76 4 40 34 64 84 64s80-24 84-64c4-36-8-64-26-76 4-8 6-22-8-30-12-6-22 2-26 8-10-4-26-4-38 0-6-6-16-14-36-8z" fill="#fff8ec" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M44 120c10-10 30-14 76-14s66 4 76 14l-4 52c-12 14-36 22-72 22s-60-8-72-22z" fill="#ff8f6b" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>
   <path d="M44 120c10-10 30-14 76-14s66 4 76 14l-4 52c-12 14-36 22-72 22s-60-8-72-22z" fill="url(#knit)"/>
   <path d="M46 136c22 6 48 8 74 8s52-2 74-8M48 156c22 6 46 8 72 8s50-2 72-8" fill="none" stroke="#ffd23f" stroke-width="9"/>
-  <path d="M42 118c10-12 34-18 78-18s68 6 78 18" fill="none" stroke="#1b1620" stroke-width="5"/>
-  <path d="M40 114c12-12 36-18 80-18s68 6 80 18l-2 10c-10-10-34-16-78-16s-68 6-78 16z" fill="#ff8f6b" stroke="#1b1620" stroke-width="4"/>
+  <path d="M42 118c10-12 34-18 78-18s68 6 78 18" fill="none" stroke="#0b0a0c" stroke-width="5"/>
+  <path d="M40 114c12-12 36-18 80-18s68 6 80 18l-2 10c-10-10-34-16-78-16s-68 6-78 16z" fill="#ff8f6b" stroke="#0b0a0c" stroke-width="4"/>
   <circle cx="98" cy="84" r="7" fill="#111"/><circle cx="142" cy="84" r="7" fill="#111"/><circle cx="100" cy="82" r="2" fill="#fff"/><circle cx="144" cy="82" r="2" fill="#fff"/>
-  <path d="M108 100c8 4 16 4 24 0" fill="none" stroke="#1b1620" stroke-width="4" stroke-linecap="round"/>
-  <path d="M182 196c18-2 30 8 28 22-2 10-14 12-24 8" fill="#ff8f6b" stroke="#1b1620" stroke-width="4"/>
+  <path d="M108 100c8 4 16 4 24 0" fill="none" stroke="#0b0a0c" stroke-width="4" stroke-linecap="round"/>
+  <path d="M182 196c18-2 30 8 28 22-2 10-14 12-24 8" fill="#ff8f6b" stroke="#0b0a0c" stroke-width="4"/>
 </svg>`;
+// Bruce's Grumpl font, only as a pencilled side note: decorative, hidden from screen readers, never needed to read the page.
+const ARROW = '<svg viewBox="0 0 60 40" aria-hidden="true"><path d="M4 6c14-2 30 4 38 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M33 23l10 5 2-11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const hand = (n) => `<span class="hand at-${n.at}" aria-hidden="true">${n.t}${ARROW}</span>`;
 $('#Book').innerHTML = PAGES.map((pg, i) => `
   <section class="page${pg.dark ? ' dark' : ''}${pg.bg ? ' strong' : ''}" style="--i:${i};--r:${(rnd(i + 11) * 3 - 1.5).toFixed(2)}deg${pg.bg ? `;--pg:${pg.bg}` : ''}">
-    <div class="pic${pg.line ? ' line' : ''}">${pg.art === 'sock' ? SOCK : `<img src="${img(pg.art)}" alt="" loading="lazy">`}</div>
+    <div class="pic${pg.line ? ' line' : ''}">${pg.art === 'sock' ? SOCK : `<img src="${img(pg.art)}" alt="" loading="lazy">`}${pg.hand ? hand(pg.hand) : ''}</div>
     <div class="words">
       <p class="pno">${i + 1}</p>
       <h3>${pg.h}</h3>

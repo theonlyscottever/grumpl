@@ -12,7 +12,7 @@
 	--tint: #9fdcae;
 	--tint-edge: #4fd2e0;
 
-	--font-cute: "Grumpl", caraque-melted, "Chewy", "Fredoka", ui-rounded, system-ui, sans-serif;
+	--font-cute: caraque-melted, "Chewy", "Fredoka", ui-rounded, system-ui, sans-serif;
 	--font-solid: caraque-solid, "Fredoka", ui-rounded, system-ui, sans-serif;
 
 	--gap: 48px;
@@ -106,8 +106,8 @@ body.ds-no-scroll { overflow: hidden; }
 :is(#Drops, #DropOverlays) .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px; }
 :is(#Drops, #DropOverlays) .flavor { aspect-ratio: 1; max-width: 100%; overflow: hidden; background: var(--ink); cursor: pointer; padding: 0; text-align: left; display: block; width: 100%; }
 :is(#Drops, #DropOverlays) .flavor img, :is(#Drops, #DropOverlays) .flavor .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-:is(#Drops, #DropOverlays) .flavor.cut { background: radial-gradient(circle at 50% 40%, #fff 0 12%, color-mix(in oklab, var(--belly) 35%, #fff) 38%, color-mix(in oklab, var(--base) 42%, #fff) 72%, color-mix(in oklab, var(--edge) 45%, #fff) 125%); }
-:is(#Drops, #DropOverlays) .slide.cut { background: radial-gradient(circle at 50% 42%, #fff 0 12%, color-mix(in oklab, var(--o-belly) 35%, #fff) 40%, color-mix(in oklab, var(--o-base) 42%, #fff) 74%, color-mix(in oklab, var(--o-edge) 45%, #fff) 130%); }
+:is(#Drops, #DropOverlays) .flavor.cut { background: radial-gradient(circle at 50% 40%, var(--paper) 0 12%, color-mix(in oklab, var(--belly) 35%, var(--paper)) 38%, color-mix(in oklab, var(--base) 42%, var(--paper)) 72%, color-mix(in oklab, var(--edge) 45%, var(--paper)) 125%); }
+:is(#Drops, #DropOverlays) .slide.cut { background: radial-gradient(circle at 50% 42%, var(--paper) 0 12%, color-mix(in oklab, var(--o-belly) 35%, var(--paper)) 40%, color-mix(in oklab, var(--o-base) 42%, var(--paper)) 74%, color-mix(in oklab, var(--o-edge) 45%, var(--paper)) 130%); }
 :is(#Drops, #DropOverlays) .slide.cut img { object-fit: contain; }
 :is(#Drops, #DropOverlays) .flavor .art.blob { background: radial-gradient(circle at 50% 42%, var(--belly) 0 18%, var(--base) 42%, var(--edge)); }
 :is(#Drops, #DropOverlays) .flavor .rep { opacity: 0; transform: scale(1.1) rotate(-6deg); transition: var(--trans); background: var(--soft); }

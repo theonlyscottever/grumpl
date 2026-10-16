@@ -15,7 +15,7 @@ const LOGO_URL = new URL('./logo.svg', import.meta.url).href;
 const LINE_URL = new URL('./studio/line-drawing.png', import.meta.url).href;
 const COLORS_CSS = new URL('./colors.css', import.meta.url).href;
 
-const INK = '#1b1620', LEMON = '#ffee96', PAPER = '#ffffff', WASH = '#eef3fb';
+const INK = '#0b0a0c', LEMON = '#ffee96', PAPER = '#ffffff', WASH = '#eef3fb';
 const coarse = matchMedia('(pointer: coarse)').matches;
 const DPR = () => Math.min(devicePixelRatio || 1, coarse ? 1.5 : 2);
 

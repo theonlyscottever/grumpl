@@ -41,7 +41,7 @@ body.menu-open #Logo3D.docked { opacity: 0; }
 .sound-btn.on::before { -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2 7h3l5-4v14l-5-4H2z" fill="black"/><path d="M13 7q2 3 0 6M15.5 4.5q4.5 5.5 0 11" fill="none" stroke="black" stroke-width="2.2" stroke-linecap="round"/></svg>');
 	mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2 7h3l5-4v14l-5-4H2z" fill="black"/><path d="M13 7q2 3 0 6M15.5 4.5q4.5 5.5 0 11" fill="none" stroke="black" stroke-width="2.2" stroke-linecap="round"/></svg>'); }
 .sound-btn:hover { transform: rotate(-2deg) scale(1.05); background: var(--lemon); }
-.sound-btn.on { background: var(--lemon); color: #1b1620; }
+.sound-btn.on { background: var(--lemon); color: var(--ink); }
 
 /* fog on the glass where his face hit it */
 #Fog { position: absolute; z-index: 2; width: var(--s, 200px); height: calc(var(--s, 200px) * 0.8); pointer-events: none; opacity: 0;
@@ -58,15 +58,15 @@ body.menu-open #Logo3D.docked { opacity: 0; }
 #Menu .menu-bg { position: fixed; inset: 0; opacity: 0; transition: opacity .35s;
 	background: radial-gradient(60% 45% at 18% 88%, rgba(255 255 255 / .95), transparent 70%), radial-gradient(55% 40% at 85% 95%, rgba(255 255 255 / .9), transparent 70%),
 		radial-gradient(70% 50% at 70% 20%, color-mix(in oklab, var(--wash-deep) 70%, transparent), transparent 75%),
-		radial-gradient(120% 90% at 50% 0%, var(--wash), color-mix(in oklab, var(--wash) 30%, #fff) 60%, #fff); }
+		radial-gradient(120% 90% at 50% 0%, var(--wash), color-mix(in oklab, var(--wash) 30%, var(--paper)) 60%, var(--paper)); }
 #Menu.open .menu-bg { opacity: 1; }
 /* no backdrop blur: re-blurring the whole screen every frame of the fade made the burger's flight stutter */
-#Menu .menu-x { position: fixed; z-index: 3; top: var(--top-pad); left: var(--gut); width: 48px; height: 48px; border: 3px solid var(--ink); border-radius: 7px 5px 8px 6px;
-	background: #fff3d6; color: #1b1620; display: grid; place-items: center; transform: rotate(-6deg) scale(.4); opacity: 0; transition: var(--trans); }
+#Menu .menu-x { position: fixed; z-index: 3; top: var(--top-pad); left: var(--gut); width: 48px; height: 48px; border: 3px solid var(--ink); border-radius: var(--tag-radius);
+	background: var(--lemon); color: var(--ink); display: grid; place-items: center; transform: rotate(-6deg) scale(.4); opacity: 0; transition: var(--trans); }
 #Menu .menu-x svg { width: 18px; height: 18px; }
 #Menu.open .menu-x { transform: rotate(4deg); opacity: 1; }
 #Menu .menu-fig { position: relative; margin: calc(var(--top-pad) + 70px) var(--gut) 6px; font: 600 11px/1.3 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .14em; text-transform: uppercase;
-	color: color-mix(in oklab, #4f8bff 70%, var(--ink)); opacity: 0; transition: opacity .4s .3s; }
+	color: color-mix(in oklab, var(--process) 70%, var(--ink)); opacity: 0; transition: opacity .4s .3s; }
 #Menu.open .menu-fig { opacity: 1; }
 #Menu .stack { position: relative; display: flex; flex-direction: column; gap: clamp(2px, 1.2vh, 14px); padding: 6px var(--gut) 10px; }
 #Menu .layer { position: relative; display: grid; grid-template-columns: clamp(118px, 34vw, 190px) 1fr; align-items: center; gap: 0; color: var(--ink); text-decoration: none; min-height: 52px; }
@@ -74,15 +74,15 @@ body.menu-open #Logo3D.docked { opacity: 0; }
 	transform: translate(var(--fx, 0), var(--fy, 0)) scale(var(--fs, .3)); transition: transform .62s var(--ease); transition-delay: calc(var(--i) * 38ms); }
 #Menu.open .layer .part { transform: none; }
 #Menu.closing .layer .part { transition-delay: calc((6 - var(--i)) * 22ms); transition-duration: .42s; }
-#Menu .layer .lead { position: absolute; left: clamp(108px, 31vw, 176px); top: 50%; width: 30px; height: 0; border-top: 2px dashed color-mix(in oklab, #4f8bff 70%, var(--ink)); }
-#Menu .layer .lead::before { content: ""; position: absolute; left: -5px; top: -6px; width: 9px; height: 9px; border-radius: 50%; background: color-mix(in oklab, #4f8bff 70%, var(--ink)); }
+#Menu .layer .lead { position: absolute; left: clamp(108px, 31vw, 176px); top: 50%; width: 30px; height: 0; border-top: 2px dashed color-mix(in oklab, var(--process) 70%, var(--ink)); }
+#Menu .layer .lead::before { content: ""; position: absolute; left: -5px; top: -6px; width: 9px; height: 9px; border-radius: 50%; background: color-mix(in oklab, var(--process) 70%, var(--ink)); }
 #Menu .layer .label { padding-left: 26px; opacity: 0; transform: translateX(-12px); transition: opacity .3s, transform .5s var(--ease); transition-delay: calc(.22s + var(--i) * 40ms); }
 #Menu .layer .lead { opacity: 0; transform: scaleX(0); transform-origin: 0 0; transition: transform .4s ease, opacity .2s; transition-delay: calc(.18s + var(--i) * 40ms); }
 #Menu.open .layer .label, #Menu.open .layer .lead { opacity: 1; transform: none; }
-#Menu .layer small { display: block; font: 600 10px/1.2 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; color: color-mix(in oklab, #4f8bff 70%, var(--ink)); }
+#Menu .layer small { display: block; font: 600 10px/1.2 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; color: color-mix(in oklab, var(--process) 70%, var(--ink)); }
 #Menu .layer b { display: inline-block; font: 400 clamp(26px, 7.4vw, 40px)/1 var(--font-cute); transition: var(--trans); }
 #Menu .layer.small b { font-size: clamp(19px, 5vw, 26px); color: var(--muted); }
-#Menu .layer:hover b, #Menu .layer:focus-visible b { transform: rotate(-3deg) scale(1.06); background: var(--lemon); color: #1b1620; box-shadow: 0 0 0 4px var(--lemon); border-radius: 4px; }
+#Menu .layer:hover b, #Menu .layer:focus-visible b { transform: rotate(-3deg) scale(1.06); background: var(--lemon); color: var(--ink); box-shadow: 0 0 0 4px var(--lemon); border-radius: 4px; }
 #Menu .layer:hover .part { transform: translateX(-6px) rotate(-3deg) scale(1.04); transition-delay: 0s; }
 #Menu .layer:focus-visible { outline: none; }
 #Menu .layer.small { margin: -4px 0; }
@@ -98,7 +98,7 @@ body:not(.burger3d):not(.burger2d) #Burger svg { visibility: hidden; }
 #Menu .menu-drops { position: relative; display: flex; gap: 12px; padding: 10px var(--gut) 18px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
 #Menu .menu-drops::-webkit-scrollbar { display: none; }
 #Menu .mdrop { flex: none; position: relative; width: 128px; aspect-ratio: 4/5; scroll-snap-align: start; border: 3px solid var(--ink); border-radius: var(--radius); overflow: hidden; text-decoration: none; color: var(--ink);
-	background: radial-gradient(circle at 50% 42%, color-mix(in oklab, var(--belly) 40%, #fff) 0 18%, color-mix(in oklab, var(--base) 40%, #fff) 55%, color-mix(in oklab, var(--edge) 40%, #fff) 115%);
+	background: radial-gradient(circle at 50% 42%, color-mix(in oklab, var(--belly) 40%, var(--paper)) 0 18%, color-mix(in oklab, var(--base) 40%, var(--paper)) 55%, color-mix(in oklab, var(--edge) 40%, var(--paper)) 115%);
 	box-shadow: var(--card-shadow); transform: translate(var(--fx, 0), var(--fy, 0)) scale(var(--fs, .3)) rotate(calc(var(--r) * 4)); opacity: 0;
 	transition: transform .7s var(--ease), opacity .3s; transition-delay: calc(.12s + var(--i) * 60ms); }
 #Menu.open .mdrop { transform: rotate(var(--r)); opacity: 1; }
@@ -129,24 +129,26 @@ body:not(.burger3d):not(.burger2d) #Burger svg { visibility: hidden; }
 }
 
 /* ---------- shared section shell ---------- */
-.sec { position: relative; padding: clamp(56px, 10vh, 110px) var(--gut); }
+.sec { position: relative; padding: 72px var(--gut); }
+@media (max-width: 900px) { .sec { padding-block: 52px; } }
 .sec-head { max-width: 1100px; margin: 0 auto clamp(22px, 4vh, 40px); }
-.sec-head .kicker { display: inline-block; margin: 0 0 10px; padding: 5px 10px 4px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); transform: rotate(-2deg);
+.sec-head .kicker { display: inline-block; margin: 0 0 10px; padding: 5px 10px 4px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); box-shadow: var(--tag-shadow); transform: rotate(-2deg);
 	font: 600 11px/1 var(--font-solid); letter-spacing: .14em; text-transform: uppercase; }
-.sec-head h2 { margin: 0 0 8px; font: 400 clamp(42px, 9vw, 76px)/.9 var(--font-cute); letter-spacing: .01em; }
-.sec-head p { margin: 0; max-width: 34em; font-size: 17px; color: color-mix(in oklab, var(--ink) 75%, var(--paper)); }
+.sec-head h2 { margin: 0 0 8px; font: 400 clamp(44px, 6vw, 84px)/0.95 var(--font-cute); letter-spacing: .01em; }
+.sec-head p { margin: 0; max-width: 34em; font: 500 clamp(18px, 1.6vw, 22px)/1.4 var(--font-solid); color: var(--ink); }
 
 /* ---------- the storybook ---------- */
 #Story { background: color-mix(in oklab, var(--wash) 40%, var(--paper)); }
 #Book { max-width: 920px; margin: 0 auto; }
 #Book .page { position: sticky; top: calc(var(--top-pad) + 70px); min-height: min(76svh, 640px); margin-bottom: 24vh; display: grid; grid-template-rows: auto 1fr;
-	background: #fffaf0; color: #1b1620; border: 4px solid #1b1620; border-radius: 14px 10px 12px 16px; box-shadow: 2px 3px 0 #1b1620, 0 18px 40px rgba(0 0 0 / .12);
+	background: #fffaf0; color: var(--ink); border: 4px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow), 0 18px 40px rgba(0 0 0 / .1);
 	transform: rotate(var(--r)); overflow: hidden; }
 #Book .page::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, transparent 0 31px, rgba(79 139 255 / .08) 31px 32px); }
+#Book .page::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius-in); opacity: 0.25; pointer-events: none; z-index: 5; }
 #Book .page:last-of-type { margin-bottom: 8vh; }
 #Book .pic { position: relative; display: grid; place-items: center; padding: 18px 18px 0; min-height: 0; }
 #Book .pic img, #Book .pic svg { width: min(100%, 360px); max-height: 38svh; object-fit: contain; display: block; border-radius: 8px; }
-#Book .page.dark .pic img { border: 3px solid #1b1620; border-radius: 10px 7px 9px 12px; }
+#Book .page.dark .pic img { border: 3px solid var(--ink); border-radius: var(--radius-in); }
 #Book .pic.line img { mix-blend-mode: multiply; }
 #Book .words { position: relative; padding: 14px 22px 24px; }
 #Book .pno { position: absolute; top: 10px; right: 18px; margin: 0; font: 400 20px/1 var(--font-cute); color: #b2a89a; }
@@ -161,7 +163,7 @@ body:not(.burger3d):not(.burger2d) #Burger svg { visibility: hidden; }
 /* Scott (2026-10-16): at least half the pages in strong color */
 #Book .page.strong { background: var(--pg); }
 #Book .page.strong::before { background: repeating-linear-gradient(0deg, transparent 0 31px, rgba(27 22 32 / .07) 31px 32px); }
-#Book .page.strong .pno { color: color-mix(in oklab, var(--pg) 45%, #1b1620); }
+#Book .page.strong .pno { color: color-mix(in oklab, var(--pg) 45%, var(--ink)); }
 #Book .page.strong .pic { border-color: rgba(27 22 32 / .25); }
 .book-end { max-width: 920px; margin: 0 auto; text-align: center; font: 400 26px/1.15 var(--font-cute); color: var(--muted); }
 
@@ -185,10 +187,10 @@ body:not(.burger3d):not(.burger2d) #Burger svg { visibility: hidden; }
 
 /* the details sheet's buy link and transparent renders */
 #Sheet .buy { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px 9px; border: 3px solid var(--ink); border-radius: var(--radius); background: var(--sheet-c, var(--base));
-	color: #1b1620; text-decoration: none; font: 400 20px/1 var(--font-cute); box-shadow: 2px 3px 0 var(--ink); transform: rotate(-1deg); transition: var(--trans); }
+	color: var(--ink); text-decoration: none; font: 400 20px/1 var(--font-cute); box-shadow: 2px 3px 0 var(--ink); transform: rotate(-1deg); transition: var(--trans); }
 #Sheet .buy svg { width: 16px; height: 16px; }
 #Sheet .buy:hover { transform: rotate(1.5deg) scale(1.05); }
-#Sheet .photos img.cut { object-fit: contain; background: radial-gradient(circle, color-mix(in oklab, var(--sheet-c, #ccc) 30%, #fff), #fff); }
+#Sheet .photos img.cut { object-fit: contain; background: radial-gradient(circle, color-mix(in oklab, var(--sheet-c, #ccc) 30%, var(--paper)), var(--paper)); }
 
 /* ---------- Lights out ---------- */
 #Eyes { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
@@ -269,3 +271,12 @@ html.intro.show .gummy-burger { transition: opacity .45s ease .62s; }
 /* no blueprint (Jason, Scott 2026-10-16): no caption, part numbers or leader lines; the burger just flies apart */
 #Menu .menu-fig, #Menu .layer .lead, #Menu .layer small { visibility: hidden; }
 #Menu .layer small { height: 0; }
+
+/* ---------- Bruce's Grumpl font as pencilled side notes (Scott 2026-10-16: small, additive, nothing important) ---------- */
+.hand { position: absolute; z-index: 3; display: inline-flex; align-items: flex-start; gap: 2px; pointer-events: none; white-space: nowrap;
+	font: 400 21px/1 "Grumpl", var(--font-cute); color: color-mix(in oklab, var(--ink) 78%, transparent); }
+.hand svg, #Book .pic .hand svg { width: 38px; height: 26px; max-height: none; flex: none; margin-top: 8px; border-radius: 0; }
+#Book .hand.at-tl { left: 22px; top: 22px; transform: rotate(-7deg); }
+#Foot .fine { position: relative; }
+#Foot .hand.foot-note { position: relative; display: block; margin: 4px auto 0; width: max-content; font-size: 19px; transform: rotate(-3deg) translateX(70px); }
+@media (max-width: 560px) { .hand { font-size: 18px; } .hand svg, #Book .pic .hand svg { width: 30px; height: 21px; } }

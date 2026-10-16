@@ -3,8 +3,8 @@
    --ink --paper --lemon --wash --font-cute --font-solid --ease --tag-radius --gut */
 #Colors {
 	--cl-c: #56c2dc; --cl-edge: #6d72ff; --cl-belly: #9fe0ea; --cl-c-ink: var(--ink); --cl-hue: hsl(200 100% 50%); --cl-wash: #e6f5f9;
-	--cl-r: 12px 9px 7px 15px;
-	--cl-shadow: 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / .12);
+	--cl-r: var(--radius);
+	--cl-shadow: var(--shadow);
 	position: relative; padding: 56px var(--gut, 16px) 72px; color: var(--ink); background: var(--paper); overflow-x: clip;
 }
 :is(#Colors, #Studio) [hidden] { display: none !important; }
@@ -14,42 +14,42 @@
 
 :is(#Colors, #Studio) .cl-wrap { max-width: 1080px; margin: 0 auto; }
 :is(#Colors, #Studio) .cl-head { margin: 0 0 22px; }
-:is(#Colors, #Studio) .cl-head h2 { margin: 0 0 6px; font: 400 clamp(40px, 9vw, 64px)/.92 var(--font-cute); letter-spacing: .01em; }
-:is(#Colors, #Studio) .cl-head p { margin: 0; font: 500 17px/1.4 var(--font-solid); color: color-mix(in oklab, var(--ink) 70%, var(--paper)); max-width: 34em; }
+:is(#Colors, #Studio) .cl-head h2 { margin: 0 0 6px; font: 400 clamp(44px, 6vw, 84px)/0.95 var(--font-cute); letter-spacing: .01em; }
+:is(#Colors, #Studio) .cl-head p { margin: 0; font: 500 clamp(18px, 1.6vw, 22px)/1.4 var(--font-solid); color: var(--ink); max-width: 34em; }
 
 /* ---------- layout: picker, name card, list, stacked ---------- */
 #Colors .cl-body { display: grid; gap: 20px; min-width: 0; max-width: 640px; }
 @media (min-width: 860px) { #Colors { padding-top: 88px; padding-bottom: 96px; } }
 .cl-root { --cl-c: #56c2dc; --cl-edge: #6d72ff; --cl-belly: #9fe0ea; --cl-c-ink: var(--ink); --cl-hue: hsl(200 100% 50%); --cl-wash: #e6f5f9;
-	--cl-r: 12px 9px 7px 15px; --cl-shadow: 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / .12); }
+	--cl-r: var(--radius); --cl-shadow: var(--shadow); }
 
-:is(#Colors, #Studio) .cl-card { min-width: 0; margin: 0; padding: 16px; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--cl-r);
+:is(#Colors, #Studio) .cl-card { position: relative; min-width: 0; margin: 0; padding: 16px; background: var(--paper); border: 4px solid var(--ink); border-radius: var(--cl-r);
 	box-shadow: var(--cl-shadow); transform: rotate(var(--tilt, 0deg)); transition: transform .5s var(--ease); }
 
 /* ---------- picker ---------- */
 :is(#Colors, #Studio) .cl-picker { display: grid; gap: 14px; }
-:is(#Colors, #Studio) .cl-sv { position: relative; height: clamp(170px, 46vw, 260px); border: 3px solid var(--ink); border-radius: 9px 7px 10px 8px; touch-action: none; cursor: crosshair;
+:is(#Colors, #Studio) .cl-sv { position: relative; height: clamp(170px, 46vw, 260px); border: 3px solid var(--ink); border-radius: var(--radius-in); touch-action: none; cursor: crosshair;
 	background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, var(--cl-hue)); }
 :is(#Colors, #Studio) .cl-sv-thumb { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: var(--cl-c);
-	border: 4px solid #fff; box-shadow: 0 0 0 3px var(--ink), 2px 3px 0 3px rgba(0 0 0 / .25); pointer-events: none; transition: transform .35s var(--ease); }
-:is(#Colors, #Studio) .cl-hue { position: relative; height: 40px; border: 3px solid var(--ink); border-radius: 8px 6px 9px 7px; touch-action: none; cursor: ew-resize;
+	border: 4px solid var(--paper); box-shadow: 0 0 0 3px var(--ink), 2px 3px 0 3px rgba(0 0 0 / .25); pointer-events: none; transition: transform 0.5s var(--ease); }
+:is(#Colors, #Studio) .cl-hue { position: relative; height: 40px; border: 3px solid var(--ink); border-radius: var(--radius-in); touch-action: none; cursor: ew-resize;
 	background: linear-gradient(to right, #f00 0%, #ff0 16.66%, #0f0 33.33%, #0ff 50%, #00f 66.66%, #f0f 83.33%, #f00 100%); }
 :is(#Colors, #Studio) .cl-hue-thumb { position: absolute; top: -9px; bottom: -9px; width: 18px; margin-left: -9px; border-radius: 7px; background: var(--cl-hue);
-	border: 4px solid #fff; box-shadow: 0 0 0 3px var(--ink), 2px 3px 0 3px rgba(0 0 0 / .2); pointer-events: none; transition: transform .35s var(--ease); }
+	border: 4px solid var(--paper); box-shadow: 0 0 0 3px var(--ink), 2px 3px 0 3px rgba(0 0 0 / .2); pointer-events: none; transition: transform 0.5s var(--ease); }
 :is(#Colors, #Studio) .grab .cl-sv-thumb, :is(#Colors, #Studio) .grab .cl-hue-thumb { transform: scale(1.25); }
 :is(#Colors, #Studio) .cl-sv:focus-visible, :is(#Colors, #Studio) .cl-hue:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
 
 :is(#Colors, #Studio) .cl-hexrow { display: flex; gap: 10px; align-items: stretch; min-width: 0; }
 :is(#Colors, #Studio) .cl-chip { flex: none; width: 48px; border: 3px solid var(--ink); border-radius: 50% 46% 50% 44%; background: var(--cl-c); transform: rotate(-6deg); }
-:is(#Colors, #Studio) .cl-hexfield { flex: 1; min-width: 0; display: flex; align-items: center; height: 48px; padding: 0 0 0 12px; border: 3px solid var(--ink); border-radius: var(--tag-radius); background: #fff;
+:is(#Colors, #Studio) .cl-hexfield { flex: 1; min-width: 0; display: flex; align-items: center; height: 48px; padding: 0 0 0 12px; border: 3px solid var(--ink); border-radius: var(--tag-radius); background: var(--paper);
 	font: 600 19px/1 var(--font-solid); letter-spacing: .05em; }
-:is(#Colors, #Studio) .cl-hexfield span { color: var(--muted, #8d8494); }
+:is(#Colors, #Studio) .cl-hexfield span { color: var(--muted, #5d5862); }
 :is(#Colors, #Studio) .cl-hexfield input { flex: 1; min-width: 0; width: 100%; height: 100%; padding: 0 8px 0 2px; border: 0; background: none; font: inherit; text-transform: lowercase; color: var(--ink); outline: 0; }
 :is(#Colors, #Studio) .cl-hexfield:focus-within { box-shadow: 0 0 0 3px var(--cl-c); }
 :is(#Colors, #Studio) .cl-hexfield:has(input[aria-invalid]) { background: #ffe9e4; }
 
 :is(#Colors, #Studio) .cl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px; padding: 8px 14px 7px; border: 3px solid var(--ink); border-radius: var(--tag-radius);
-	background: var(--paper); color: var(--ink); font: 400 19px/1 var(--font-cute); text-decoration: none; white-space: nowrap; transition: transform .45s var(--ease), background-color .2s; }
+	background: var(--paper); color: var(--ink); font: 400 19px/1 var(--font-cute); text-decoration: none; white-space: nowrap; transition: transform .5s var(--ease), background-color .5s ease; }
 :is(#Colors, #Studio) .cl-btn svg { width: 19px; height: 19px; flex: none; }
 :is(#Colors, #Studio) .cl-btn:hover { transform: rotate(-3deg) scale(1.05); background: var(--lemon); }
 :is(#Colors, #Studio) .cl-btn:active { transform: scale(.96); }
@@ -59,8 +59,8 @@
 
 :is(#Colors, #Studio) .cl-starters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
 :is(#Colors, #Studio) .cl-starters button { aspect-ratio: 1; min-height: 40px; padding: 0; border: 3px solid var(--ink); border-radius: 50% 44% 50% 46%;
-	background: radial-gradient(circle at 40% 36%, color-mix(in oklab, var(--sw) 55%, #fff) 0 14%, var(--sw) 52%, color-mix(in oklab, var(--sw) 75%, #000) 120%);
-	transition: transform .45s var(--ease); }
+	background: radial-gradient(circle at 40% 36%, color-mix(in oklab, var(--sw) 55%, var(--paper)) 0 14%, var(--sw) 52%, color-mix(in oklab, var(--sw) 75%, #000) 120%);
+	transition: transform .5s var(--ease); }
 :is(#Colors, #Studio) .cl-starters button:nth-child(odd) { transform: rotate(-8deg); }
 :is(#Colors, #Studio) .cl-starters button:hover { transform: translateY(-4px) scale(1.08) rotate(4deg); }
 :is(#Colors, #Studio) .cl-starters button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ink); transform: scale(1.06); }
@@ -69,11 +69,11 @@
 
 /* ---------- name + actions ---------- */
 :is(#Colors, #Studio) .cl-namecard { display: grid; gap: 12px; }
-:is(#Colors, #Studio) .cl-lbl { font: 600 12px/1 var(--font-solid); letter-spacing: .12em; text-transform: uppercase; color: var(--muted, #8d8494); }
+:is(#Colors, #Studio) .cl-lbl { font: 600 12px/1 var(--font-solid); letter-spacing: .12em; text-transform: uppercase; color: var(--muted, #5d5862); }
 :is(#Colors, #Studio) .cl-namerow { display: grid; gap: 10px; }
-:is(#Colors, #Studio) .cl-name { width: 100%; min-width: 0; height: 52px; padding: 0 14px; border: 3px solid var(--ink); border-radius: var(--tag-radius); background: #fff; color: var(--ink);
+:is(#Colors, #Studio) .cl-name { width: 100%; min-width: 0; height: 52px; padding: 0 14px; border: 3px solid var(--ink); border-radius: var(--tag-radius); background: var(--paper); color: var(--ink);
 	font: 400 23px/1 var(--font-cute); letter-spacing: .01em; }
-:is(#Colors, #Studio) .cl-name::placeholder { color: color-mix(in oklab, var(--ink) 30%, #fff); }
+:is(#Colors, #Studio) .cl-name::placeholder { color: color-mix(in oklab, var(--ink) 30%, var(--paper)); }
 :is(#Colors, #Studio) .cl-name:focus { outline: 0; box-shadow: 0 0 0 3px var(--cl-c); }
 :is(#Colors, #Studio) .cl-gen { background: var(--lemon); transform: rotate(-1deg); }
 :is(#Colors, #Studio) .cl-gen:hover { background: var(--lemon); }
@@ -83,8 +83,8 @@
 :is(#Colors, #Studio) .cl-go { grid-column: 1 / -1; min-height: 56px; padding: 12px 18px 11px; border: 3px solid var(--ink); border-radius: var(--cl-r); background: var(--cl-c); color: var(--cl-c-ink);
 	font: 400 25px/1 var(--font-cute); letter-spacing: .01em; transform: rotate(-.8deg);
 	/* his secondary color airbrushed in from the edges, as on the hero's button */
-	box-shadow: inset 0 0 12px 1px color-mix(in oklab, var(--cl-edge) 72%, transparent), inset 0 0 3px 1px color-mix(in oklab, var(--cl-edge) 38%, transparent), 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / .12);
-	transition: transform .5s var(--ease), background-color .3s, box-shadow .3s; }
+	box-shadow: inset 0 0 12px 1px color-mix(in oklab, var(--cl-edge) 72%, transparent), inset 0 0 3px 1px color-mix(in oklab, var(--cl-edge) 38%, transparent), 2px 3px 0 var(--ink), 6px 10px 0 rgba(0 0 0 / .15);
+	transition: transform .5s var(--ease), background-color .5s ease, box-shadow .5s ease; }
 :is(#Colors, #Studio) .cl-go:hover { transform: rotate(1.5deg) scale(1.03); }
 :is(#Colors, #Studio) .cl-go:active { transform: translate(2px, 3px); box-shadow: 0 0 0 var(--ink); }
 :is(#Colors, #Studio) .cl-go:disabled { opacity: .6; cursor: progress; }
@@ -99,34 +99,37 @@
 /* ---------- the list ---------- */
 :is(#Colors, #Studio) .cl-listwrap { margin-top: 44px; }
 :is(#Colors, #Studio) .cl-listhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 16px; }
-:is(#Colors, #Studio) .cl-listhead h3 { margin: 0; display: inline-block; padding: 6px 12px 5px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius);
+:is(#Colors, #Studio) .cl-listhead h3 { margin: 0; display: inline-block; padding: 6px 12px 5px; background: var(--ink); color: var(--paper); border-radius: var(--tag-radius); box-shadow: var(--tag-shadow);
 	font: 400 28px/1 var(--font-cute); transform: rotate(-2deg); }
 :is(#Colors, #Studio) .cl-listhead p { margin: 0; font: 500 15px/1.35 var(--font-solid); color: color-mix(in oklab, var(--ink) 65%, var(--paper)); }
 :is(#Colors, #Studio) .cl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 560px) { :is(#Colors, #Studio) .cl-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 980px) { :is(#Colors, #Studio) .cl-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
 :is(#Colors, #Studio) .cl-list li { position: relative; display: flex; align-items: stretch; min-width: 0; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--cl-r);
-	box-shadow: 2px 3px 0 var(--ink); transform: rotate(var(--tilt, 0deg)); transition: transform .45s var(--ease); }
+	box-shadow: 2px 3px 0 var(--ink); transform: rotate(var(--tilt, 0deg)); transition: transform .5s var(--ease); }
 :is(#Colors, #Studio) .cl-list li:hover { transform: rotate(0deg) translateY(-2px); }
 :is(#Colors, #Studio) .cl-list li.mine { background: #fffbe3; }
 :is(#Colors, #Studio) .cl-load { flex: 1; min-width: 0; display: grid; grid-template-columns: 44px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 11px; align-items: center;
 	padding: 9px 8px 9px 10px; border: 0; background: none; text-align: left; border-radius: inherit; }
 :is(#Colors, #Studio) .cl-load i { grid-row: 1 / 3; width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 50% 44% 50% 46%;
-	background: radial-gradient(circle at 40% 36%, color-mix(in oklab, var(--sw) 55%, #fff) 0 14%, var(--sw) 52%, color-mix(in oklab, var(--sw) 75%, #000) 120%); }
+	background: radial-gradient(circle at 40% 36%, color-mix(in oklab, var(--sw) 55%, var(--paper)) 0 14%, var(--sw) 52%, color-mix(in oklab, var(--sw) 75%, #000) 120%); }
 :is(#Colors, #Studio) .cl-load b { font: 400 clamp(16px, 1.35vw, 20px)/1.05 var(--font-cute); letter-spacing: .01em; overflow-wrap: break-word; hyphens: auto; }
-:is(#Colors, #Studio) .cl-load small { display: flex; align-items: center; gap: 7px; font: 600 12px/1.4 var(--font-solid); letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #8d8494); }
+:is(#Colors, #Studio) .cl-load small { display: flex; align-items: center; gap: 7px; font: 600 12px/1.4 var(--font-solid); letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #5d5862); }
 :is(#Colors, #Studio) .cl-load em { font: 400 14px/1 var(--font-cute); font-style: normal; letter-spacing: .02em; text-transform: none; padding: 3px 7px 2px; background: var(--lemon); color: var(--ink);
 	border: 2px solid var(--ink); border-radius: 5px 3px 6px 4px; transform: rotate(-4deg); }
 :is(#Colors, #Studio) .cl-vote { flex: none; display: grid; place-content: center; gap: 1px; width: 58px; padding: 6px 0; border: 0; border-left: 3px solid var(--ink); background: none;
 	border-radius: 0 6px 12px 0; font: 400 19px/1 var(--font-cute); transition: background-color .2s; }
-:is(#Colors, #Studio) .cl-vote span { font: 600 12px/1 var(--font-solid); color: var(--muted, #8d8494); }
-:is(#Colors, #Studio) .cl-vote:hover { background: color-mix(in oklab, var(--lemon) 60%, #fff); }
+:is(#Colors, #Studio) .cl-vote span { font: 600 12px/1 var(--font-solid); color: var(--muted, #5d5862); }
+:is(#Colors, #Studio) .cl-vote:hover { background: color-mix(in oklab, var(--lemon) 60%, var(--paper)); }
 :is(#Colors, #Studio) .cl-vote[aria-pressed="true"] { background: var(--lemon); }
 :is(#Colors, #Studio) .cl-vote[aria-pressed="true"] span { color: var(--ink); }
-:is(#Colors, #Studio) .cl-empty { padding: 16px; color: var(--muted, #8d8494); }
+:is(#Colors, #Studio) .cl-empty { padding: 16px; color: var(--muted, #5d5862); }
 :is(#Colors, #Studio) .cl-more { margin-top: 16px; }
 
 /* ---------- bounce ---------- */
 :is(#Colors, #Studio) .bump { animation: cl-bump .55s var(--ease); }
 @keyframes cl-bump { 0% { scale: 1; } 35% { scale: 1.08; rotate: -2deg; } 100% { scale: 1; rotate: 0deg; } }
 @media (prefers-reduced-motion: reduce) { :is(#Colors, #Studio) *, :is(#Colors, #Studio) *::before, :is(#Colors, #Studio) *::after { animation: none !important; transition-duration: .01s !important; } }
+
+/* brand book card rim: 4px of paper inside the ink border (only the stand-alone card; in the studio the card is unwrapped) */
+#Colors .cl-card::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius-in); opacity: 0.25; pointer-events: none; z-index: 5; }
