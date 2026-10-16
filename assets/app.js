@@ -255,7 +255,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
         shade *= 1.0 - smoothstep( 0.05, 0.9, vLogo ) * 0.18;                  // the faint shade of the dip it rests in` : ''}
         vec3 shadowCol = mix( uSky, uSky * 0.55 + uTint * 0.6, clamp( press * 1.4, 0.0, 1.0 ) );
         vec3 lit = mix( mix( shadowCol, vec3( 1.0 ), 0.25 ), vec3( 1.0 ), smoothstep( 0.1, 0.9, shade ) );
-        float wisp = cloudNoise( vCW * 3.1 ) * 0.6 + cloudNoise( vCW * 7.3 ) * 0.4;
+        float wisp = ${hem ? '0.5' : 'cloudNoise( vCW * 3.1 ) * 0.6 + cloudNoise( vCW * 7.3 ) * 0.4'};   // the hem is smooth: no wisps
         float edge = smoothstep( 0.5, 0.92, ( 1.0 - abs( dot( cN, cV ) ) ) + ( wisp - 0.5 ) * 0.35 );
         lit = mix( lit, vec3( 1.0 ), edge * ( 1.0 - clamp( press * 1.5, 0.0, 1.0 ) ) ${front ? '* ( 1.0 - smoothstep( 0.05, 0.5, vLogo ) )' : ''} );
         lit = mix( lit, vec3( 1.0 ), smoothstep( 9.0, 22.0, length( cameraPosition - vCW ) ) * 0.85 );
@@ -294,19 +294,21 @@ function placeHem(w, hc, hem, portrait) {
   const upp = P(w, hc).x - P(0, hc).x;                     // world units across the screen at the hem's depth
   const px = upp / w;
   let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const r0 = hem * (portrait ? 1.3 : 1.25);
-  // three rows of uneven, wide billows like the bank's: the front one makes the edge, the ones behind fill the
-  // dips between its tops
-  for (const [lift, size, z] of [[0, 1, 0], [0.55, 1.2, 0.3], [1.0, 1.0, 0.55]]) {
-    for (let x = -r0 * (1 + rnd()); x < w + r0 * 1.5;) {
-      const r = r0 * size * (0.7 + rnd() * 0.6), ry = r * (0.62 + rnd() * 0.18);
-      const bottom = hc - 2 - rnd() * 16 - lift * r0;
+  // Scott: "softer and less bumpy... light rolling over a larger form". A few broad, low forms, like the flat
+  // underside of a cumulus seen from below: about three across the screen, the light sliding slowly over each.
+  // Two rows: the front makes the edge, the one behind (a little higher) fills the dips. They stay below the
+  // logo's cloud, so the hero itself looks as it did.
+  for (const [lift, z, n] of [[0, 0, portrait ? 2.2 : 3.2], [0.35, 0.4, portrait ? 1.6 : 2.4]]) {
+    const step = w / n;
+    for (let x = -step * (0.3 + rnd() * 0.3); x < w + step;) {
+      const rx = step * (0.62 + rnd() * 0.16), ry = hem * (0.8 + rnd() * 0.15) * (1 + lift * 0.4);
+      const bottom = hc - 3 - rnd() * hem * 0.2 - lift * hem;
       const c = P(x, bottom - ry);
       const m = new THREE.Mesh(hemBall, hemMat);
-      m.scale.set(r * px * (1.3 + rnd() * 0.3), ry * px, r * px * 0.7);
-      m.position.set(c.x, c.y, HEM_Z - z - r * px * 0.2);
+      m.scale.set(rx * px, ry * px, Math.min(rx, ry * 3) * px);
+      m.position.set(c.x, c.y, HEM_Z - z - ry * px);
       hemGroup.add(m);
-      x += r * (1.5 + rnd() * 0.5);
+      x += step * (0.95 + rnd() * 0.2);
     }
   }
 }
