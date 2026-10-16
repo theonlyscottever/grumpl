@@ -402,6 +402,7 @@ export function mountButt(el, { FLAVORS }) {
     timer = setTimeout(() => { timer = 0; go((st.little + 1) % N); }, HOLD * 1000);
   }
   function wake() { if (busy()) loop(); else { render(); schedule(); } }
+  addEventListener('grumpl-room-ready', () => { if (ready && visible) render(); });   // the chrome finish's warm room arrived
   function go(next, dir) {
     if (dir === undefined) dir = Math.random() < 0.5 ? -1 : 1;
     if (startFall(next, dir)) loop();

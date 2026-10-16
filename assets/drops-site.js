@@ -12,8 +12,7 @@ const BOX = 'Blind box, Process Grey \u00d7 BigShotToyWorks';
 const FLAVORS = {
 	canvas:      { name: 'Blank Canvas',     finish: 'Unpainted matte vinyl', kind: 'vinyl',  base: '#ece9e3', edge: '#c3cdf0', belly: '#fbfaf7', photos: ['g7719', 'g7721', 'g7688'], weight: '205 g', edition: 300, stand: true,
 		desc: 'The raw pull, straight off the mold with no paint. Stand-in card until the studio pull has real details.' },
-	chrome:      { name: 'Rose Chrome',      finish: 'Mirror-plated vinyl',   kind: 'chrome', base: '#e7b3a2', edge: '#f39ab8', belly: '#f6d3c6', photos: ['g7690', 'g7692', 'g7685'], weight: '226 g', edition: 50, stand: true,
-		desc: 'A mirror-plated oddball from a test run. Stand-in card until the studio pull has real details.' },
+	// Rose Chrome is drop 03's now (drop.js)
 
 	fleshberry:  { name: 'Fleshberry', finish: BOX, kind: 'vinyl', base: '#eeaa9c', edge: '#ff6f8e', belly: '#f6cbbd', photos: ['d2253', 'g5729', 'g5730', 'g5733'],
 		url: DYLI('2253-grumpl-fleshberry'), size: '4"', edition: 313, minted: 313, odds: '29%', price: '$42.69', floor: '$40', last: '$10',
@@ -41,8 +40,8 @@ const FLAVORS = {
 	...Object.fromEntries(HERO_FLAVORS.map((f) => [f.id, { ...f, base: hx(f.base), edge: hx(f.edge), belly: hx(f.belly), still: `r-${f.id}`, stand: true }])),
 };
 const DROPS = [
-	{ n: '00', name: 'Studio Pull',  when: 'Stand-in', status: 'released', flavors: ['canvas', 'chrome'], stand: true,
-		blurb: 'Stand-in drop. Raw white vinyl and one mirror-chrome oddball from the studio photos, until there is a real drop 00 to show.' },
+	{ n: '00', name: 'Studio Pull',  when: 'Stand-in', status: 'released', flavors: ['canvas'], stand: true,
+		blurb: 'Stand-in drop. Raw white vinyl from the studio photos, until there is a real drop 00 to show.' },
 	{ n: '01', name: 'Blind Box',    when: 'Feb 2025', status: 'released', flavors: ['fleshberry', 'moss', 'obo', 'lunchbutter', 'cement', 'speshul'],
 		blurb: 'Six 4" flavors in sealed collector boxes by Process Grey with BigShotToyWorks, $42.69 a box, Feb 12\u201314 2025. Sold out; every flavor trades on DYLI now.' },
 	{ n: '02', name: 'Collector\u2019s Gift', when: 'Feb 2025', status: 'released', flavors: ['gift'],

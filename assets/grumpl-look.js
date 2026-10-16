@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
+import { roomEnv, roomOnly } from './room.js';
 
 // ---------- The light: one fixed product-photography setup ----------
 // Shot like a vinyl toy on a white sweep:
@@ -59,6 +60,14 @@ export function finishFor(f) {
     jelly: { amount: 0.55, thickness: 2.4, attenuationColor: f.jellyAtt ?? 0xff3347, attenuationDistance: 0.8 },
     body: { roughness: 0.3, ior: 1.47, specularIntensity: 1, envMapIntensity: 1.3, sheen: 0.5, sheenRoughness: 0.7, sheenColor: 0xffffff },
     eyes: EYES, teeth: { ...TEETH, roughness: 0.45 }
+  };
+  // Mirror-plated, like the rose chrome test pull: the 3D logo's chrome (grumpl/logo/grumpl-puff-logo.html),
+  // lit only by the same warm room and tone mapped the same way (room.js), so he and the logo match
+  if (f.kind === 'chrome') return {
+    chrome: true,
+    tint: { base: f.base, edge: f.edge, belly: f.belly, sss: f.base, sssAmt: 0, glow: 0 },
+    body: { color: f.base, metalness: 1, roughness: 0.05, envMapIntensity: 1.2, specularIntensity: 1 },
+    eyes: EYES, teeth: { color: f.base, metalness: 1, roughness: 0.08, envMapIntensity: 1.2 }
   };
   if (f.kind === 'flock') return {
     flock: true,
@@ -211,6 +220,23 @@ export function makeSet(f, lightU, eyeEnv) {
   U.uJelly.value = j ? j.amount : 0;
   if (j) { U.uJellyThick.value = j.thickness; U.uJellyDist.value = j.attenuationDistance; U.uJellyAtt.value.set(j.attenuationColor); }
   set.sugar = !!fin.sugar;
+  if (fin.chrome) {
+    // plain physical chrome, not the airbrushed body shader; crevices hold less of the room (from the baked AO)
+    for (const part of ['body', 'teeth']) {
+      const m = set[part];
+      m.onBeforeCompile = (sh) => {
+        roomOnly(sh);
+        if (part !== 'body') return;                // only the body carries the baked AO
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 color; varying float vAo;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAo = color.g;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vAo;')
+          .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.indirectSpecular *= mix( 0.45, 1.0, smoothstep( 0.15, 0.85, vAo ) );');
+      };
+      m.customProgramCacheKey = () => 'grumpl-chrome-' + part;
+      m.userData.room = true;
+    }
+    set.chrome = true;
+  }
   return set;
 }
 // recolor an existing set (same kind of finish) without recompiling
@@ -218,6 +244,7 @@ export function paintSet(set, f) {
   const fin = finishFor(f);
   set.U.uBase.value.set(fin.tint.base); set.U.uEdge.value.set(fin.tint.edge); set.U.uBelly.value.set(fin.tint.belly);
   set.U.uSss.value.set(fin.tint.sss);
+  if (fin.chrome) { set.body.color.set(fin.body.color); set.teeth.color.set(fin.teeth.color); }
 }
 
 export function sugarCoat(mesh, count) {
@@ -261,6 +288,12 @@ export function buildFigure(fig, f, lightU, eyeEnv, sugarCount = 12000) {
     m.name = o.name;
     m.applyMatrix4(rootInv.clone().multiply(o.matrixWorld));
     group.add(m); meshes.push(m);
+    if (m.material.userData.room) m.onBeforeRender = (renderer) => {   // the warm room, prefiltered for whichever renderer draws him
+      const mat = m.material;
+      if (mat.envMap || mat.userData.loading) return;
+      mat.userData.loading = true;
+      roomEnv(renderer).then((t) => { mat.envMap = t; mat.needsUpdate = true; dispatchEvent(new Event('grumpl-room-ready')); });
+    };
     if (o.name === 'body' && set.sugar && sugarCount) { group.updateMatrixWorld(true); sugarCoat(m, sugarCount); }
   });
   return { group, meshes, set };

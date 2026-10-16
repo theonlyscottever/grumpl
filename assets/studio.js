@@ -180,7 +180,7 @@ const ICON = {
 const TEMPLATE = `
 <div class="st-in">
   <header class="st-head">
-    <h2>Make your own</h2>
+    <h2 id="make-h">Make your own</h2>
     <p>Spin him, recolor him, put stickers on his cake. Save it as a wallpaper.</p>
   </header>
   <div class="st-app">
@@ -293,6 +293,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
   let G = null, gPending = null, model = null, tris = null;
   let near = false, raf = 0;
   const invalidate = () => { if (!G || !near || raf || destroyed) return; raf = requestAnimationFrame(() => { raf = 0; draw(); }); };
+  addEventListener('grumpl-room-ready', () => invalidate());   // the chrome finish's warm room arrived
 
   async function ensure3D() {
     if (G) return G;

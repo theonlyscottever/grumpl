@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { buildStudioEnv, makeLightU, buildFigure, loadGLB } from './grumpl-look.js';
+import { roomWant, turnRoom } from './room.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { DROP, FLAVORS } from './drop.js';
 import { initUI } from './ui.js';
@@ -506,9 +507,11 @@ function pickLogo() {
 // The gummy and chrome finishes are the puff-logo experiment itself (grumpl/logo/grumpl-puff-logo.html, Cloud view),
 // drawn by assets/logo3d.js in its own small canvas over the hero's cloud: full resolution, its own warm room light,
 // and none of its cost in the hero's frame. It loads only when a visit lands on (or taps to) a 3D finish.
-const room = { want: new THREE.Vector2() };            // where the cursor or the phone's tilt points, -1..1, for the logo's room
+const room = { want: roomWant };          // where the cursor or the phone's tilt points, -1..1: turns the warm room (room.js)
+const hasChrome = FLAVORS.some((f) => f.kind === 'chrome');
+addEventListener('grumpl-room-ready', () => poke(10));
 addEventListener('pointermove', (e) => {
-  if (logo3D.mode === 'flat' || (coarse && motion?.on)) return;
+  if ((logo3D.mode === 'flat' && !hasChrome) || (coarse && motion?.on)) return;
   const r = stage.getBoundingClientRect();
   room.want.set(THREE.MathUtils.clamp((e.clientX - r.left) / r.width * 2 - 1, -1, 1), THREE.MathUtils.clamp(-((e.clientY - r.top) / r.height * 2 - 1), -1, 1));
 }, { passive: true });
@@ -521,7 +524,7 @@ async function setLogoFinish(mode) {
     document.body.classList.add('logo-loading');
     try {
       const m = await import('./logo3d.js');
-      await m.initLogo3D({ after: stage, want: room.want, onTap: () => cycleLogo() });
+      await m.initLogo3D({ after: stage, onTap: () => cycleLogo() });
       logoMod = m;
     } catch (e) { console.error('logo 3D', e); }
     document.body.classList.remove('logo-loading');
@@ -754,7 +757,7 @@ const par = { cur: new THREE.Vector3(), want: new THREE.Vector3() };
 const motion = createMotion({
   onTilt({ x, y, slide }) {
     par.want.set(x * 0.9, y * 0.6, 0); tiltG = slide * 0.45;
-    room.want.set(THREE.MathUtils.clamp(-x * 1.8, -1, 1), THREE.MathUtils.clamp(y * 1.8, -1, 1));   // tilt the phone, the room turns on the gummy logo
+    room.want.set(THREE.MathUtils.clamp(-x * 1.8, -1, 1), THREE.MathUtils.clamp(y * 1.8, -1, 1));   // tilt the phone, the warm room turns (the 3D logo, the chrome Grumpl)
   },
   onWobble({ dir, strength }) {
     if (ring.t < 1 || grip) return;
@@ -1051,6 +1054,7 @@ renderer.setAnimationLoop(() => {
   updateSmoosh(dt);
   g.scale.set(1 + 0.32 * squash.a, 1 + 0.2 * squash.a, Math.max(0.2, 1 - 0.62 * squash.a));
   updateNight(dt);
+  if (hasChrome && turnRoom()) poke(2);           // the chrome Grumpl's reflections follow the cursor
   // fixed key, aimed at the focused Grumpl (at night the key is the lamp: see updateNight)
   if (!night.on) {
     const flat = Math.cos(KEY.el) * KEY.r;

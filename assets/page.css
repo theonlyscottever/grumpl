@@ -142,8 +142,8 @@ body.burger3d #Burger svg { visibility: hidden; }
 .book-end { max-width: 920px; margin: 0 auto; text-align: center; font: 400 26px/1.15 var(--font-cute); color: var(--muted); }
 
 /* ---------- make your own ---------- */
-#Make { background: var(--paper); padding-bottom: 0; }
-#Make > .sec-head { margin-bottom: 0; }
+#Make { padding: 0; }   /* the studio is its own band, with its own heading */
+#Make #Studio .st-stagecol { top: calc(var(--top-pad) + 70px); }   /* stick just under the fixed header, like the storybook */
 #Colors, #Studio { min-height: 200px; }
 #Colors.failed::after, #Studio.failed::after, #Artists.failed::after { content: "This part didn't load. Reload to try again."; display: block; padding: 40px var(--gut); text-align: center; color: var(--muted); }
 

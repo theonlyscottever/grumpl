@@ -5,44 +5,17 @@
 // Same mesh pack, same materials, same warm room HDRI at exposure 1.1 turned 240°, Khronos Neutral tone mapping,
 // same tilt, sway and puffs. It stops drawing when it's hidden, scrolled away or the tab is in the background.
 import * as THREE from 'three';
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { ROOM, roomAim, turnRoom, setTurn, roomEnv, NEUTRAL_TM, turnEnv } from './room.js';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const ROOM = { url: 'assets/hdri/warm-room-512.hdr', exposure: 1.1, rot: 4 * Math.PI / 3 };
 const PACK = 'assets/logo/cloud.pack.gz';
 const UNITS_W = 13.07;                   // the pack is 100 px of the 1307 px logo to a unit
 const PAD = { x: 0.07, y: 0.14 };       // room around the badge for the tilt and the puffs, as a share of its size
 
-// r160 has no Neutral tone mapping and no environment rotation: both go in by hand (the maths of r162+)
-const NEUTRAL_TM = `vec3 CustomToneMapping( vec3 color ) {
-  const float startCompression = 0.8 - 0.04;
-  const float desaturation = 0.15;
-  color *= toneMappingExposure;
-  float x = min( color.r, min( color.g, color.b ) );
-  float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
-  color -= offset;
-  float peak = max( color.r, max( color.g, color.b ) );
-  if ( peak < startCompression ) return color;
-  float d = 1. - startCompression;
-  float newPeak = 1. - d * d / ( peak + d - startCompression );
-  color *= newPeak / peak;
-  float g = 1. - 1. / ( desaturation * ( peak - newPeak ) + 1. );
-  return mix( color, vec3( newPeak ), g );
-}`;
-const TM = THREE.NeutralToneMapping ?? (() => {
-  const chunk = THREE.ShaderChunk.tonemapping_pars_fragment;
-  if (!chunk.includes('startCompression')) THREE.ShaderChunk.tonemapping_pars_fragment = chunk.replace('vec3 CustomToneMapping( vec3 color ) { return color; }', NEUTRAL_TM);
-  return THREE.CustomToneMapping;
-})();
-const envRot = { value: new THREE.Matrix3() };
+// lit by the shared warm room (room.js), exactly as the experiment was
+const envRot = { value: new THREE.Matrix3() };   // the room's turn plus the logo's own slow sway
 function turnable(m) {
-  m.onBeforeCompile = (sh) => {
-    sh.uniforms.uRoomRot = envRot;
-    sh.fragmentShader = sh.fragmentShader.replace('#include <envmap_physical_pars_fragment>', 'uniform mat3 uRoomRot;\n' +
-      THREE.ShaderChunk.envmap_physical_pars_fragment
-        .replace('textureCubeUV( envMap, worldNormal, 1.0 )', 'textureCubeUV( envMap, uRoomRot * worldNormal, 1.0 )')
-        .replace('textureCubeUV( envMap, reflectVec, roughness )', 'textureCubeUV( envMap, uRoomRot * reflectVec, roughness )'));
-  };
+  m.onBeforeCompile = (sh) => turnEnv(sh, envRot);
   m.customProgramCacheKey = () => 'logo3d-room';
   return m;
 }
@@ -102,17 +75,17 @@ async function gunzipFetch(url) {
 }
 
 let S = null;   // everything, once built
-let mode = 'flat', shown = true, rect = null, want = new THREE.Vector2(), onTap = null;
+let mode = 'flat', shown = true, rect = null, onTap = null;
 
 export function initLogo3D(opts) {
-  want = opts.want || want; onTap = opts.onTap;
+  onTap = opts.onTap;
   if (S) return S.ready;
   const canvas = document.createElement('canvas');
   canvas.id = 'Logo3D'; canvas.setAttribute('aria-hidden', 'true');
   opts.after.after(canvas);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
-  renderer.toneMapping = TM; renderer.toneMappingExposure = ROOM.exposure;
+  renderer.toneMapping = NEUTRAL_TM; renderer.toneMappingExposure = ROOM.exposure;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(28, 1, 0.5, 100);
   const tilt = new THREE.Group(); scene.add(tilt);
@@ -120,12 +93,9 @@ export function initLogo3D(opts) {
   window.__grumplLogo = S;   // for testing
   S.ready = Promise.all([
     gunzipFetch(PACK),
-    new RGBELoader().setDataType(THREE.HalfFloatType).loadAsync(ROOM.url),
-  ]).then(([buf, hdr]) => {
-    hdr.mapping = THREE.EquirectangularReflectionMapping;
-    const pm = new THREE.PMREMGenerator(renderer);
-    scene.environment = pm.fromEquirectangular(hdr).texture;
-    pm.dispose(); hdr.dispose();
+    roomEnv(renderer),
+  ]).then(([buf, env]) => {
+    scene.environment = env;
     for (const { id: rawId, geo } of unpack(buf)) {
       const kind = rawId === 'cloud-body' ? 'puff' : rawId.startsWith('drop') ? 'drop' : 'letter';
       const base = PART_COLORS[rawId] || '#ffffff';
@@ -239,8 +209,7 @@ function wire() {
 
 // ---- Loop: runs only while the logo is on screen; the slow sway keeps the room's reflections alive
 const clock = new THREE.Clock();
-const _e = new THREE.Euler(), _m = new THREE.Matrix4();
-const aim = new THREE.Vector2();
+const aim = roomAim;
 let raf = 0, t = 0;
 const menuEl = () => document.getElementById('Menu');
 const covered = () => menuEl()?.hidden === false || document.body.classList.contains('ds-no-scroll');
@@ -256,14 +225,13 @@ function frame() {
     idleStep++;
     idleNext = now + (idleStep % S.idle.length === 0 ? 2600 : p.kind === 'letter' ? 260 : 110);
   }
-  aim.lerp(want, 1 - Math.exp(-dt * 4));
+  turnRoom(now);
   S.sweep += (S.sweepTo - S.sweep) * (1 - Math.exp(-dt * 1.6));
   if (Math.abs(S.sweepTo) > 0.01 && Math.abs(S.sweepTo - S.sweep) < 0.02) S.sweepTo = 0;
   const sway = reduce ? 0 : 1;
   S.tilt.rotation.y = aim.x * 0.32 + sway * Math.sin(t * 0.4) * 0.05;
   S.tilt.rotation.x = -aim.y * 0.22 + sway * Math.sin(t * 0.33) * 0.03;
-  const yaw = ROOM.rot + aim.x * 0.9 + S.sweep + sway * Math.sin(t * 0.2) * 0.25, pitch = aim.y * 0.25;
-  envRot.value.setFromMatrix4(_m.makeRotationFromEuler(_e.set(-pitch, -yaw, 0)));
+  setTurn(envRot, aim.x * 0.9 + S.sweep + sway * Math.sin(t * 0.2) * 0.25, aim.y * 0.25);
   const k = 1 - Math.exp(-dt * 5);
   for (const p of S.pieces) {
     if (now >= p.startAt) {
