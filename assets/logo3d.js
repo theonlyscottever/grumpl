@@ -102,6 +102,10 @@ export function initLogo3D(opts) {
   const tilt = new THREE.Group(); scene.add(tilt);
   // the soft light that follows the cursor or finger (finish.js): you see it travel across the letters
   const cursorLight = new THREE.PointLight(0xffffff, CURSOR_LIGHT * 1.6, 0, 0); scene.add(cursorLight);
+  // a soft white sky and a key from the upper left, like the prototype's bright Cloud view: the badge and the
+  // letters read bright before any cursor light reaches them
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xeef0f6, 1.1));
+  const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(-3, 5, 7); scene.add(key);
   S = { canvas, renderer, scene, camera, tilt, cursorLight, pieces: [], dpr: Math.min(devicePixelRatio || 1, 2), sweep: 0, sweepTo: 0, sign: 1 };
   window.__grumplLogo = S;   // for testing
   S.ready = Promise.all([
@@ -123,6 +127,8 @@ export function initLogo3D(opts) {
       const p = { id: rawId, kind, base, s: 0, v: 0, startAt: 0, mat: turnable(new THREE.MeshPhysicalMaterial()) };
       p.target = preset('gummy', kind, base); p.cur = { ...p.target }; COL.forEach((k) => p.cur[k] = p.target[k].clone());
       applyMat(p);
+      // the cloud badge is white on its own (Scott 2026-10-16: it went grey wherever the cursor light wasn't)
+      if (kind === 'puff') { p.mat.emissive.set('#ffffff'); p.mat.emissiveIntensity = 0.32; }
       p.mesh = new THREE.Mesh(geo, p.mat);
       p.mesh.userData.piece = p;
       p.pivot = new THREE.Group(); p.pivot.position.copy(c); p.pivot.add(p.mesh);

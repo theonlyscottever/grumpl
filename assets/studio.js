@@ -71,16 +71,16 @@ function dieCut(src, pad = 14) {
   const out = document.createElement('canvas'); out.width = w; out.height = h; const o = out.getContext('2d');
   o.drawImage(sil, 0, 0); o.drawImage(src, pad, pad); return out;
 }
-const CUTE = '400 VARpx caraque-melted, "Chewy", "Fredoka", sans-serif';
+const CUTE = '400 VARpx caraque-melted, sans-serif';
 const cute = (px) => CUTE.replace('VAR', px);
 const STK = {
   heart: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2 + 10); c.beginPath(); c.moveTo(0, 95); c.bezierCurveTo(-150, 0, -95, -125, 0, -55); c.bezierCurveTo(95, -125, 150, 0, 0, 95); c.fillStyle = '#ff87e0'; c.fill(); c.lineWidth = 12; c.strokeStyle = INK; c.lineJoin = 'round'; c.stroke(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(-48, -40, 20, 12, -0.6, 0, 7); c.fill(); }),
   star: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2 + 8); c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 58 : 135, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); c.fillStyle = LEMON; c.fill(); c.lineWidth = 12; c.lineJoin = 'round'; c.strokeStyle = INK; c.stroke(); }),
-  odds: () => stickerCanvas((c, w) => { c.beginPath(); c.arc(w / 2, w / 2, 140, 0, 7); c.fillStyle = LEMON; c.fill(); c.lineWidth = 12; c.strokeStyle = INK; c.stroke(); c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = cute(130); c.fillText('1%', w / 2, w / 2 - 12); c.font = '600 34px "Fredoka", sans-serif'; c.fillText('speshul', w / 2, w / 2 + 78); }),
+  odds: () => stickerCanvas((c, w) => { c.beginPath(); c.arc(w / 2, w / 2, 140, 0, 7); c.fillStyle = LEMON; c.fill(); c.lineWidth = 12; c.strokeStyle = INK; c.stroke(); c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = cute(130); c.fillText('1%', w / 2, w / 2 - 12); c.font = '600 34px caraque-solid, sans-serif'; c.fillText('speshul', w / 2, w / 2 + 78); }),
   tag: () => stickerCanvas((c, w, h) => { c.translate(w / 2, h / 2); c.rotate(-0.05); c.fillStyle = INK; rr(c, -230, -62, 460, 124, [14, 11, 8, 16]); c.fill(); c.fillStyle = PAPER; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = cute(92); c.fillText('hand made', 0, 6); }, 520, 180),
   bandaid: () => stickerCanvas((c, w, h) => { c.translate(w / 2, h / 2); c.fillStyle = '#f2c79b'; rr(c, -230, -70, 460, 140, 70); c.fill(); c.lineWidth = 10; c.strokeStyle = INK; c.stroke(); c.fillStyle = '#e7ae7b'; rr(c, -80, -58, 160, 116, 18); c.fill(); c.fillStyle = 'rgba(27,22,32,.35)'; for (const x of [-170, -130, 130, 170]) for (const y of [-25, 25]) { c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); } }, 500, 180),
   googly: () => stickerCanvas((c, w) => { c.beginPath(); c.arc(w / 2, w / 2, 140, 0, 7); c.fillStyle = PAPER; c.fill(); c.lineWidth = 10; c.strokeStyle = INK; c.stroke(); c.beginPath(); c.arc(w / 2 + 30, w / 2 + 40, 72, 0, 7); c.fillStyle = INK; c.fill(); c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(w / 2 + 6, w / 2 + 14, 16, 0, 7); c.fill(); }),
-  stamp: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2); c.rotate(-0.12); c.strokeStyle = '#d8363f'; c.lineWidth = 12; c.beginPath(); c.arc(0, 0, 140, 0, 7); c.stroke(); c.lineWidth = 5; c.beginPath(); c.arc(0, 0, 118, 0, 7); c.stroke(); c.fillStyle = '#d8363f'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = cute(58); c.fillText('process', 0, -34); c.fillText('grey', 0, 16); c.font = '600 30px "Fredoka", sans-serif'; c.fillText('approved.', 0, 62); }),
+  stamp: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2); c.rotate(-0.12); c.strokeStyle = '#d8363f'; c.lineWidth = 12; c.beginPath(); c.arc(0, 0, 140, 0, 7); c.stroke(); c.lineWidth = 5; c.beginPath(); c.arc(0, 0, 118, 0, 7); c.stroke(); c.fillStyle = '#d8363f'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = cute(58); c.fillText('process', 0, -34); c.fillText('grey', 0, 16); c.font = '600 30px caraque-solid, sans-serif'; c.fillText('approved.', 0, 62); }),
   sweat: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2); c.beginPath(); c.moveTo(0, -130); c.bezierCurveTo(30, -60, 105, 0, 105, 50); c.arc(0, 50, 105, 0, Math.PI); c.bezierCurveTo(-105, 0, -30, -60, 0, -130); c.fillStyle = '#89d7f2'; c.fill(); c.lineWidth = 11; c.strokeStyle = INK; c.lineJoin = 'round'; c.stroke(); c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(-40, 40, 16, 30, 0.3, 0, 7); c.fill(); }),
 };
 const STK_LABEL = { heart: 'Heart', star: 'Star', odds: '1% odds', tag: 'Hand made tag', bandaid: 'Band-aid', googly: 'Googly eye', stamp: 'Approved stamp', sweat: 'Sweat drop' };
@@ -504,7 +504,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
   const userStickers = [];
   let fontsReady = null;
   const waitFonts = () => fontsReady || (fontsReady = Promise.race([
-    Promise.all(['400 80px Chewy', '400 80px caraque-melted', '600 30px Fredoka'].map((f) => document.fonts?.load(f).catch(() => {}))),
+    Promise.all(['400 80px caraque-melted', '600 30px caraque-solid'].map((f) => document.fonts?.load(f).catch(() => {}))),
     new Promise((r) => setTimeout(r, 1500)),
   ]));
   async function stickerSource(id) {

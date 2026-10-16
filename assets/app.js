@@ -99,11 +99,12 @@ const wallR = addWall(new CANNON.Vec3(-1, 0, 0), new CANNON.Vec3(BOUNDS.x, 0, 0)
 addWall(new CANNON.Vec3(0, 0, 1), new CANNON.Vec3(0, 0, BOUNDS.zBack));
 const wallF = addWall(new CANNON.Vec3(0, 0, -1), new CANNON.Vec3(0, 0, BOUNDS.zFront));   // the glass (see smoosh)
 addWall(new CANNON.Vec3(0, -1, 0), new CANNON.Vec3(0, BOUNDS.top, 0));
-// a soft floor inside the clouds: thrown off the crest he lands in the fluff, then hops home
+// the shared cloud is solid ground everywhere (Scott 2026-10-16: they can never fall off it); thrown off his
+// platform he lands on the cloud a little lower than the crest, then hops home
 const floorB = new CANNON.Body({ mass: 0, material: cloudPhys });
 floorB.addShape(new CANNON.Plane());
 floorB.quaternion.setFromVectors(new CANNON.Vec3(0, 0, 1), new CANNON.Vec3(0, 1, 0));
-floorB.position.set(0, LIFT - 0.75, 0);
+floorB.position.set(0, LIFT - 0.14, 0);
 world.addBody(floorB);
 
 const crest = new CANNON.Body({ mass: 0, material: cloudPhys });
@@ -593,6 +594,13 @@ const ready = Promise.all([
     if (!o.isMesh) return;
     if (o.name === 'hero') slots.forEach((s) => s.cloud.add(meshOf(o, cloudMat)));
     else if (!o.name.startsWith('front')) scene.add(meshOf(o, cloudMat));
+    else {
+      // Scott (2026-10-16): the shared cloud runs right up to the glass, so there is no gap in front of his
+      // platform to fall into. The front rows are raised to the crest and squeezed to end at the glass.
+      const m = meshOf(o, cloudMat);
+      m.scale.set(1.05, 1, 0.55); m.position.set(0, 0.3, 0.45);
+      scene.add(m);
+    }
   });
   fc.scene.traverse((o) => { if (o.isMesh) front.group.add(meshOf(o, frontMat)); });
 
@@ -777,7 +785,8 @@ canvas.addEventListener('pointerup', (e) => {
   mode = null; release();
 });
 canvas.addEventListener('pointercancel', () => { mode = null; release(); });
-canvas.addEventListener('dblclick', (e) => { toNdc(e); const h = hitSlot(); if (h && h.i === ring.f) smooshAt(); else standUp(); });
+// a double-click only stands him up: clicking means pick him up, so the glass smoosh comes on its own (below)
+canvas.addEventListener('dblclick', () => standUp());
 const step = (d) => focus(ring.f + d, d);
 addEventListener('keydown', (e) => {
   if (e.target.closest?.('input, textarea, [contenteditable]')) return;
@@ -785,7 +794,8 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') step(1);
   else if (e.code === 'Space' && scrollY < innerHeight * 0.6) { e.preventDefault(); jump(); }
 });
-['pointerdown', 'keydown', 'resize'].forEach((ev) => addEventListener(ev, () => { poke(); idleAt = performance.now(); calm(); }, true));
+let touchedAt = performance.now();
+['pointerdown', 'keydown', 'resize'].forEach((ev) => addEventListener(ev, () => { poke(); idleAt = touchedAt = performance.now(); calm(); }, true));
 
 // Scott (2026-10-16): instead of only turning, the Grumpls hop up, bounce and spin on a loose timer. It says
 // "I'm a toy, touch me". The one in front does it for real (physics); his neighbours do it on their clouds.
@@ -803,6 +813,17 @@ if (!reduceMotion) setInterval(() => {
   }
   poke(4);
 }, 400);
+
+// Scott (2026-10-16): every once in a while, with no warning, the front Grumpl flings himself at the glass
+// (smooshAt below). A long random timer, only while nobody is touching him and he is standing on his cloud.
+let nextSmoosh = Infinity;
+addEventListener('grumpl-hero-ready', () => { nextSmoosh = performance.now() + 25000 + Math.random() * 15000; }, { once: true });
+if (!reduceMotion) setInterval(() => {
+  const now = performance.now();
+  if (now < nextSmoosh || document.visibilityState !== 'visible' || !heroOn || covered() || now - touchedAt < 8000 || !turntable()) return;
+  nextSmoosh = now + 50000 + Math.random() * 60000;
+  smooshAt();
+}, 1000);
 
 // idle: the letters puff one after another, like on the brand book
 let idleAt = performance.now();
@@ -856,7 +877,7 @@ body.addEventListener('collide', (e) => {
 });
 
 // ---------- Pressed against the glass ----------
-// Double-tap him (or toss him at the screen): he leaps at you, squashes flat on the glass, fogs it, and slides off.
+// Every so often (a long random timer): he leaps at you, squashes flat on the glass, fogs it, and slides off.
 const SMOOSH_HOLD = 900;
 let smoosh = null;
 const squash = { a: 0, v: 0, want: 0 };

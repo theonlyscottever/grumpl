@@ -9,10 +9,6 @@ html { scroll-padding-top: 84px; }
 #Top > * { pointer-events: auto; }
 #TopCloud { position: absolute; z-index: -1; top: 0; left: 0; pointer-events: none; line-height: 0; opacity: 0; transform: translateY(-24px);
 	transition: opacity .35s, transform .45s var(--ease); }
-#TopCloud .body { fill: var(--paper); }
-#TopCloud .puffs { fill: url(#TopPuff); }
-#TopCloud .lit { stop-color: var(--paper); }
-#TopCloud .dim { stop-color: color-mix(in oklab, var(--wash-deep) 70%, #cfd3f2); }
 body.scrolled #TopCloud { opacity: 1; transform: none; }
 #Burger[aria-expanded="true"] { opacity: 0; transform: scale(.6); }
 #Mark { position: fixed; z-index: 13; left: 0; top: 0; transform-origin: 50% 0; opacity: 0; pointer-events: none; display: block; line-height: 0; }
@@ -203,8 +199,7 @@ body.spooky {
 }
 body.spooky #Hero { background: radial-gradient(110% 70% at 50% 30%, #1d1824 0%, #120f16 55%, #0c0a0f 85%); }
 body.spooky #Hero::before { opacity: 0; }
-body.spooky #TopCloud .body, body.spooky #TopCloud .lit { fill: #17131c; stop-color: #17131c; }
-body.spooky #TopCloud .dim { stop-color: #2c2436; }
+body.spooky #TopCloud canvas { filter: brightness(.13) saturate(.7); }
 body.spooky #Dock { background: #1d1824; box-shadow: 0 0 0 2px #3a3046, 0 10px 30px rgba(0 0 0 / .5); }
 body.spooky #Info .more, body.spooky .sound-btn:not(.on) { background: #1d1824; }
 body.spooky #Cta .go { box-shadow: var(--edge-glow), 2px 3px 0 #000, 0 0 22px color-mix(in oklab, var(--c) 40%, transparent); }
@@ -272,11 +267,3 @@ html.intro.show .gummy-burger { transition: opacity .45s ease .62s; }
 #Menu .menu-fig, #Menu .layer .lead, #Menu .layer small { visibility: hidden; }
 #Menu .layer small { height: 0; }
 
-/* ---------- Bruce's Grumpl font as pencilled side notes (Scott 2026-10-16: small, additive, nothing important) ---------- */
-.hand { position: absolute; z-index: 3; display: inline-flex; align-items: flex-start; gap: 2px; pointer-events: none; white-space: nowrap;
-	font: 400 21px/1 "Grumpl", var(--font-cute); color: color-mix(in oklab, var(--ink) 78%, transparent); }
-.hand svg, #Book .pic .hand svg { width: 38px; height: 26px; max-height: none; flex: none; margin-top: 8px; border-radius: 0; }
-#Book .hand.at-tl { left: 22px; top: 22px; transform: rotate(-7deg); }
-#Foot .fine { position: relative; }
-#Foot .hand.foot-note { position: relative; display: block; margin: 4px auto 0; width: max-content; font-size: 19px; transform: rotate(-3deg) translateX(70px); }
-@media (max-width: 560px) { .hand { font-size: 18px; } .hand svg, #Book .pic .hand svg { width: 30px; height: 21px; } }

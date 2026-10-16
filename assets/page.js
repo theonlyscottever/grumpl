@@ -114,34 +114,17 @@ mark.addEventListener('animationend', (e) => { if (e.target.style.getPropertyVal
    Drawn at the window's width so its billows never repeat; deepest in the middle, where the logo hangs lowest. */
 const topCloud = document.createElement('div'); topCloud.id = 'TopCloud'; topCloud.setAttribute('aria-hidden', 'true');
 $('#Top').prepend(topCloud);
-let cloudW = 0;
+// the header's cloud is rendered in 3D (cloud3d.js), once per width, after the hero has loaded
+let cloudW = 0, cloudT = 0;
 function drawCloud() {
   const W = innerWidth; if (W === cloudW) return; cloudW = W;
   const top = parseFloat(getComputedStyle(root).getPropertyValue('--top-pad')) || 12;
-  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const phone = W < 700, k = phone ? 0.62 : 1;
-  const base = (x) => top + (phone ? 44 : 50) + (phone ? 18 : 30) * Math.exp(-(((x - W / 2) / (phone ? 110 : 190)) ** 2));
-  // two rows of billows: a back row a little higher, then the front row over it; each is white on top and
-  // turns the clouds' lavender only underneath, so overlaps read as puffs and the top edge stays clean
-  const row = (lift, rmin, rmax, hang) => {
-    const c = [];
-    for (let x = -30 + rnd() * 20; x < W + 50;) {
-      const r = (rmin + rnd() * (rmax - rmin)) * k;
-      c.push([x, base(x) - lift - r * (1 - hang * (0.8 + rnd() * 0.4)), r]);
-      x += r * (1.15 + rnd() * 0.5);
-    }
-    return c;
-  };
-  const back = row(10, 30, 52, 0.22), front = row(0, 24, 58, 0.3).sort((p, q) => p[1] + p[2] - q[1] - q[2]);
-  const H = Math.ceil(Math.max(...front.map(([, y, r]) => y + r))) + 4;
-  const dot = ([x, y, r]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"/>`;
-  topCloud.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="TopPuff" x2="0" y2="1">`
-    + `<stop offset=".5" class="lit"/><stop offset="1" class="dim"/></linearGradient></defs>`
-    + `<rect class="body" x="-40" y="-10" width="${W + 80}" height="${top + (phone ? 30 : 34)}"/>`
-    + `<g class="puffs">${back.map(dot).join('')}${front.map(dot).join('')}</g></svg>`;
+  clearTimeout(cloudT);
+  cloudT = setTimeout(() => import('./cloud3d.js').then((m) => m.drawTopCloud(topCloud, W, top)).catch(() => {}), 120);
 }
-drawCloud();
-addEventListener('resize', drawCloud);
+addEventListener('grumpl-hero-ready', drawCloud, { once: true });
+setTimeout(drawCloud, 6000);
+addEventListener('resize', () => { if (cloudW) drawCloud(); });
 addEventListener('scroll', stick, { passive: true });
 addEventListener('resize', stick);
 mark.addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
@@ -270,10 +253,10 @@ function goTo(hash) {
 /* ======================= the storybook ======================= */
 // A first draft of the lore for Jason to rewrite. Pages pile up like a book as you scroll.
 const PAGES = [
-  { art: 'grumpl-stand.png', line: true, h: 'This is a Grumpl.', hand: { t: 'actual size (ish)', at: 'tl' },
+  { art: 'grumpl-stand.png', line: true, h: 'This is a Grumpl.',
     p: ['He is about as tall as your hand, a little taller after lunch. Nobody knows how old he is, including him.',
         'He frowns at birds, weather and most people. Stay still long enough and he will sit on your foot anyway.'] },
-  { art: 'story-eat', bg: '#ffd23f', h: 'What they eat', hand: { t: 'not his burger', at: 'tl' },
+  { art: 'story-eat', bg: '#ffd23f', h: 'What they eat',
     p: ['Burgers, mostly. Somebody else’s burger, ideally, the kind that’s been in the bag a while.',
         'Also pocket lint, the heel of the bread, ketchup packets with the packet still on, and socks when nobody is looking.',
         'They won’t eat a vegetable. They will hold a pickle for an hour to make a point.'] },
@@ -305,12 +288,9 @@ const SOCK = `<svg viewBox="0 0 240 240" class="sock" aria-hidden="true">
   <path d="M108 100c8 4 16 4 24 0" fill="none" stroke="#0b0a0c" stroke-width="4" stroke-linecap="round"/>
   <path d="M182 196c18-2 30 8 28 22-2 10-14 12-24 8" fill="#ff8f6b" stroke="#0b0a0c" stroke-width="4"/>
 </svg>`;
-// Bruce's Grumpl font, only as a pencilled side note: decorative, hidden from screen readers, never needed to read the page.
-const ARROW = '<svg viewBox="0 0 60 40" aria-hidden="true"><path d="M4 6c14-2 30 4 38 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M33 23l10 5 2-11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const hand = (n) => `<span class="hand at-${n.at}" aria-hidden="true">${n.t}${ARROW}</span>`;
 $('#Book').innerHTML = PAGES.map((pg, i) => `
   <section class="page${pg.dark ? ' dark' : ''}${pg.bg ? ' strong' : ''}" style="--i:${i};--r:${(rnd(i + 11) * 3 - 1.5).toFixed(2)}deg${pg.bg ? `;--pg:${pg.bg}` : ''}">
-    <div class="pic${pg.line ? ' line' : ''}">${pg.art === 'sock' ? SOCK : `<img src="${img(pg.art)}" alt="" loading="lazy">`}${pg.hand ? hand(pg.hand) : ''}</div>
+    <div class="pic${pg.line ? ' line' : ''}">${pg.art === 'sock' ? SOCK : `<img src="${img(pg.art)}" alt="" loading="lazy">`}</div>
     <div class="words">
       <p class="pno">${i + 1}</p>
       <h3>${pg.h}</h3>

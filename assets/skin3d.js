@@ -6,10 +6,11 @@
 // The element keeps its label, layout and click handling; only its painted box is replaced.
 import * as THREE from 'three';
 import { ROOM, roomEnv, turnEnv, setTurn, roomAim, turnRoom, NEUTRAL_TM } from './room.js';
-import { finish, onFinish, skinParams, SKIN_KEYS, cursor, onCursor, CURSOR_LIGHT, flockShader } from './finish.js';
+import { onFinish, skinParams, SKIN_KEYS, cursor, onCursor, CURSOR_LIGHT } from './finish.js';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const PAD = 6;                        // css px of room round each button for the antialiased rim
+const PAD = 14;                       // css px of room round each button for its sides, rim and contact shadow
+const SHEAR = { x: -0.32, y: 0.5 };    // how far the face sits up and left of the base, per px of depth: the sides show down and right
 const items = new Set();
 let R = null, scene, cam, light, key, envRot, ready = null, raf = 0;
 
@@ -34,104 +35,105 @@ function boot() {
   return ready;
 }
 
-// ---- geometry: a cushion over a rounded rectangle (half sizes a, b, corner radius r), puffed to depth d.
-// Rings step inward from the outline; z follows a quarter circle, so the rim stands vertical like a pillow's seam.
+// ---- geometry (Scott 2026-10-16): not a puffed cushion but a thick slab of gummy. The button's own outline
+// (its CSS corners) extruded toward the viewer with a small rounded bevel, so it reads as a block with depth.
+// The X is one merged silhouette (a plus turned 45 degrees), so it has one rim, not two crossing pills.
 const geoCache = new Map();
-function ringPoint(a, b, r, u, out) {
-  // u in [0,4): one unit per corner arc + the straight edge after it, walked anticlockwise from the right edge
-  const q = Math.floor(u) % 4, f = u - Math.floor(u);
-  const cx = [a - r, -(a - r), -(a - r), a - r][q], cy = [b - r, b - r, -(b - r), -(b - r)][q];
-  const ang = (q * Math.PI) / 2 + f * Math.PI / 2;
-  out[0] = cx + Math.cos(ang) * r; out[1] = cy + Math.sin(ang) * r;
+function roundedRect(a, b, r) {
+  const s = new THREE.Shape();
+  s.moveTo(-a + r, -b); s.lineTo(a - r, -b); s.quadraticCurveTo(a, -b, a, -b + r);
+  s.lineTo(a, b - r); s.quadraticCurveTo(a, b, a - r, b); s.lineTo(-a + r, b);
+  s.quadraticCurveTo(-a, b, -a, b - r); s.lineTo(-a, -b + r); s.quadraticCurveTo(-a, -b, -a + r, -b);
+  return s;
 }
-function cushion(a, b, r, d) {
-  const k = `${a.toFixed(1)}|${b.toFixed(1)}|${r.toFixed(1)}|${d.toFixed(1)}`;
+function crossShape(size, thick) {
+  // a plus with arms of width `thick` and reach size/2, corners softened, turned 45 degrees
+  const h = size / 2, t = thick / 2, r = Math.min(t * 0.9, 3);
+  const pts = [[t, t], [t, h], [-t, h], [-t, t], [-h, t], [-h, -t], [-t, -t], [-t, -h], [t, -h], [t, -t], [h, -t], [h, t]];
+  const c = Math.SQRT1_2, P = pts.map(([x, y]) => new THREE.Vector2((x - y) * c, (x + y) * c));
+  const s = new THREE.Shape(), n = P.length;
+  // round every corner a little: cut each corner by r and curve through it
+  for (let i = 0; i < n; i++) {
+    const p0 = P[(i - 1 + n) % n], p1 = P[i], p2 = P[(i + 1) % n];
+    const a0 = p1.clone().add(p0.clone().sub(p1).setLength(r)), a1 = p1.clone().add(p2.clone().sub(p1).setLength(r));
+    if (i === 0) s.moveTo(a0.x, a0.y); else s.lineTo(a0.x, a0.y);
+    s.quadraticCurveTo(p1.x, p1.y, a1.x, a1.y);
+  }
+  s.closePath();
+  return s;
+}
+function slab(shape, key, d) {
+  const k = `${key}|${d.toFixed(1)}`;
   if (geoCache.has(k)) return geoCache.get(k);
-  const T = Math.min(a, b), RINGS = 12;
-  // points round the outline: each corner arc, then its straight edge, sampled with fixed counts so rings line up
-  const nArc = 9, nH = Math.max(1, Math.round((2 * (a - r)) / 14)), nV = Math.max(1, Math.round((2 * (b - r)) / 14));
-  const us = [];   // [u along corners, edge share]
-  for (let q = 0; q < 4; q++) {
-    for (let i = 0; i < nArc; i++) us.push({ q, arc: i / nArc });
-    const n = q % 2 === 0 ? nH : nV;
-    for (let i = 0; i < n; i++) us.push({ q, edge: i / n });
-  }
-  const N = us.length, pos = [], rim = [], idx = [], p = [0, 0];
-  for (let k2 = 0; k2 <= RINGS; k2++) {
-    const s = 1 - Math.cos((k2 / RINGS) * Math.PI / 2);         // dense near the rim
-    const t = s * T * 0.999, aa = a - t, bb = b - t;
-    // corners get rounder inward (never a sharp mitre), so the cushion has no creases running into its corners
-    const rr = Math.min(Math.min(aa, bb), Math.max(0, r - t) + (Math.min(aa, bb) - Math.max(0, r - t)) * s);
-    const z = d * Math.sqrt(Math.max(0, 1 - (1 - s) * (1 - s)));
-    for (const e of us) {
-      if (e.arc !== undefined) ringPoint(aa, bb, rr, e.q + e.arc, p);
-      else {
-        // the straight edge after corner q: from the end of arc q to the start of arc q+1
-        const p0 = [0, 0], p1 = [0, 0];
-        ringPoint(aa, bb, rr, e.q + 0.99999, p0); ringPoint(aa, bb, rr, (e.q + 1) % 4, p1);
-        p[0] = p0[0] + (p1[0] - p0[0]) * e.edge; p[1] = p0[1] + (p1[1] - p0[1]) * e.edge;
-      }
-      pos.push(p[0], p[1], z); rim.push((1 - s) * (1 - s));
-    }
-  }
-  for (let k2 = 0; k2 < RINGS; k2++) for (let i = 0; i < N; i++) {
-    const a0 = k2 * N + i, a1 = k2 * N + (i + 1) % N, b0 = a0 + N, b1 = a1 + N;
-    idx.push(a0, a1, b1, a0, b1, b0);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('rim', new THREE.Float32BufferAttribute(rim, 1));
-  g.setIndex(idx); g.computeVertexNormals();
+  const bev = Math.min(4, d * 0.4);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(0.5, d - bev), bevelEnabled: true, bevelThickness: bev, bevelSize: bev * 0.85,
+    bevelOffset: -bev * 0.85, bevelSegments: 4, curveSegments: 10 });
+  // the extrusion runs from z = -bev to d; the back is never seen, so drop nothing but keep the front at z = d
+  g.translate(0, 0, bev * 0 + 0);
+  g.computeBoundingBox();
+  const z0 = g.boundingBox.min.z, z1 = g.boundingBox.max.z;
+  g.translate(0, 0, -z0);
+  g.userData.depth = z1 - z0;
   geoCache.set(k, g);
   return g;
 }
-// the close X: two capsules crossed
-function crossGeo(size, thick) {
-  const k = `x|${size.toFixed(1)}|${thick.toFixed(1)}`;
-  if (geoCache.has(k)) return geoCache.get(k);
-  const len = size * 0.5, b = thick / 2;
-  const one = cushion(len, b, b, b * 1.1);
-  const g1 = one.clone().rotateZ(Math.PI / 4), g2 = one.clone().rotateZ(-Math.PI / 4).translate(0, 0, 0.6);
-  const g = mergeTwo(g1, g2);
-  geoCache.set(k, g);
-  return g;
-}
-function mergeTwo(g1, g2) {
-  const g = new THREE.BufferGeometry(), n1 = g1.attributes.position.count;
-  for (const name of ['position', 'normal', 'rim']) {
-    const A = g1.attributes[name], B = g2.attributes[name];
-    const arr = new Float32Array(A.array.length + B.array.length); arr.set(A.array); arr.set(B.array, A.array.length);
-    g.setAttribute(name, new THREE.BufferAttribute(arr, A.itemSize));
-  }
-  const i1 = g1.index.array, i2 = g2.index.array, ii = new Uint32Array(i1.length + i2.length);
-  ii.set(i1); for (let i = 0; i < i2.length; i++) ii[i1.length + i] = i2[i] + n1;
-  g.setIndex(new THREE.BufferAttribute(ii, 1));
-  return g;
+const rectGeo = (a, b, r, d) => slab(roundedRect(a, b, Math.min(r, a, b)), `r|${a.toFixed(1)}|${b.toFixed(1)}|${r.toFixed(1)}`, d);
+const crossGeo = (size, thick, d) => slab(crossShape(size, thick), `x|${size.toFixed(1)}|${thick.toFixed(1)}`, d);
+
+// the contact shadow: a tight, soft darkening right under the slab's outline, like ambient occlusion where it
+// meets the page (not a drop shadow). A quad with a rounded-rect distance field.
+function shadowMat() {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uScale: { value: new THREE.Vector2(1, 1) }, uHalf: { value: new THREE.Vector2(10, 10) }, uR: { value: 4 }, uSoft: { value: 4 }, uAmt: { value: 0.28 }, uCross: { value: 0 } },
+    vertexShader: 'uniform vec2 uScale; varying vec2 vP; void main() { vP = position.xy * uScale; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec2 uHalf; uniform float uR, uSoft, uAmt, uCross; varying vec2 vP;
+      float box(vec2 p, vec2 b, float r) { vec2 q = abs(p) - b + r; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; }
+      void main() {
+        float d;
+        if (uCross > 0.5) {
+          vec2 p = mat2(0.70710678, -0.70710678, 0.70710678, 0.70710678) * vP;
+          d = min(box(p, vec2(uHalf.x, uHalf.y), uR), box(p, vec2(uHalf.y, uHalf.x), uR));
+        } else d = box(vP, uHalf, uR);
+        float a = uAmt * (1.0 - smoothstep(-uSoft * 0.6, uSoft, d));
+        gl_FragColor = vec4(0.04, 0.03, 0.06, a);
+      }`,
+  });
 }
 
-// ---- the material: physical, turned with the room, with the airbrushed edge color glowing in at the rim
+// ---- the material: gummy you can see into (Scott 2026-10-16, after the puff logo's gummy): clear-coated, the
+// room's light on top, the page showing through the face, the colour deepening and going opaque toward the
+// edges and down the sides, and a soft glow through the middle where the light passes through.
 function makeMat() {
   const m = new THREE.MeshPhysicalMaterial({ transparent: true });
-  m.userData.u = { uEdge: { value: new THREE.Color() }, uEdgeAmt: { value: 0.7 }, uFlockAmt: { value: 0 } };
+  m.userData.u = { uEdge: { value: new THREE.Color() }, uEdgeAmt: { value: 0.7 }, uDepth: { value: 10 } };
   m.onBeforeCompile = (sh) => {
     turnEnv(sh, envRot);
     Object.assign(sh.uniforms, m.userData.u);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float rim; varying float vRim; varying vec2 vXY;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRim = rim; vXY = position.xy;');
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vZ;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvZ = position.z;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      uniform vec3 uEdge; uniform float uEdgeAmt; varying float vRim; varying vec2 vXY;`)
-      .replace('#include <color_fragment>', `#include <color_fragment>
-        diffuseColor.rgb = mix(diffuseColor.rgb, uEdge, uEdgeAmt * smoothstep(0.25, 0.95, vRim));`);
-    flockShader(sh, m.userData.u, 1 / 140);   // the flocked Grumpl's pile, at about his on-screen grain
+      uniform vec3 uEdge; uniform float uEdgeAmt, uDepth; varying float vZ;`)
+      .replace('#include <opaque_fragment>', `{
+        vec3 base = diffuseColor.rgb;
+        float ndv = saturate(dot(normal, geometryViewDir));
+        float fres = pow(1.0 - ndv, 2.0);
+        float side = 1.0 - smoothstep(0.55, 0.95, vZ / uDepth);        // 1 down the sides, 0 on the face
+        vec3 deep = mix(base, uEdge, uEdgeAmt) * 0.85;
+        outgoingLight *= mix(vec3(1.0), deep * 1.25 + 0.04, max(fres, side * 0.8) * 0.8);
+        outgoingLight += base * 0.3 * pow(ndv, 1.5) * (1.0 - side);       // lit through the middle
+        diffuseColor.a = mix(diffuseColor.a, 0.97, max(fres * 0.9, side * 0.75));
+      }
+      #include <opaque_fragment>`);
   };
-  m.customProgramCacheKey = () => 'skin3d';
+  m.customProgramCacheKey = () => 'skin3d-gummy';
   return m;
 }
 function applyMat(it) {
   const m = it.mat, c = it.cur;
   SKIN_KEYS.NUM.forEach((n) => { if (n in m && n !== 'opacity') m[n] = c[n]; });
   m.opacity = c.opacity; m.color.copy(c.color); m.sheenColor.copy(c.sheenColor);
-  m.userData.u.uEdge.value.copy(c.edge); m.userData.u.uEdgeAmt.value = c.edgeAmt; m.userData.u.uFlockAmt.value = c.fuzz;
+  m.userData.u.uEdge.value.copy(c.edge); m.userData.u.uEdgeAmt.value = c.edgeAmt;
 }
 function colorOf(it) {
   const cs = getComputedStyle(it.el);
@@ -145,8 +147,9 @@ const cssColor = (() => {
 function retarget(it, now = performance.now()) {
   const { c, e } = colorOf(it);
   const col = cssColor(c), edge = cssColor(e || c);
-  it.target = skinParams(finish.kind, col, edge);
-  if (!it.cur) { it.cur = skinParams(finish.kind, col, edge); applyMat(it); }
+  // always gummy now (Scott 2026-10-16), tinted by each button's own colour
+  it.target = skinParams('gummy', col, edge);
+  if (!it.cur) { it.cur = skinParams('gummy', col, edge); applyMat(it); }
   const r = it.el.getBoundingClientRect();
   it.startAt = now + (reduce ? 0 : Math.max(0, Math.min(1, (r.left + r.width / 2) / innerWidth)) * 420);
   it.anim = true; it.dirty = true;
@@ -161,10 +164,11 @@ export function skin(el, opts = {}) {
   el.prepend(cv);
   if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
   el.classList.add('skinned');
-  const it = { el, cv, ctx: cv.getContext('2d'), opts, mat: makeMat(), mesh: null, w: 0, h: 0, seen: true, dirty: true,
+  const it = { el, cv, ctx: cv.getContext('2d'), opts, mat: makeMat(), mesh: null, shadow: null, d: 8, w: 0, h: 0, seen: true, dirty: true,
     hover: 0, hv: 0, press: 0, pv: 0, wantHover: 0, wantPress: 0, anim: false };
   el.__skin = it;
-  it.mesh = new THREE.Mesh(undefined, it.mat);
+  it.mesh = new THREE.Mesh(undefined, it.mat); it.mesh.matrixAutoUpdate = false;
+  it.shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), shadowMat()); it.shadow.renderOrder = -1;
   retarget(it); it.startAt = 0;
   new ResizeObserver(() => { size(it); wake(); }).observe(el);
   new IntersectionObserver(([en]) => { it.seen = en.isIntersecting; if (it.seen) { it.dirty = true; wake(); } }).observe(el);
@@ -195,13 +199,23 @@ function size(it) {
   it.cv.width = Math.round((w + PAD * 2) * dpr); it.cv.height = Math.round((h + PAD * 2) * dpr);
   const shape = it.opts.shape || (Math.abs(w - h) < 2 && parseFloat(getComputedStyle(el).borderTopLeftRadius) >= w / 2 - 1 ? 'round' : 'pill');
   const a = w / 2, b = h / 2;
-  if (shape === 'x') it.mesh.geometry = crossGeo(Math.min(w, h) * 1.25, Math.min(w, h) * 0.3);
-  else {
+  // thick enough to read as a block, never deeper than the button is tall
+  const d = it.d = Math.max(5, Math.min(13, Math.min(a, b) * 0.62 * (it.opts.depth ? it.opts.depth / 0.95 : 1)));
+  const su = it.shadow.material.uniforms;
+  if (shape === 'x') {
+    const size = Math.min(w, h) * 1.2, thick = Math.min(w, h) * 0.3;
+    it.mesh.geometry = crossGeo(size, thick, d);
+    su.uHalf.value.set(size / 2, thick / 2); su.uR.value = thick / 2; su.uCross.value = 1;
+  } else {
     const cs = getComputedStyle(el);
     const rad = ['TopLeft', 'TopRight', 'BottomRight', 'BottomLeft'].map((k) => parseFloat(cs[`border${k}Radius`]) || 0);
-    const r = shape === 'round' ? Math.min(a, b) : Math.min(Math.min(a, b), Math.max(6, rad.reduce((x, y) => x + y) / 4));
-    it.mesh.geometry = cushion(a, b, r, Math.min(a, b) * (it.opts.depth ?? 0.95));
+    const r = shape === 'round' ? Math.min(a, b) : Math.min(Math.min(a, b), Math.max(4, rad.reduce((x, y) => x + y) / 4));
+    it.mesh.geometry = rectGeo(a, b, r, d);
+    su.uHalf.value.set(a, b); su.uR.value = r; su.uCross.value = 0;
   }
+  it.mat.userData.u.uDepth.value = it.mesh.geometry.userData.depth;
+  it.shadow.scale.set(w + PAD * 2, h + PAD * 2, 1); su.uScale.value.set(w + PAD * 2, h + PAD * 2);
+  su.uSoft.value = Math.max(3, d * 0.45);
   it.dirty = true;
 }
 
@@ -240,6 +254,7 @@ function frame(now) {
   if (more) wake();
 }
 export const skinStats = { draws: 0, frames: 0 };
+const _shear = new THREE.Matrix4();
 window.__skin = { items, skinStats };
 function draw(it) {
   it.dirty = false; skinStats.draws++;
@@ -252,13 +267,18 @@ function draw(it) {
   const r = it.el.getBoundingClientRect();
   light.position.set(cursor.x - (r.left + r.width / 2), -(cursor.y - (r.top + r.height / 2)), 260);
   light.intensity = CURSOR_LIGHT;
-  const sx = 1 + it.hover * 0.025 - it.press * 0.035;
-  it.mesh.scale.set(sx, sx, Math.max(0.2, 1 + it.hover * 0.25 - it.press * 0.55));
-  scene.add(it.mesh);
+  // the face sits on the element's box; the base is down and right of it, by the depth along the shear.
+  // Hover lifts it a little thicker, a press pushes the face down toward the page.
+  const sx = 1 + it.hover * 0.02 - it.press * 0.02;
+  const sz = Math.max(0.25, 1 + it.hover * 0.25 - it.press * 0.6), D = it.mesh.geometry.userData.depth * sz;
+  _shear.set(sx, 0, SHEAR.x * sz, -SHEAR.x * D, 0, sx, SHEAR.y * sz, -SHEAR.y * D, 0, 0, sz, 0, 0, 0, 0, 1);
+  it.mesh.matrix.copy(_shear); it.mesh.matrixWorldNeedsUpdate = true;
+  it.shadow.position.set(-SHEAR.x * D, -SHEAR.y * D, -1);
+  scene.add(it.shadow, it.mesh);
   R.setViewport(0, 0, pw, ph); R.setScissor(0, 0, pw, ph); R.setScissorTest(true);
   R.clear(); R.render(scene, cam);
   R.setScissorTest(false);
-  scene.remove(it.mesh);
+  scene.remove(it.shadow, it.mesh);
   it.ctx.clearRect(0, 0, pw, ph);
   it.ctx.drawImage(R.domElement, 0, fullH - ph, pw, ph, 0, 0, pw, ph);
 }

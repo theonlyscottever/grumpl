@@ -1,16 +1,22 @@
 // The room: ONE environment for every 3D thing on the site (Scott, 2026-10-16): every Grumpl in every view
 // (hero, info box, studio, butt hill), the 3D logo and the gummy burger, so a colorway renders the same
-// everywhere. It is a bright forest (Poly Haven's forest_slope, CC0, 512 px), which the rose chrome mirrors.
+// everywhere. It is an open green meadow (512 px), which the rose chrome mirrors.
 // The chrome and gummy pieces use Khronos Neutral tone mapping at exposure 1.1 (roomOnly), and the room
 // swings with the cursor (or the phone's tilt) the same way for everything lit by it.
 // r160 has no Neutral tone mapping and no environment rotation, so both go in by hand (the maths of r162+).
 import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
-// ?room=forest|soft picks a room for side-by-side comparisons (Scott, 2026-10-16: the forest is too busy)
-const ROOMS = { forest: 'forest-512.hdr', soft: 'forest-soft-512.hdr' };
-const roomQ = new URLSearchParams(location.search).get('room');
-export const ROOM = { url: new URL(`./hdri/${ROOMS[roomQ] || ROOMS.forest}`, import.meta.url).href, exposure: 1.1, rot: 4 * Math.PI / 3 };
+// Default is an open green meadow (pmndrs "park", Poly Haven CC0): Scott 2026-10-16 found the forest busy because of
+// the trunks' vertical lines and asked for open greenery. ?room=forest|soft|meadow picks one to compare.
+const ROOMS = {
+  meadow: { file: 'meadow-512.hdr', rot: 4 * Math.PI / 3 },
+  forest: { file: 'forest-512.hdr', rot: 4 * Math.PI / 3 },
+  soft: { file: 'forest-soft-512.hdr', rot: 4 * Math.PI / 3 },
+};
+const pick = ROOMS[new URLSearchParams(location.search).get('room')] || ROOMS.meadow;
+const rotQ = parseFloat(new URLSearchParams(location.search).get('roomrot'));
+export const ROOM = { url: new URL(`./hdri/${pick.file}`, import.meta.url).href, exposure: 1.1, rot: Number.isFinite(rotQ) ? rotQ : pick.rot };
 
 // where the cursor or the phone's tilt points, -1..1 (the hero writes it), and the room's turn from it
 export const roomWant = new THREE.Vector2();
