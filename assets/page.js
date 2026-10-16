@@ -253,30 +253,24 @@ function goTo(hash) {
 }
 
 /* ======================= the storybook ======================= */
-// A first draft of the lore for Jason to rewrite. Pages pile up like a book as you scroll.
+// A first draft of the lore for Jason to rewrite. Scott (2026-10-16): pairs of cards, one strong-color card with
+// the heading and one line, one picture card. Each pair flies in from both sides with the Grumpl Artists motion
+// and piles on top of the last one as you scroll.
 const PAGES = [
-  { art: 'grumpl-stand.png', line: true, h: 'This is a Grumpl.',
-    p: ['He is about as tall as your hand, a little taller after lunch. Nobody knows how old he is, including him.',
-        'He frowns at birds, weather and most people. Stay still long enough and he will sit on your foot anyway.'] },
-  { art: 'story-eat', bg: '#ffd23f', h: 'What they eat',
-    p: ['Burgers, mostly. Somebody else’s burger, ideally, the kind that’s been in the bag a while.',
-        'Also pocket lint, the heel of the bread, ketchup packets with the packet still on, and socks when nobody is looking.',
-        'They won’t eat a vegetable. They will hold a pickle for an hour to make a point.'] },
-  { art: 'art-grumpls-gen.webp', dark: true, h: 'How to catch one',
-    p: ['You don’t, really. People try. They stack three burgers under a box of sticks and wait in the dark.',
-        'The Grumpl eats the top two and leaves the bottom bun. As far as we can tell, that’s a review.'] },
-  { art: 'art-grumpls-one.webp', dark: true, bg: '#56c2dc', h: 'Sometimes one stays',
-    p: ['Nobody has worked out why. Our best guess is the third burger.'] },
-  { art: 'grumpl-skip.gif', line: true, bg: '#ff8fc8', h: 'Bonding rituals',
-    p: ['If a Grumpl likes you, he stops frowning for about a second. Then the rituals start.',
-        'He sits on your shoe. He hands you something damp. He bumps his belly into your shin twice, which means you’re family now and he’ll be eating your food.',
-        'Two Grumpls who like each other stand back to back and grumble at the same time. It sounds like a fridge.'] },
-  { art: 'sock', h: 'The sock sweater',
-    p: ['One winter an artist knitted a Grumpl a sweater out of one of her own socks. He wore it for eleven days and wouldn’t take it off for baths, which he also doesn’t take.',
-        'That’s the artist edition: a Grumpl in a sock sweater. Ask him where the other sock went. He won’t tell you.'] },
-  { art: 'story-butt', bg: '#ff8a5c', h: 'Where they come from',
-    p: ['Somewhere down the hill. There’s a town down there, a lot of noise, and a burger place that never closes.',
-        'The Grumpls don’t talk about it. They come back smelling like fries and go straight to sleep.'] },
+  { art: 'grumpl-stand.png', line: true, bg: '#ffd23f', h: 'This is a Grumpl.',
+    p: 'He frowns at birds, weather and most people. Stay still long enough and he will sit on your foot anyway.' },
+  { art: 'story-eat', bg: '#56c2dc', h: 'What they eat',
+    p: 'Burgers, mostly. Somebody else’s burger, ideally, the kind that’s been in the bag a while.' },
+  { art: 'art-grumpls-gen.webp', fill: true, bg: '#ff8fc8', h: 'How to catch one',
+    p: 'You don’t, really. Stack three burgers under a box of sticks and the Grumpl eats the top two and leaves the bottom bun. As far as we can tell, that’s a review.' },
+  { art: 'art-grumpls-one.webp', fill: true, bg: '#ff8a5c', h: 'Sometimes one stays',
+    p: 'Nobody has worked out why. Our best guess is the third burger.' },
+  { art: 'grumpl-skip.gif', line: true, bg: '#ffd23f', h: 'Bonding rituals',
+    p: 'He sits on your shoe. He hands you something damp. He bumps his belly into your shin twice, which means you’re family now and he’ll be eating your food.' },
+  { art: 'sock', bg: '#56c2dc', h: 'The sock sweater',
+    p: 'One winter an artist knitted a Grumpl a sweater out of one of her own socks. He wore it for eleven days and wouldn’t take it off for baths, which he also doesn’t take.' },
+  { art: 'story-butt', bg: '#ff8fc8', h: 'Where they come from',
+    p: 'Somewhere down the hill, near a burger place that never closes. They come back smelling like fries and go straight to sleep.' },
 ];
 const SOCK = `<svg viewBox="0 0 240 240" class="sock" aria-hidden="true">
   <defs><pattern id="knit" width="16" height="12" patternUnits="userSpaceOnUse"><path d="M0 0l8 8 8-8" fill="none" stroke="#0b0a0c" stroke-opacity=".18" stroke-width="2"/></pattern></defs>
@@ -290,15 +284,26 @@ const SOCK = `<svg viewBox="0 0 240 240" class="sock" aria-hidden="true">
   <path d="M108 100c8 4 16 4 24 0" fill="none" stroke="#0b0a0c" stroke-width="4" stroke-linecap="round"/>
   <path d="M182 196c18-2 30 8 28 22-2 10-14 12-24 8" fill="#ff8f6b" stroke="#0b0a0c" stroke-width="4"/>
 </svg>`;
-$('#Book').innerHTML = PAGES.map((pg, i) => `
-  <section class="page${pg.dark ? ' dark' : ''}${pg.bg ? ' strong' : ''}" style="--i:${i};--r:${(rnd(i + 11) * 3 - 1.5).toFixed(2)}deg${pg.bg ? `;--pg:${pg.bg}` : ''}">
-    <div class="pic${pg.line ? ' line' : ''}">${pg.art === 'sock' ? SOCK : `<img src="${img(pg.art)}" alt="" loading="lazy">`}</div>
-    <div class="words">
+$('#Book').innerHTML = PAGES.map((pg, i) => {
+  const r = (k) => (rnd(i * 2 + k + 11) * 3 - 1.5).toFixed(2);
+  const words = `<div class="card words" style="--r:${r(0)}deg;--pg:${pg.bg}">
       <p class="pno">${i + 1}</p>
       <h3>${pg.h}</h3>
-      ${pg.p.map((t) => `<p>${t}</p>`).join('')}
-    </div>
-  </section>`).join('') + '<p class="book-end">That’s what we know so far. We’ll write more down when they let us.</p>';
+      <p>${pg.p}</p>
+    </div>`;
+  const pic = `<div class="card pic${pg.line ? ' line' : ''}${pg.fill ? ' fill' : ''}" style="--r:${r(1)}deg">${pg.art === 'sock' ? SOCK : `<img src="${img(pg.art)}" alt="" loading="lazy">`}</div>`;
+  // the color card and the picture swap sides every pair
+  return `
+  <section class="spread${i % 2 ? ' flip' : ''}" style="--i:${i}">${i % 2 ? pic + words : words + pic}</section>`;
+}).join('') + '<p class="book-end">That’s what we know so far. We’ll write more down when they let us.</p>';
+// Same as the Grumpl Artists cards: a pair drops in as it comes on screen and back out as it leaves
+if (!reduce && 'IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) e.target.classList.toggle('observed', e.isIntersecting);
+  }, { rootMargin: '0px 0px -12% 0px' });
+  $('#Book').querySelectorAll('.spread').forEach((s) => io.observe(s));
+  $('#Book').classList.add('anim');
+}
 
 /* ======================= sections from other files ======================= */
 // Each one is its own module and mounts itself when it gets near the screen, so the hero loads first.
