@@ -140,16 +140,13 @@ const LAYERS = [
     svg: '<path d="M8 56c0-26 26-44 62-44s62 18 62 44z" fill="#f2b36a" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/><path d="M22 46c6-16 24-26 48-26" fill="none" stroke="#fff4dc" stroke-width="5" stroke-linecap="round" opacity=".7"/><g fill="#fff4dc" stroke="#0b0a0c" stroke-width="2"><ellipse cx="50" cy="30" rx="4" ry="2.6" transform="rotate(-20 50 30)"/><ellipse cx="72" cy="24" rx="4" ry="2.6"/><ellipse cx="94" cy="31" rx="4" ry="2.6" transform="rotate(20 94 31)"/><ellipse cx="62" cy="42" rx="4" ry="2.6" transform="rotate(10 62 42)"/><ellipse cx="86" cy="44" rx="4" ry="2.6" transform="rotate(-12 86 44)"/><ellipse cx="38" cy="45" rx="4" ry="2.6" transform="rotate(-30 38 45)"/></g>' },
   { k: 'lettuce', label: 'Every drop', part: 'Lettuce', go: '#Drops',
     svg: '<path d="M6 40c8-10 14 4 22-4s14 6 22-2 14 6 22-2 14 6 22-2 14 6 22-2 12 4 18 0c-2 10-12 12-20 10-8 6-16-2-24 2s-16-4-24 2-16-4-24 2-16-4-24 0C8 44 4 46 6 40z" fill="#7bc96f" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>' },
-  { k: 'tomato', label: 'The story', part: 'Tomato', go: '#Story',
-    svg: '<rect x="16" y="28" width="50" height="18" rx="9" fill="#ff5a4a" stroke="#0b0a0c" stroke-width="5"/><rect x="72" y="28" width="52" height="18" rx="9" fill="#ff5a4a" stroke="#0b0a0c" stroke-width="5"/><g fill="#ffd0c4"><circle cx="32" cy="37" r="2.5"/><circle cx="48" cy="37" r="2.5"/><circle cx="90" cy="37" r="2.5"/><circle cx="106" cy="37" r="2.5"/></g>' },
+  // Scott 2026-10-16: the pickle takes the tomato's row (Lights out is gone, so the pickle needed a job)
+  { k: 'pickle', label: 'The story', part: 'Pickle', go: '#Story',
+    svg: '<ellipse cx="70" cy="38" rx="26" ry="16" fill="#9cc34a" stroke="#0b0a0c" stroke-width="5"/><ellipse cx="70" cy="38" rx="15" ry="8" fill="#c8e27a"/><g fill="#6f9a2c"><circle cx="64" cy="35" r="2"/><circle cx="76" cy="41" r="2"/><circle cx="72" cy="32" r="2"/></g>' },
   { k: 'cheese', label: 'Make your own', part: 'Cheese', go: '#Make',
     svg: '<path d="M10 30h120l-10 8-6 16-10-14-14 6-8-6-16 18-8-18-14 8-10-8-10 12-8-12z" fill="#ffd23f" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>' },
   { k: 'patty', label: 'The artists', part: 'Patty', go: '#Artists',
     svg: '<rect x="8" y="24" width="124" height="30" rx="15" fill="#8a4b3a" stroke="#0b0a0c" stroke-width="5"/><path d="M24 34h14M48 42h18M78 32h12M100 42h16" stroke="#5e3026" stroke-width="4" stroke-linecap="round"/>' },
-  // the pickle stays in the burger, but it isn't a way in any more (Lights out left the menu, crit 11; the
-  // night itself still comes from typing "boo" or ?spooky=1)
-  { k: 'pickle', part: 'Pickle', deco: true, small: true,
-    svg: '<ellipse cx="70" cy="38" rx="26" ry="16" fill="#9cc34a" stroke="#0b0a0c" stroke-width="5"/><ellipse cx="70" cy="38" rx="15" ry="8" fill="#c8e27a"/><g fill="#6f9a2c"><circle cx="64" cy="35" r="2"/><circle cx="76" cy="41" r="2"/><circle cx="72" cy="32" r="2"/></g>' },
   { k: 'bun-bottom', label: 'Brand book', part: 'Bottom bun', go: 'brand/', ext: true,
     svg: '<path d="M10 26h120c0 16-10 26-24 26H34c-14 0-24-10-24-26z" fill="#f2b36a" stroke="#0b0a0c" stroke-width="5" stroke-linejoin="round"/>' },
 ];

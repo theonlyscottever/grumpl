@@ -147,7 +147,7 @@ function buildLayers() {
       parts.push(paint(slab({ R: (t) => 0.5 * (1 + 0.03 * Math.sin(16 * t)), top: 0.07, bot: 0.07, nTop: 2.6, nBot: 2.6, seg: 40, rows: 8 }), '#7dff3a', SOUR).applyMatrix4(m4));
       parts.push(paint(slab({ R: (t) => 0.33 * (1 + 0.05 * Math.sin(7 * t + 1)), top: 0.076, bot: 0.076, nTop: 2.4, nBot: 2.4, seg: 24, rows: 6 }), '#e6f5ae', [0.2, 0.4, 0.3]).applyMatrix4(m4));
     });
-    out.pickle = { geo: mergeGeometries(parts), h: 0.2, menuY: 0, stackY: 0.47 };
+    out.pickle = { geo: mergeGeometries(parts), h: 0.2, menuY: 0, stackY: 1.0 };   // in the tomato's place (Scott 2026-10-16)
   }
   {
     const tone = mixHex('#ff8a1f', '#ffd98a');

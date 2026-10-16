@@ -18,7 +18,7 @@ const ROOMS = {
   coast: { file: 'coast-512.hdr', rot: 4 * Math.PI / 3 },
   hills: { file: 'hills-512.hdr', rot: 4 * Math.PI / 3 },
 };
-const pick = ROOMS[new URLSearchParams(location.search).get('room')] || ROOMS.meadow;
+const pick = ROOMS[new URLSearchParams(location.search).get('room')] || ROOMS.coast;   // Scott 2026-10-16: sea at sunset
 const rotQ = parseFloat(new URLSearchParams(location.search).get('roomrot'));
 export const ROOM = { url: new URL(`./hdri/${pick.file}`, import.meta.url).href, exposure: 1.1, rot: Number.isFinite(rotQ) ? rotQ : pick.rot };
 
