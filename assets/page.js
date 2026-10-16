@@ -273,23 +273,23 @@ const PAGES = [
   { art: 'grumpl-stand.png', line: true, h: 'This is a Grumpl.',
     p: ['He is about as tall as your hand, a little taller after lunch. Nobody knows how old he is, including him.',
         'He frowns at birds, weather and most people. Stay still long enough and he will sit on your foot anyway.'] },
-  { art: 'story-eat', h: 'What they eat',
+  { art: 'story-eat', bg: '#ffd23f', h: 'What they eat',
     p: ['Burgers, mostly. Somebody else’s burger, ideally, the kind that’s been in the bag a while.',
         'Also pocket lint, the heel of the bread, ketchup packets with the packet still on, and socks when nobody is looking.',
         'They won’t eat a vegetable. They will hold a pickle for an hour to make a point.'] },
   { art: 'art-grumpls-gen.webp', dark: true, h: 'How to catch one',
     p: ['You don’t, really. People try. They stack three burgers under a box of sticks and wait in the dark.',
         'The Grumpl eats the top two and leaves the bottom bun. As far as we can tell, that’s a review.'] },
-  { art: 'art-grumpls-one.webp', dark: true, h: 'Sometimes one stays',
+  { art: 'art-grumpls-one.webp', dark: true, bg: '#56c2dc', h: 'Sometimes one stays',
     p: ['Nobody has worked out why. Our best guess is the third burger.'] },
-  { art: 'grumpl-skip.gif', line: true, h: 'Bonding rituals',
+  { art: 'grumpl-skip.gif', line: true, bg: '#ff8fc8', h: 'Bonding rituals',
     p: ['If a Grumpl likes you, he stops frowning for about a second. Then the rituals start.',
         'He sits on your shoe. He hands you something damp. He bumps his belly into your shin twice, which means you’re family now and he’ll be eating your food.',
         'Two Grumpls who like each other stand back to back and grumble at the same time. It sounds like a fridge.'] },
   { art: 'sock', h: 'The sock sweater',
     p: ['One winter an artist knitted a Grumpl a sweater out of one of her own socks. He wore it for eleven days and wouldn’t take it off for baths, which he also doesn’t take.',
         'That’s the artist edition: a Grumpl in a sock sweater. Ask him where the other sock went. He won’t tell you.'] },
-  { art: 'story-butt', h: 'Where they come from',
+  { art: 'story-butt', bg: '#ff8a5c', h: 'Where they come from',
     p: ['Somewhere down the hill. There’s a town down there, a lot of noise, and a burger place that never closes.',
         'The Grumpls don’t talk about it. They come back smelling like fries and go straight to sleep.'] },
 ];
@@ -306,7 +306,7 @@ const SOCK = `<svg viewBox="0 0 240 240" class="sock" aria-hidden="true">
   <path d="M182 196c18-2 30 8 28 22-2 10-14 12-24 8" fill="#ff8f6b" stroke="#1b1620" stroke-width="4"/>
 </svg>`;
 $('#Book').innerHTML = PAGES.map((pg, i) => `
-  <section class="page${pg.dark ? ' dark' : ''}" style="--i:${i};--r:${(rnd(i + 11) * 3 - 1.5).toFixed(2)}deg">
+  <section class="page${pg.dark ? ' dark' : ''}${pg.bg ? ' strong' : ''}" style="--i:${i};--r:${(rnd(i + 11) * 3 - 1.5).toFixed(2)}deg${pg.bg ? `;--pg:${pg.bg}` : ''}">
     <div class="pic${pg.line ? ' line' : ''}">${pg.art === 'sock' ? SOCK : `<img src="${img(pg.art)}" alt="" loading="lazy">`}</div>
     <div class="words">
       <p class="pno">${i + 1}</p>

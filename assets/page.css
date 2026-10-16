@@ -158,6 +158,11 @@ body:not(.burger3d):not(.burger2d) #Burger svg { visibility: hidden; }
 	#Book .pic img, #Book .pic svg { max-height: 56svh; }
 	#Book .words { padding: 34px 34px 34px 30px; }
 }
+/* Scott (2026-10-16): at least half the pages in strong color */
+#Book .page.strong { background: var(--pg); }
+#Book .page.strong::before { background: repeating-linear-gradient(0deg, transparent 0 31px, rgba(27 22 32 / .07) 31px 32px); }
+#Book .page.strong .pno { color: color-mix(in oklab, var(--pg) 45%, #1b1620); }
+#Book .page.strong .pic { border-color: rgba(27 22 32 / .25); }
 .book-end { max-width: 920px; margin: 0 auto; text-align: center; font: 400 26px/1.15 var(--font-cute); color: var(--muted); }
 
 /* ---------- make your own ---------- */

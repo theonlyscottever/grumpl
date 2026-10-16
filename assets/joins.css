@@ -1,0 +1,11 @@
+/* No hard lines between sections (Scott's review, 2026-10-16): every band's color fades in from white at its top
+   and back out to white at its bottom, so one section melts into the next. Loaded last, so it wins. */
+#Drops { --join-c: color-mix(in oklab, var(--tint) 10%, var(--paper));
+	background: linear-gradient(to bottom, var(--paper), var(--join-c) 160px, var(--join-c) calc(100% - 160px), var(--paper)); }
+#Drops #DropWash { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 200px, #000 calc(100% - 220px), transparent);
+	mask-image: linear-gradient(to bottom, transparent, #000 200px, #000 calc(100% - 220px), transparent); }
+#Story { --join-c: color-mix(in oklab, var(--wash) 40%, var(--paper));
+	background: linear-gradient(to bottom, var(--paper), var(--join-c) 160px, var(--join-c) calc(100% - 160px), var(--paper)); }
+#Studio { --join-c: color-mix(in oklab, var(--st-belly, #cdeec2) 26%, var(--st-paper));
+	background: linear-gradient(to bottom, var(--st-paper), var(--join-c) 140px, var(--join-c) calc(100% - 140px), var(--st-paper)); }
+#Artists { background: linear-gradient(to bottom, var(--paper, #fff), var(--light) 160px, var(--chantilly), var(--cold-purple), var(--majesty) calc(100% - 260px), #fff); }
