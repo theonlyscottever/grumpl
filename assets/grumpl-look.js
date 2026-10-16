@@ -48,6 +48,68 @@ export function buildStudioEnv(renderer, eyesOnly = false) {
   return tex;
 }
 
+// The flock pile as a 512px tile, drawn once when the first flocked Grumpl is built: tens of thousands of
+// short, curling fibre strokes piled into a height map (B), with its slope in R and G for the bump.
+// Mipmapped, so from far away it averages out the way real flock does instead of sparkling.
+let flockTex = null;
+export function flockTexture() {
+  if (flockTex) return flockTex;
+  const N = 512, M = N - 1, h = new Float32Array(N * N);
+  // a soft 4x4 dab, pre-weighed for 8x8 sub-texel offsets
+  const K = [];
+  for (let sy = 0; sy < 8; sy++) for (let sx = 0; sx < 8; sx++) {
+    const k = new Float32Array(16);
+    for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
+      const dx = i - 1 - sx / 8, dy = j - 1 - sy / 8;
+      k[j * 4 + i] = Math.exp(-(dx * dx + dy * dy) * 1.1);
+    }
+    K.push(k);
+  }
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let n = 0; n < 40000; n++) {             // fibres: short squiggles, some lying down, most seen end-on
+    let x = rnd() * N, y = rnd() * N, ang = rnd() * 6.283;
+    const len = 2 + Math.floor(rnd() * rnd() * 12), a = 0.35 + rnd() * 0.65, bend = (rnd() - 0.5) * 0.9;
+    for (let s = 0; s < len; s++) {
+      const ix = Math.floor(x), iy = Math.floor(y), k = K[Math.floor((y - iy) * 8) * 8 + Math.floor((x - ix) * 8)];
+      const amt = a * (1 - s / (len + 2));
+      for (let j = 0; j < 4; j++) {
+        const row = ((iy + j - 1) & M) * N;
+        for (let i = 0; i < 4; i++) h[row + ((ix + i - 1) & M)] += amt * k[j * 4 + i];
+      }
+      ang += bend + (rnd() - 0.5) * 0.6; x += Math.cos(ang) * 0.8; y += Math.sin(ang) * 0.8;
+    }
+  }
+  // stretch the 2nd..98th percentile to 0..1, then centre the pile on mid-grey so the colour keeps its average
+  let top = 0;
+  for (let i = 0; i < h.length; i++) top = Math.max(top, h[i]);
+  const bins = new Uint32Array(1024);
+  for (let i = 0; i < h.length; i++) bins[Math.min(1023, Math.floor(h[i] / top * 1024))]++;
+  const pct = (q) => { let c = 0; for (let b = 0; b < 1024; b++) if ((c += bins[b]) >= q * h.length) return b / 1024 * top; return top; };
+  const lo = pct(0.02), hi = pct(0.98);
+  let mean = 0;
+  for (let i = 0; i < h.length; i++) mean += (h[i] = Math.min(1, Math.max(0.001, (h[i] - lo) / (hi - lo))));
+  const g = Math.log(0.5) / Math.log(mean / h.length);
+  for (let i = 0; i < h.length; i++) h[i] = Math.pow(h[i], g);
+  const d = new Uint8Array(N * N * 4), at = (x, y) => h[(y & M) * N + (x & M)];
+  const u8 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 255);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const o = (y * N + x) * 4;
+    d[o] = u8(0.5 + (at(x + 1, y) - at(x - 1, y)) * 0.5);
+    d[o + 1] = u8(0.5 + (at(x, y + 1) - at(x, y - 1)) * 0.5);
+    d[o + 2] = u8(h[y * N + x]);
+    d[o + 3] = 255;
+  }
+  flockTex = new THREE.DataTexture(d, N, N, THREE.RGBAFormat);
+  flockTex.wrapS = flockTex.wrapT = THREE.RepeatWrapping;
+  flockTex.magFilter = THREE.LinearFilter;
+  flockTex.minFilter = THREE.LinearMipmapLinearFilter;
+  flockTex.generateMipmaps = true;
+  flockTex.anisotropy = 4;
+  flockTex.needsUpdate = true;
+  return flockTex;
+}
+
 const EYES = { color: 0x030304, roughness: 0.03, clearcoat: 0.6, clearcoatRoughness: 0.01, specularIntensity: 1, envMapIntensity: 0.3 };
 const TEETH = { color: 0xf6f0e3, roughness: 0.5, envMapIntensity: 0.9 };
 export function finishFor(f) {
@@ -70,7 +132,7 @@ export function finishFor(f) {
     eyes: EYES, teeth: { color: f.base, metalness: 1, roughness: 0.08, envMapIntensity: 1.2 }
   };
   if (f.kind === 'flock') return {
-    flock: true,
+    flock: true, bump: 1.15,
     tint: { base: f.base, edge: f.edge, belly: f.belly, sss: f.base, sssAmt: 0.03, glow: 0.0 },
     body: { roughness: 1, specularIntensity: 0.0, sheen: 0, envMapIntensity: 0.9 },
     eyes: EYES, teeth: TEETH
@@ -98,8 +160,10 @@ export const bodyCompile = (U) => (sh) => {
     .replace('#include <common>', `#include <common>
       attribute vec4 color;
       uniform mat4 uLocal;
-      varying float vThin; varying float vAo; varying vec3 vObj; varying vec3 vObjN;`)
+      varying float vThin; varying float vAo; varying vec3 vObj; varying vec3 vObjN; varying mat3 vO2V;`)
     .replace('#include <begin_vertex>', `#include <begin_vertex>
+      vO2V = mat3(modelViewMatrix) * inverse(mat3(uLocal));
+      vO2V = mat3(normalize(vO2V[0]), normalize(vO2V[1]), normalize(vO2V[2]));
       vThin = color.r;
       vAo = color.g;
       vObj = (uLocal * vec4(position, 1.0)).xyz;
@@ -114,9 +178,12 @@ export const bodyCompile = (U) => (sh) => {
         return mix(mix(mix(hash13(i), hash13(i + vec3(1,0,0)), f.x), mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), f.x), f.y),
                    mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), f.x), mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), f.x), f.y), f.z);
       }
-      float fleck = 0.5, fleckAA = 0.0;
+      // flock pile: a tile of tiny fibre tufts (flockTexture), mapped on three sides in object space
+      uniform sampler2D uFlockTex; uniform float uFlockBump;
+      float fleck = 0.5;
+      vec3 flockG = vec3(0.0), flockN0;
       uniform vec3 uKeyPosV, uBackDirV; uniform vec3 uRimDirV[2];
-      varying float vThin; varying float vAo; varying vec3 vObj; varying vec3 vObjN;
+      varying float vThin; varying float vAo; varying vec3 vObj; varying vec3 vObjN; varying mat3 vO2V;
       float crevice;
       float sssLobe(vec3 V, vec3 L, vec3 N, float p) { return pow(saturate(dot(V, -normalize(L + N * 0.4))), p); }`)
     .replace('#include <color_fragment>', `
@@ -132,18 +199,35 @@ export const bodyCompile = (U) => (sh) => {
       tint = mix(tint, uBelly, belly * 0.6);
       diffuseColor.rgb = tint;
       if (uFlock > 0.5) {
+        // The pile, from Scott's close-ups (IMG_7779-81): crisp little squiggly tufts, lighter and yellower at their
+        // tips, deeper green between them. A mipmapped texture rather than noise maths, so the GPU filters it:
+        // sharp grain at every size, and it never breaks into pixel noise when he turns. The tufts also tip the
+        // normal a little (uFlockBump) so the room lights the grain, the way the photos are lit.
         vec3 fp = vObj * 110.0;
-        float fw = length(fwidth(fp));
-        fleckAA = 1.0 - smoothstep(0.7, 1.6, fw);
-        float fine = vnoise(fp), fine2 = vnoise(fp * 2.13 + 17.0);
-        fleck = mix(0.5, clamp(0.5 + (fine * 0.55 + fine2 * 0.45 - 0.5) * 2.2, 0.0, 1.0), fleckAA);
+        vec3 fq = fp * 0.013;                        // ~1.4 tiles per unit
+        vec3 bw = pow(abs(vObjN), vec3(4.0)); bw /= bw.x + bw.y + bw.z;
+        vec4 tX = texture2D(uFlockTex, fq.yz), tY = texture2D(uFlockTex, fq.zx + 0.37), tZ = texture2D(uFlockTex, fq.xy + 0.71);
+        float fh = dot(bw, vec3(tX.b, tY.b, tZ.b));
+        vec2 gX = tX.rg * 2.0 - 1.0, gY = tY.rg * 2.0 - 1.0, gZ = tZ.rg * 2.0 - 1.0;
+        flockG = bw.x * vec3(0.0, gX.x, gX.y) + bw.y * vec3(gY.y, 0.0, gY.x) + bw.z * vec3(gZ.x, gZ.y, 0.0);
+        fleck = clamp(0.5 + (fh - 0.5) * 1.15, 0.0, 1.0);
         float mottle = vnoise(vObj * 22.0);
-        diffuseColor.rgb *= (0.86 + 0.28 * fleck) * (0.96 + 0.08 * mottle);
+        vec3 fc = diffuseColor.rgb;
+        vec3 tip = pow(fc, vec3(0.78)) * vec3(1.06, 1.03, 0.91);   // lighter, sunnier tips
+        vec3 gap = pow(fc, vec3(1.15)) * vec3(0.96, 0.98, 1.0);   // deeper green between them
+        diffuseColor.rgb = mix(gap, tip, fleck) * (0.96 + 0.08 * mottle);
+      }`)
+    .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      flockN0 = normal;
+      if (uFlock > 0.5) {
+        vec3 gv = vO2V * flockG;
+        float graze = 1.0 - saturate(dot(normal, normalize(vViewPosition)));
+        normal = normalize(normal - uFlockBump * (1.0 + 1.6 * graze * graze) * (gv - dot(gv, normal) * normal));
       }`)
     .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
       if (uFlock > 0.5) {
         vec3 fV = normalize(vViewPosition);
-        float fNV = saturate(dot(normal, fV));
+        float fNV = saturate(dot(flockN0, fV));
         vec3 alb = material.diffuseColor;
         material.diffuseColor = mix(pow(alb, vec3(0.85)), pow(alb, vec3(1.2)), smoothstep(0.2, 0.95, fNV));
         material.diffuseColor = mix(material.diffuseColor, pow(material.diffuseColor, vec3(1.5)), crevice * 0.6);
@@ -153,13 +237,20 @@ export const bodyCompile = (U) => (sh) => {
         vec3 fV = normalize(vViewPosition);
         vec3 fL = normalize(uKeyPosV + vViewPosition);
         float retro = pow(saturate(dot(fL, fV) * 0.5 + 0.5), 2.0);
-        float fNV = saturate(dot(normal, fV));
-        reflectedLight.directDiffuse *= 0.5 + 0.2 * retro;
+        float fNV = saturate(dot(flockN0, fV));
+        reflectedLight.directDiffuse *= 0.6 + 0.2 * retro;
         float side = pow(1.0 - fNV, 2.2) * mix(0.75, 1.25, fleck);
+        // satin edge (Scott: light should wrap round the edges and show it's made of tiny things): where he turns
+        // away the fibres lie across the view and catch light along their length, so the rim goes pale and
+        // grainy, most on the side the light comes from. Diffuse only, never a highlight of a light.
+        float lit = saturate(dot(flockN0, fL) * 0.6 + 0.5);
+        float satin = side * mix(0.2, 1.8, fleck) * mix(0.45, 1.25, lit);   // follows side, so the butt hill's uSide calms it too
         vec3 sideTint = vec3(1.35, 1.12, 1.0);
-        reflectedLight.directDiffuse *= 1.0 + side * 0.9 * sideTint;
-        reflectedLight.indirectDiffuse *= 1.0 + side * 0.9 * sideTint;
-        reflectedLight.indirectDiffuse *= 1.55;
+        reflectedLight.directDiffuse *= 1.0 + side * 0.6 * sideTint;
+        reflectedLight.indirectDiffuse *= 1.0 + side * 0.6 * sideTint;
+        reflectedLight.indirectDiffuse *= 1.4;
+        vec3 satinCol = pow(material.diffuseColor, vec3(0.55)) * vec3(1.15, 1.08, 0.85);
+        reflectedLight.indirectDiffuse += satinCol * satin * 1.0 * (reflectedLight.indirectDiffuse + reflectedLight.directDiffuse) / max(material.diffuseColor, vec3(0.02));
         reflectedLight.indirectDiffuse *= mix(1.0, 0.82, fNV * fNV);
       }
       {
@@ -201,11 +292,11 @@ export const eyesCompile = (sh) => {
 export function makeSet(f, lightU, eyeEnv) {
   const U = { ...lightU,
     uBase: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() }, uBelly: { value: new THREE.Color() },
-    uSss: { value: new THREE.Color() }, uSssAmt: { value: 0 }, uGlow: { value: 0 }, uFlock: { value: 0 },
+    uSss: { value: new THREE.Color() }, uSssAmt: { value: 0 }, uGlow: { value: 0 }, uFlock: { value: 0 }, uFlockTex: { value: null }, uFlockBump: { value: 0 },
     uJelly: { value: 0 }, uJellyThick: { value: 1 }, uJellyDist: { value: 1 }, uJellyAtt: { value: new THREE.Color(1, 1, 1) } };
   const set = { U, body: new THREE.MeshPhysicalMaterial(), eyes: new THREE.MeshPhysicalMaterial(), teeth: new THREE.MeshPhysicalMaterial() };
   set.body.onBeforeCompile = bodyCompile(U);
-  set.body.customProgramCacheKey = () => 'grumpl-body';
+  set.body.customProgramCacheKey = () => 'grumpl-body-flock2';
   // the eyes are glossy black marbles (Jason, 2026-10-16): they reflect the same forest as everything else,
   // so the sky gives them a clear highlight and the rest stays deep black
   set.eyes.onBeforeCompile = (sh) => { eyesCompile(sh); turnEnv(sh); };
@@ -222,6 +313,8 @@ export function makeSet(f, lightU, eyeEnv) {
   U.uBase.value.set(fin.tint.base); U.uEdge.value.set(fin.tint.edge); U.uBelly.value.set(fin.tint.belly);
   U.uSss.value.set(fin.tint.sss); U.uSssAmt.value = fin.tint.sssAmt; U.uGlow.value = fin.tint.glow;
   U.uFlock.value = fin.flock ? 1 : 0;
+  U.uFlockBump.value = fin.flock ? fin.bump : 0;
+  if (fin.flock) U.uFlockTex.value = flockTexture();
   const j = fin.jelly;
   U.uJelly.value = j ? j.amount : 0;
   if (j) { U.uJellyThick.value = j.thickness; U.uJellyDist.value = j.attenuationDistance; U.uJellyAtt.value.set(j.attenuationColor); }
@@ -255,6 +348,149 @@ export function paintSet(set, f) {
   set.U.uBase.value.set(fin.tint.base); set.U.uEdge.value.set(fin.tint.edge); set.U.uBelly.value.set(fin.tint.belly);
   set.U.uSss.value.set(fin.tint.sss);
   if (fin.chrome) { set.body.color.set(fin.body.color); set.teeth.color.set(fin.teeth.color); }
+}
+
+// The flock's soft edge (Jason: "it needs to break up the edge to reflect that soft texture"). Real flock has
+// no hard outline: the fibres stand up off the surface and thin out. Drawn the way games draw short fur, as
+// shells (Lengyel et al. 2001): a few copies of the body, each puffed out a little further, cut into fibres by
+// the pile tile, with fewer fibres the further out they are. Seen face-on they are a faint haze; at the
+// outline you look through all of them at once, so the edge thins out instead of stopping. Each shell drops
+// its pixels early wherever there's nothing to draw, so the cost stays small.
+const FUZZ_SHELLS = 5;
+export function fuzzShell(mesh, set) {
+  const U = set.U, shells = [];
+  for (let i = 0; i < FUZZ_SHELLS; i++) {
+    const t = (i + 1) / FUZZ_SHELLS;
+    const mat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      uniforms: { uFlockTex: U.uFlockTex, uBase: U.uBase, uKeyPosV: U.uKeyPosV, uLocal: U.uLocal,
+        uFuzz: { value: 0.022 }, uT: { value: t } },
+      vertexShader: `uniform mat4 uLocal; uniform float uFuzz, uT;
+        attribute vec4 color;
+        varying vec3 vObj, vObjN, vN, vV, vPos; varying float vAo;
+        void main() {
+          vAo = color.g;
+          float s = length(mat3(uLocal)[0]);
+          vec3 p = position + normal * uFuzz * uT / s;
+          vObj = (uLocal * vec4(p, 1.0)).xyz;
+          vObjN = normalize(mat3(uLocal) * normal);
+          vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          vN = normalize(normalMatrix * normal); vV = -mv.xyz; vPos = mv.xyz;
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `uniform sampler2D uFlockTex; uniform vec3 uBase, uKeyPosV; uniform float uT;
+        varying vec3 vObj, vObjN, vN, vV, vPos; varying float vAo;
+        void main() {
+          vec3 N = normalize(vN), V = normalize(vV);
+          float edge = 1.0 - abs(dot(N, V));
+          float show = mix(0.18, 1.0, smoothstep(0.25, 0.92, edge))    // a faint haze face-on, full at the outline
+                     * smoothstep(0.45, 0.85, vAo);                  // none in the folds, so no fibres over his eyes
+          if (show * (1.0 - uT * 0.6) < 0.05) discard;
+          // fibres lean a little, so each shell samples the tile slightly shifted: strands, not stacked dots
+          vec3 fq = vObj * 110.0 * 0.03 + vObjN.zxy * uT * 0.35;
+          vec3 bw = pow(abs(vObjN), vec3(4.0)); bw /= bw.x + bw.y + bw.z;
+          float h = dot(bw, vec3(texture2D(uFlockTex, fq.yz + 0.13).b, texture2D(uFlockTex, fq.zx + 0.51).b, texture2D(uFlockTex, fq.xy + 0.89).b));
+          // further out, only the tallest fibres reach: the cut-off rises with the shell, softly
+          float a = smoothstep(0.2 + 0.5 * uT, 0.5 + 0.45 * uT, h) * show * (1.0 - uT * 0.6) * 0.85;
+          if (a < 0.01) discard;
+          float lit = clamp(dot(N, normalize(uKeyPosV - vPos)) * 0.6 + 0.55, 0.0, 1.0);
+          // fibre tips catch the light; deeper in they're shaded by their neighbours
+          vec3 col = pow(uBase, vec3(0.72)) * vec3(1.07, 1.03, 0.9) * (0.5 + 0.7 * lit) * mix(0.8, 1.12, uT);
+          gl_FragColor = vec4(col, a);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`
+    });
+    const shell = new THREE.Mesh(mesh.geometry, mat);
+    shell.name = 'fuzz';
+    shell.renderOrder = 1 + i;
+    shell.raycast = () => {};
+    mesh.add(shell);
+    shells.push(shell);
+  }
+  return shells;
+}
+
+// Stray fibres (Scott: "the stuff that ends up being fuzz in your pocket... here and there"): loose, curling
+// strands rooted on his surface, most lying close, a few lifting off past the outline. Each is a thin ribbon
+// with a real thickness (WebGL lines are always one pixel wide, so they vanished when you zoomed in): it turns
+// to face the camera, is a fixed width in his own units, and never goes thinner than about a pixel. One draw.
+export function strayFibres(mesh, set, count = 144) {
+  const sampler = new MeshSurfaceSampler(mesh).build();
+  const s = new THREE.Vector3(); mesh.getWorldScale(s);
+  const unit = 1 / s.x;
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const SEG = 7, pos = [], dir = [], side = [], col = [], idx = [];
+  const p = new THREE.Vector3(), n = new THREE.Vector3(), t = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3();
+  const tip = new THREE.Color().copy(set.U.uBase.value);
+  // spread them out (Scott: no clusters, it should read as texture, not a toy that's been on the floor): each
+  // root keeps a little distance from the others, so they land evenly over him
+  const roots = [], gap = 0.085 * unit;
+  for (let i = 0, tries = 0; i < count && tries < count * 40; tries++) {
+    sampler.sample(p, n);
+    if (roots.some((r) => r.distanceToSquared(p) < gap * gap)) continue;
+    roots.push(p.clone()); i++;
+    t.set(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).cross(n).normalize();
+    b.crossVectors(n, t);
+    const len = (0.03 + rnd() * rnd() * 0.07) * unit, lift = 0.2 + rnd() * 0.8;
+    let ang = rnd() * 6.283; const curl = (rnd() - 0.5) * 1.6;
+    // pale and a little warm, some nearly white like lint
+    const c = new THREE.Color(Math.pow(tip.r, 0.6) * 1.15, Math.pow(tip.g, 0.6) * 1.08, Math.pow(tip.b, 0.6) * 0.9)
+      .lerp(new THREE.Color(0.9, 0.95, 0.85), 0.25 + rnd() * 0.5);
+    const pts = [p.clone()];
+    for (let k = 1; k <= SEG; k++) {
+      ang += curl / SEG + (rnd() - 0.5) * 0.5;
+      d.copy(t).multiplyScalar(Math.cos(ang)).addScaledVector(b, Math.sin(ang)).addScaledVector(n, lift).normalize();
+      pts.push(pts[k - 1].clone().addScaledVector(d, len / SEG));
+    }
+    const base = pos.length / 3;
+    pts.forEach((q, k) => {
+      const nb = pts[Math.min(k + 1, SEG)], pb = pts[Math.max(k - 1, 0)];
+      d.subVectors(nb, pb).normalize();
+      const f = k / SEG, a = 0.95 * (1 - f * 0.4);
+      for (const sd of [-1, 1]) { pos.push(q.x, q.y, q.z); dir.push(d.x, d.y, d.z); side.push(sd * (1 - f * 0.5)); col.push(c.r, c.g, c.b, a); }
+      if (k < SEG) { const v = base + k * 2; idx.push(v, v + 1, v + 2, v + 1, v + 3, v + 2); }
+    });
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('dir', new THREE.Float32BufferAttribute(dir, 3));
+  g.setAttribute('side', new THREE.Float32BufferAttribute(side, 1));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+  g.setIndex(idx);
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { uWidth: { value: 0.0016 * unit }, uViewH: { value: 1000 } },
+    vertexShader: `uniform float uWidth, uViewH; attribute vec3 dir; attribute float side; attribute vec4 color; varying vec4 vC;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vec3 dv = normalize(mat3(modelViewMatrix) * dir);
+        vec3 across = normalize(cross(dv, normalize(-mv.xyz)));
+        float scale = length(mat3(modelViewMatrix)[0]);
+        vec4 clip = projectionMatrix * mv;
+        // never thinner than ~1.4 px, so they still show at the hero's distance
+        float px = -mv.z / (projectionMatrix[1][1] * 0.5 * uViewH);
+        float w = max(uWidth * scale, px * 1.4);
+        mv.xyz += across * side * w * 0.5;
+        vC = color;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `varying vec4 vC;
+      void main() {
+        gl_FragColor = vC;
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`
+  });
+  const strands = new THREE.Mesh(g, mat);
+  strands.name = 'stray';
+  strands.renderOrder = 10;
+  strands.raycast = () => {};
+  const _v = new THREE.Vector2();
+  strands.onBeforeRender = (renderer) => { mat.uniforms.uViewH.value = renderer.getDrawingBufferSize(_v).y; };
+  mesh.add(strands);
+  return strands;
 }
 
 export function sugarCoat(mesh, count) {
@@ -305,6 +541,7 @@ export function buildFigure(fig, f, lightU, eyeEnv, sugarCount = 12000) {
       roomEnv(renderer).then((t) => { mat.envMap = t; mat.needsUpdate = true; dispatchEvent(new Event('grumpl-room-ready')); });
     };
     if (o.name === 'body' && set.sugar && sugarCount) { group.updateMatrixWorld(true); sugarCoat(m, sugarCount); }
+    if (o.name === 'body' && set.U.uFlock.value) { fuzzShell(m, set); group.updateMatrixWorld(true); strayFibres(m, set); }
   });
   return { group, meshes, set };
 }
