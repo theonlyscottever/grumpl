@@ -102,11 +102,22 @@ export function mountArtists(el) {
     io.disconnect();
   }, { threshold: 0.05 }).observe(el);
 
-  // cards drop into place as they enter, and back out as they leave
-  const cards = new IntersectionObserver((entries) => {
-    for (const e of entries) e.target.classList.toggle('observed', e.isIntersecting);
-  }, { rootMargin: '16px' });
-  el.querySelectorAll('.card').forEach((c) => cards.observe(c));
+  // cards drop into place as they enter, and back out as they leave. Checked by position on every scroll frame:
+  // observers missed fast scrolls (Scott 2026-10-17: cards never loaded)
+  const all = [...el.querySelectorAll('.card')];
+  let queued = false;
+  const check = () => {
+    queued = false;
+    if (open) return;   // an artist's overlay is up
+    const r = el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight) return;
+    el.classList.remove('hidden');
+    for (const c of all) { const b = c.getBoundingClientRect(); c.classList.toggle('observed', b.bottom > -16 && b.top < innerHeight + 16); }
+  };
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(check); } };
+  addEventListener('scroll', later, { passive: true });
+  addEventListener('resize', later);
+  later(); setTimeout(later, 300);
 
   function show(id) {
     open = $(`.overlay[data-id="${id}"]`, layer);

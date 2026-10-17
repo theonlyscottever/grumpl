@@ -191,6 +191,7 @@ const lampU = { value: new THREE.Vector3(0, 0, 0) };
 const logoMaskU = { value: null };
 const logoRectU = { value: new THREE.Vector4(0, 0, 1, 1) };   // centre xy, size xy in the front cloud's own space
 const hemCutU = { value: -2 };   // NDC y below which only the hem draws (placeHem)
+const frontCutU = { value: -2 };  // the same for the logo's cloud, once you scroll (riseHem)
 function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
   // The clouds only use their lighting for a brightness (shade, below), so they get the cheap version of the rig:
   // standard instead of physical (no sheen), and the two rim strips, which barely touch a cloud's front, are left
@@ -199,7 +200,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
     envMapIntensity: 1.25, vertexColors: true, toneMapped: false });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uOcc = occU; sh.uniforms.uPress = pressU; sh.uniforms.uSky = skyU; sh.uniforms.uTint = tintU;
-    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU;
+    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU; sh.uniforms.uFrontCut = frontCutU;
     const DENT = `
       uniform vec4 uPress; uniform sampler2D uMask; uniform vec4 uRect;
       float dentH( vec2 q ) {
@@ -230,7 +231,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
       .replace('#include <worldpos_vertex>',
         '#include <worldpos_vertex>\n vCW = (modelMatrix * vec4(transformed, 1.0)).xyz; vCN = normalize(mat3(modelMatrix) * objectNormal);')
       .replace('#include <project_vertex>', '#include <project_vertex>\n vSY = gl_Position.y / gl_Position.w;');
-    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut;\n' + AO_GLSL + `
+    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut, uFrontCut;\n' + AO_GLSL + `
       float cHash( vec3 p ) { p = fract( p * 0.1031 ); p += dot( p, p.zyx + 31.32 ); return fract( ( p.x + p.y ) * p.z ); }
       float cloudNoise( vec3 p ) {
         vec3 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
@@ -239,7 +240,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
       }
     ` + sh.fragmentShader
       .replace('#include <color_fragment>', `
-        ${hem ? '' : 'if ( vSY < uHemCut ) discard;                  // below the fold only the hem\'s billows draw, so their dips stay open'}
+        ${hem ? '' : front ? 'if ( vSY < uFrontCut ) discard;' : 'if ( vSY < uHemCut ) discard;                  // below the fold only the hem\'s billows draw, so their dips stay open'}
         float puffAO = vColor.r;`)
       .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('defined( RE_Direct_RectArea )', 'defined( RE_Direct_RectArea ) && 0'))
       .replace('#include <opaque_fragment>', `
@@ -282,14 +283,26 @@ const frontMat = makeCloudMat({ fade: false, front: true });
 // material, in this scene and this light, gives the cloud mass a soft rolling edge. Once you scroll, the hero
 // sticks with just that band showing, and the burger, logo and Save the date sit on it.
 const HEM_Z = 3.3;
-// The logo's cloud is always the front-most (Scott 2026-10-17): the hem draws after everything else but writes no
-// depth, back row first, so the logo's cloud, drawn last, always lands on top of it
+// The logo's cloud is always the front-most at the top of the page (Scott 2026-10-17): there the hem waits
+// below the fold. As you start to scroll it rises (riseHem) and the logo's cloud sinks in behind it, so the header
+// band is one soft rolling edge. The hem writes no depth and draws after the clouds, back row first.
 const hemMat = makeCloudMat({ fade: false, hem: true });
 hemMat.depthWrite = false;
 const hemBall = new THREE.SphereGeometry(1, 40, 20);
 hemBall.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(hemBall.attributes.position.count * 3).fill(1), 3));
 const hemGroup = new THREE.Group();
 scene.add(hemGroup);
+let hemRise = -1;
+function riseHem(p) {
+  hemRise = p;
+  for (const b of hemGroup.children) {
+    const { P, bottom, ry, lo, px } = b.userData, r = ry * (lo + (1 - lo) * p), c = P(b.userData.x, bottom - r);
+    b.scale.y = r * px; b.position.y = c.y;
+  }
+  const under = p > 0.001;
+  frontCutU.value = under ? hemCutU.value : -2;
+  for (const m of front.group.children) if (m !== front.logo) m.renderOrder = under ? 0 : 12;
+}
 function placeHem(w, hc, hem, portrait) {
   hemGroup.clear();
   hemCutU.value = hem ? 1 - 2 * (hc - hem) / hc : -2;
@@ -302,17 +315,22 @@ function placeHem(w, hc, hem, portrait) {
   // underside of a cumulus seen from below: about three across the screen, the light sliding slowly over each.
   // Two rows: the front makes the edge, the one behind (a little higher) fills the dips. They never cover the
   // logo's cloud.
-  for (const [lift, z, n] of [[0, 0, portrait ? 2.2 : 3.2], [0.35, 0.4, portrait ? 1.6 : 2.4]]) {
+  const add = (x, bottom, rx, ry, z, order) => {
+    const c = P(x, bottom - ry), m = new THREE.Mesh(hemBall, hemMat);
+    m.scale.set(rx * px, ry * px, Math.min(rx, ry * 3) * px);
+    m.position.set(c.x, c.y, HEM_Z - z - ry * px);
+    m.renderOrder = order;
+    m.userData = { P, bottom, ry, px, x, lo: Math.min(1, Math.max(0.05, (bottom - (hc - hem)) / (2 * ry))) };
+    hemGroup.add(m);
+  };
+  // The bottom edge is one long, gently bowed form, so it never has points where two billows meet (Scott
+  // 2026-10-17: "tent-shaped peaks"); the billows roll on top of it, their own bottoms tucked inside it.
+  add(w / 2, hc - 3, w * 0.95, hem * 0.95, 0.2, 10);
+  for (const [lift, z, n, order] of [[0.35, 0.4, portrait ? 1.6 : 2.4, 10], [0, 0, portrait ? 2.2 : 3.2, 11]]) {
     const step = w / n;
     for (let x = -step * (0.3 + rnd() * 0.3); x < w + step;) {
-      const rx = step * (0.62 + rnd() * 0.16), ry = hem * (0.8 + rnd() * 0.15) * (1 + lift * 0.4);
-      const bottom = hc - 3 - rnd() * hem * 0.2 - lift * hem;
-      const c = P(x, bottom - ry);
-      const m = new THREE.Mesh(hemBall, hemMat);
-      m.scale.set(rx * px, ry * px, Math.min(rx, ry * 3) * px);
-      m.position.set(c.x, c.y, HEM_Z - z - ry * px);
-      m.renderOrder = lift ? 10 : 11;
-      hemGroup.add(m);
+      const rx = step * (0.75 + rnd() * 0.2), ry = hem * (0.75 + rnd() * 0.15) * (1 + lift * 0.4);
+      add(x, hc - 3 - hem * (0.22 + rnd() * 0.12) - lift * hem, rx, ry, z, order);
       x += step * (0.95 + rnd() * 0.2);
     }
   }
@@ -658,7 +676,7 @@ const ready = Promise.all([
       scene.add(m);
     }
   });
-  fc.scene.traverse((o) => { if (o.isMesh) { const m = meshOf(o, frontMat); m.renderOrder = 12; front.group.add(m); } });   // after the hem
+  fc.scene.traverse((o) => { if (o.isMesh) { const m = meshOf(o, frontMat); m.renderOrder = hemRise > 0.001 ? 0 : 12; front.group.add(m); } });   // after the hem
 
   slots.forEach((s) => {
     const fg = buildFigure(fig, s.f, lightU, eyeEnv, coarse ? 12000 : 20000);
@@ -1100,6 +1118,7 @@ function resize() {
     ny += over / hc * 2;
   }
   placeHem(w, hc, hem, portrait);
+  riseHem(Math.max(0, hemRise));
   ui.layout?.({ portrait });
   sendLogoRect();
   poke(4);
@@ -1179,7 +1198,10 @@ resize();
 
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 1 / 20);
-  if (!slots[0].set || !heroOn || covered() || document.body.classList.contains('hero-pinned')) return;
+  const pinned = document.body.classList.contains('hero-pinned');
+  const rise = pinned ? 1 : Math.min(1, scrollY / 140), risen = rise !== hemRise;   // a jump straight to the band still draws it risen
+  if (slots[0].set && risen) { riseHem(rise); poke(2); }
+  if (!slots[0].set || !heroOn || covered() || (pinned && !risen)) return;
   if (grip && dt > 0) hand.velocity.set((handTarget.x - hand.position.x) / dt * 0.6, (handTarget.y - hand.position.y) / dt * 0.6, (handTarget.z - hand.position.z) / dt * 0.6);
   motion.tick();
   if (motion.on) {
