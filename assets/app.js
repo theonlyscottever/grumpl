@@ -14,6 +14,7 @@ import { initUI } from './ui.js';
 import { createMotion, canMove, haptic } from './motion.js';
 import { sound } from './sound.js';
 import { setFinish, cursor } from './finish.js';
+import { buildCloud } from './onecloud.js';
 
 const HULL = {"v":[[-0.3237,0.0,0.1173],[0.5271,1.9964,-0.329],[0.9383,0.6757,0.0653],[-0.1516,1.2282,0.56],[-0.4956,1.9708,-0.3318],[0.2007,0.5576,-0.5524],[-0.9294,0.7082,0.1177],[0.2442,0.4608,0.5809],[0.4813,0.0073,-0.0364],[0.0212,1.9077,0.2427],[-0.4673,0.585,-0.4272],[0.0209,1.7802,-0.6516],[-0.3224,0.6529,0.5423],[0.3647,1.4639,0.4544],[-0.3369,1.626,0.3886],[0.4025,1.5924,-0.5027],[-0.3495,1.5827,-0.5076],[0.501,1.7099,0.1171],[0.4827,0.333,-0.3489],[-0.2092,0.2646,-0.4104],[-0.118,0.3431,0.5525],[0.013,1.6479,0.5067],[-0.1505,0.5936,-0.5573],[-0.0102,0.7329,0.6432],[0.3602,0.0024,0.2699],[0.2938,1.7752,0.3555],[0.1704,1.2287,0.5663],[0.4872,0.6315,-0.4523],[-0.2741,1.8422,0.2349],[0.3307,0.7125,0.5626],[-0.2687,0.0128,-0.1393],[0.2524,0.3158,-0.4574],[-0.4396,0.3542,-0.3639],[-0.1151,1.7982,0.3936],[-0.3222,0.4259,0.5003],[0.0016,0.5144,0.6415],[-0.1851,1.5292,0.5017],[0.5453,0.0098,0.1634],[-0.3063,0.4402,-0.501],[0.0354,1.9571,0.045],[0.2219,1.6036,0.4907],[0.0829,0.3333,0.5636],[0.0901,1.8083,0.4009],[0.3715,0.4699,-0.5024],[0.2882,0.0011,-0.0808],[-0.436,0.0105,-0.039],[0.1542,0.6235,0.638],[0.239,1.8843,0.2146],[0.4038,0.4522,0.4856],[-0.1533,0.6155,0.624],[-0.5062,0.0092,0.1347],[-0.4068,1.7179,0.224],[0.4395,1.682,0.2825],[0.2642,1.5104,-0.5724],[-0.313,0.6173,-0.5254],[-0.393,0.0085,0.2644],[-0.8881,0.6296,-0.0163],[-0.2035,1.6811,0.4564],[-0.1308,1.9071,0.1972],[0.3962,0.0001,0.1135],[0.3565,1.6414,0.4093],[0.0158,1.2311,0.5803],[-0.1528,0.4394,-0.5236],[0.3417,0.6186,-0.5321]],"f":[[6,4,56],[16,56,4],[51,4,6],[18,27,2],[43,27,18],[2,1,17],[17,52,2],[1,52,17],[11,4,1],[11,16,4],[56,16,10],[1,4,39],[39,9,1],[33,9,58],[58,39,4],[9,39,58],[25,52,1],[2,13,29],[43,18,31],[2,52,60],[60,13,2],[52,25,60],[61,3,23],[5,31,62],[43,31,5],[16,11,54],[54,10,16],[14,51,6],[36,57,14],[33,58,28],[28,57,33],[4,51,28],[28,58,4],[51,14,28],[28,14,57],[1,9,47],[47,25,1],[6,56,50],[42,9,33],[42,47,9],[25,47,42],[13,60,40],[40,60,25],[25,42,40],[43,5,63],[63,5,11],[11,53,63],[63,27,43],[15,1,2],[2,27,15],[15,11,1],[15,53,11],[27,63,15],[15,63,53],[22,54,11],[22,5,62],[11,5,22],[12,3,36],[12,14,6],[36,14,12],[34,12,6],[26,29,13],[13,40,26],[26,61,23],[36,3,21],[3,61,21],[21,57,36],[61,26,21],[21,26,40],[21,40,42],[33,57,21],[21,42,33],[62,31,19],[31,30,19],[8,31,18],[8,18,2],[23,3,49],[3,12,49],[12,34,49],[34,20,49],[32,19,30],[56,10,32],[44,30,31],[31,8,44],[37,8,2],[45,32,30],[45,50,56],[56,32,45],[62,19,38],[19,32,38],[38,22,62],[54,22,38],[10,54,38],[38,32,10],[55,20,34],[6,50,55],[55,34,6],[59,44,8],[8,37,59],[48,37,2],[2,29,48],[29,7,48],[35,49,20],[23,49,35],[20,55,41],[41,35,20],[7,35,41],[24,59,37],[24,41,55],[7,41,24],[37,48,24],[24,48,7],[0,55,50],[44,59,0],[0,24,55],[59,24,0],[50,45,0],[30,44,0],[0,45,30],[46,7,29],[46,35,7],[23,35,46],[46,26,23],[29,26,46]]};
 const COM_Y = 0.9;                                   // model origin is at his feet; physics body is centred here
@@ -190,8 +191,7 @@ const nightU = { value: 0 };
 const lampU = { value: new THREE.Vector3(0, 0, 0) };
 const logoMaskU = { value: null };
 const logoRectU = { value: new THREE.Vector4(0, 0, 1, 1) };   // centre xy, size xy in the front cloud's own space
-const hemCutU = { value: -2 };   // NDC y below which only the hem draws (placeHem)
-const frontCutU = { value: -2 };  // the same for the logo's cloud, once you scroll (riseHem)
+const hemCutU = { value: -2 };   // NDC y below which the clouds behind stop: the one cloud's bottom is the edge (placeCloud)
 function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
   // The clouds only use their lighting for a brightness (shade, below), so they get the cheap version of the rig:
   // standard instead of physical (no sheen), and the two rim strips, which barely touch a cloud's front, are left
@@ -200,7 +200,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
     envMapIntensity: 1.25, vertexColors: true, toneMapped: false });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uOcc = occU; sh.uniforms.uPress = pressU; sh.uniforms.uSky = skyU; sh.uniforms.uTint = tintU;
-    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU; sh.uniforms.uFrontCut = frontCutU;
+    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU;
     const DENT = `
       uniform vec4 uPress; uniform sampler2D uMask; uniform vec4 uRect;
       float dentH( vec2 q ) {
@@ -231,7 +231,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
       .replace('#include <worldpos_vertex>',
         '#include <worldpos_vertex>\n vCW = (modelMatrix * vec4(transformed, 1.0)).xyz; vCN = normalize(mat3(modelMatrix) * objectNormal);')
       .replace('#include <project_vertex>', '#include <project_vertex>\n vSY = gl_Position.y / gl_Position.w;');
-    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut, uFrontCut;\n' + AO_GLSL + `
+    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut;\n' + AO_GLSL + `
       float cHash( vec3 p ) { p = fract( p * 0.1031 ); p += dot( p, p.zyx + 31.32 ); return fract( ( p.x + p.y ) * p.z ); }
       float cloudNoise( vec3 p ) {
         vec3 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
@@ -240,7 +240,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
       }
     ` + sh.fragmentShader
       .replace('#include <color_fragment>', `
-        ${hem ? '' : front ? 'if ( vSY < uFrontCut ) discard;' : 'if ( vSY < uHemCut ) discard;                  // below the fold only the hem\'s billows draw, so their dips stay open'}
+        ${front ? '' : 'if ( vSY < uHemCut ) discard;                  // below the fold only the one cloud draws, so the dips along its bottom stay open'}
         float puffAO = vColor.r;`)
       .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('defined( RE_Direct_RectArea )', 'defined( RE_Direct_RectArea ) && 0'))
       .replace('#include <opaque_fragment>', `
@@ -252,7 +252,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
         float press = 1.0 - sphereAO( vCW, cN );
         shade *= 1.0 - clamp( fold, 0.0, 1.0 ) * 0.7;
         shade *= 1.0 - clamp( press * 1.3, 0.0, 1.0 ) * 0.7;
-        ${front ? `shade = mix( shade, 1.0, 0.45 );                                    // it faces us and the key: brighter than the bank
+        ${front ? `shade = mix( shade, 1.0, 0.12 );                                    // a touch brighter than the bank, but with all its form
         shade *= 1.0 - smoothstep( 0.05, 0.9, vLogo ) * 0.3;                   // the shade of the dip it rests in
 ` : ''}
         vec3 shadowCol = mix( uSky, uSky * 0.55 + uTint * 0.6, clamp( press * 1.4, 0.0, 1.0 ) );
@@ -277,63 +277,79 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
 const cloudMat = makeCloudMat();
 const frontMat = makeCloudMat({ fade: false, front: true });
 
-// ---------- The hem ----------
-// Scott's final crit: the header has to sit on the hero's own clouds, not on a separate drawing. The hero runs a
-// little past the bottom of the screen (--hem, nav.css), and along its bottom a row of billows in the same cloud
-// material, in this scene and this light, gives the cloud mass a soft rolling edge. Once you scroll, the hero
-// sticks with just that band showing, and the burger, logo and Save the date sit on it.
-const HEM_Z = 3.3;
-// The logo's cloud is always the front-most at the top of the page (Scott 2026-10-17): there the hem waits
-// below the fold. As you start to scroll it rises (riseHem) and the logo's cloud sinks in behind it, so the header
-// band is one soft rolling edge. The hem writes no depth and draws after the clouds, back row first.
-const hemMat = makeCloudMat({ fade: false, hem: true });
-hemMat.depthWrite = false;
-const hemBall = new THREE.SphereGeometry(1, 40, 20);
-hemBall.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(hemBall.attributes.position.count * 3).fill(1), 3));
-const hemGroup = new THREE.Group();
-scene.add(hemGroup);
-let hemRise = -1;
-function riseHem(p) {
-  hemRise = p;
-  for (const b of hemGroup.children) {
-    const { P, bottom, ry, lo, px } = b.userData, r = ry * (lo + (1 - lo) * p), c = P(b.userData.x, bottom - r);
-    b.scale.y = r * px; b.position.y = c.y;
-  }
-  const under = p > 0.001;
-  frontCutU.value = under ? hemCutU.value : -2;
-  for (const m of front.group.children) if (m !== front.logo) m.renderOrder = under ? 0 : 12;
-}
-function placeHem(w, hc, hem, portrait) {
-  hemGroup.clear();
-  hemCutU.value = hem ? 1 - 2 * (hc - hem) / hc : -2;
-  if (!hem) return;
-  const P = (x, y) => screenToPlaneZ(x / w * 2 - 1, 1 - y / hc * 2, HEM_Z, new THREE.Vector3());
-  const upp = P(w, hc).x - P(0, hc).x;                     // world units across the screen at the hem's depth
-  const px = upp / w;
-  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  // Scott: "softer and less bumpy... light rolling over a larger form". A few broad, low forms, like the flat
-  // underside of a cumulus seen from below: about three across the screen, the light sliding slowly over each.
-  // Two rows: the front makes the edge, the one behind (a little higher) fills the dips. They never cover the
-  // logo's cloud.
-  const add = (x, bottom, rx, ry, z, order) => {
-    const c = P(x, bottom - ry), m = new THREE.Mesh(hemBall, hemMat);
-    m.scale.set(rx * px, ry * px, Math.min(rx, ry * 3) * px);
-    m.position.set(c.x, c.y, HEM_Z - z - ry * px);
-    m.renderOrder = order;
-    m.userData = { P, bottom, ry, px, x, lo: Math.min(1, Math.max(0.05, (bottom - (hc - hem)) / (2 * ry))) };
-    hemGroup.add(m);
-  };
-  // The bottom edge is one long, gently bowed form, so it never has points where two billows meet (Scott
-  // 2026-10-17: "tent-shaped peaks"); the billows roll on top of it, their own bottoms tucked inside it.
-  add(w / 2, hc - 3, w * 0.95, hem * 0.95, 0.2, 10);
-  for (const [lift, z, n, order] of [[0.35, 0.4, portrait ? 1.6 : 2.4, 10], [0, 0, portrait ? 2.2 : 3.2, 11]]) {
-    const step = w / n;
-    for (let x = -step * (0.3 + rnd() * 0.3); x < w + step;) {
-      const rx = step * (0.75 + rnd() * 0.2), ry = hem * (0.75 + rnd() * 0.15) * (1 + lift * 0.4);
-      add(x, hc - 3 - hem * (0.22 + rnd() * 0.12) - lift * hem, rx, ry, z, order);
-      x += step * (0.95 + rnd() * 0.2);
+// ---------- The one cloud ----------
+// Scott (2026-10-17): one single cloud across the bottom of the hero. It covers the bottoms of the platforms the
+// Grumpls ride on, holds the logo, and the bottom of it is the header once you scroll (the hero sticks with just
+// its bottom band showing, nav.css). One surface in one light: nothing cropped, nothing laid over anything else.
+// Its shape follows the screen (where the platforms pass, where the logo sits), so it's rebuilt on resize.
+let platBox = null, cloudKey = '';
+function placeCloud(w, hc, hem, portrait) {
+  const lr = logoRect(), lh = lr.y1 - lr.y0, lcx = (lr.x0 + lr.x1) / 2;
+  const key = [w, hc, hem, Math.round(lr.x0), Math.round(lr.y0), Math.round(lr.x1), !!platBox].join();
+  if (key === cloudKey) return;
+  cloudKey = key;
+  // screen to the logo cloud's own units
+  const g = front.group, s = front.s;
+  const L = (x, y, zl = LOGO_Z) => screenToPlaneZ(x / w * 2 - 1, 1 - y / hc * 2, g.position.z + zl * s, new THREE.Vector3()).sub(g.position).divideScalar(s);
+  const k = (L(w, hc / 2).x - L(0, hc / 2).x) / w;                 // units per pixel
+  // where its top runs: over the bottoms of the platforms wherever they pass on the arc, and above the logo
+  const tops = [];
+  if (platBox) {
+    const p = new THREE.Vector3(), q = new THREE.Vector3();
+    for (let u = -1; u <= 1.0001; u += 0.05) {
+      slotPose(u, p);
+      q.set(p.x, p.y + platBox.min.y, p.z + platBox.max.z * 0.5).project(camera);
+      const yb = (1 - q.y) / 2 * hc, x = (q.x + 1) / 2 * w;
+      q.set(p.x, p.y + platBox.max.y, p.z + platBox.max.z * 0.5).project(camera);
+      const yt = (1 - q.y) / 2 * hc;
+      tops.push([x, yt + (yb - yt) * 0.5]);
     }
   }
+  const topAt = (x) => {
+    let t = lr.y0 - lh * 0.3;
+    if (tops.length) {
+      let best = Infinity, near = null, nd = Infinity;
+      for (const [tx, ty] of tops) { const d = Math.abs(tx - x); if (d < nd) { nd = d; near = ty; } if (d < w * 0.06) best = Math.min(best, ty); }
+      t = best < Infinity ? best : near + (nd / w) * hc * 0.15;
+    }
+    if (Math.abs(x - lcx) < (lr.x1 - lr.x0) * 0.7) t = Math.min(t, lr.y0 - lh * 0.3);   // well above the logo
+    return Math.min(t, lr.y0 + lh * 0.4);
+  };
+  // soft blobs in columns, big and overlapping so the surface is a few large rolling forms
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const sp = portrait ? w / 2.8 : w / 6;
+  const blobs = [];
+  for (let x = -sp * 0.7; x < w + sp * 0.8; x += sp * (0.9 + rnd() * 0.2)) {
+    const r = sp * (0.62 + rnd() * 0.1);
+    const top = topAt(x) + (rnd() - 0.5) * r * (portrait ? 0.7 : 0.35), bottom = hc - hem * (0.25 + rnd() * 0.35);   // the edge rolls along inside the band below the fold
+    const H = bottom - top, rows = Math.max(1, Math.round(H / (r * 1.5)));
+    const ry = rows === 1 ? Math.max(H / 2, r * 0.5) : r;
+    const put = (px, py, rx, ry2, rzr) => {
+      const rz = rzr * k, zc = 1.0 - rz;                            // its face lands at the logo's depth
+      const c = L(px, py, zc);
+      blobs.push({ x: c.x, y: c.y, z: zc, rx: rx * k, ry: ry2 * k, rz });
+    };
+    for (let i = 0; i < rows; i++) {
+      const y = rows === 1 ? (top + bottom) / 2 : top + ry + (H - 2 * ry) * i / (rows - 1);
+      put(x, y, r * 1.05, ry, r * 0.85);
+    }
+    // billows along the top, so it rolls instead of running flat
+    const cr = r * (portrait ? 0.5 + rnd() * 0.2 : 0.4 + rnd() * 0.15);
+    put(x + sp * (rnd() - 0.5) * 0.5, top + cr * (0.6 + rnd() * 0.5), cr * 1.2, cr, cr);
+  }
+  let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity, rz = 0;
+  for (const b of blobs) { bx0 = Math.min(bx0, b.x - 2 * b.rx); bx1 = Math.max(bx1, b.x + 2 * b.rx); by0 = Math.min(by0, b.y - 2 * b.ry); by1 = Math.max(by1, b.y + 2 * b.ry); rz = Math.max(rz, b.rz); }
+  let bz0 = Infinity; for (const b of blobs) bz0 = Math.min(bz0, b.z - 2 * b.rz);
+  const t0 = performance.now();
+  const geo = buildCloud(blobs, { x0: bx0, x1: bx1, y0: by0, y1: by1, z0: bz0, z1: 1.0 + 0.6 * rz }, coarse ? 96 : 120);
+  // its face sits where the logo's hollow was: the badge rests just proud of the floor of its dip
+  const P = geo.attributes.position.array; let zf = -Infinity;
+  for (let i = 0; i < P.length; i += 3) if (Math.abs(P[i] - LOGO_C.x) < LOGO_W * 0.3 && Math.abs(P[i + 1] - LOGO_C.y) < LOGO_H * 0.3) zf = Math.max(zf, P[i + 2]);
+  if (zf > -Infinity) geo.translate(0, 0, 1.0 - zf);
+  if (front.cloud) { front.group.remove(front.cloud); front.cloud.geometry.dispose(); }
+  front.cloud = new THREE.Mesh(geo, frontMat);
+  front.cloudMs = performance.now() - t0;   // for testing
+  front.group.add(front.cloud);
 }
 
 const meshOf = (o, material) => {
@@ -660,9 +676,8 @@ function puffRow() {
 const ready = Promise.all([
   loadGLB('assets/models/grumpl.glb'),
   loadGLB('assets/models/cloud-bank.glb'),
-  loadGLB('assets/models/cloud-front.glb'),
   buildLogo().catch((e) => console.error('logo', e)),
-]).then(async ([fig, bank, fc]) => {
+]).then(async ([fig, bank]) => {
   // background rows of the bank stay put; the hero puff is copied under each Grumpl on the arc
   bank.scene.traverse((o) => {
     if (!o.isMesh) return;
@@ -676,7 +691,7 @@ const ready = Promise.all([
       scene.add(m);
     }
   });
-  fc.scene.traverse((o) => { if (o.isMesh) { const m = meshOf(o, frontMat); m.renderOrder = hemRise > 0.001 ? 0 : 12; front.group.add(m); } });   // after the hem
+  platBox = new THREE.Box3().setFromObject(slots[0].cloud).translate(slots[0].cloud.position.clone().negate());
 
   slots.forEach((s) => {
     const fg = buildFigure(fig, s.f, lightU, eyeEnv, coarse ? 12000 : 20000);
@@ -1117,8 +1132,8 @@ function resize() {
     if (over <= 0.5) break;
     ny += over / hc * 2;
   }
-  placeHem(w, hc, hem, portrait);
-  riseHem(Math.max(0, hemRise));
+  hemCutU.value = hem ? 1 - 2 * (hc - hem) / hc : -2;
+  placeCloud(w, hc, hem, portrait);
   ui.layout?.({ portrait });
   sendLogoRect();
   poke(4);
@@ -1189,7 +1204,7 @@ function adaptResolution() {
     if (++run > 120 && now - failed > 20000) setDpr(dprIdx + 1);
   } else run = 0;
 }
-window.__grumpl = { renderer, scene, camera, ring, slots, body, focus: (i) => focus(i), jump, puffRow, setNight, setLogoFinish, cycleLogo, smoosh: smooshAt, night, logo3D, room, season: SEASON, logo: () => logoMod };
+window.__grumpl = { renderer, scene, camera, front, ring, slots, body, focus: (i) => focus(i), jump, puffRow, setNight, setLogoFinish, cycleLogo, smoosh: smooshAt, night, logo3D, room, season: SEASON, logo: () => logoMod };
 // the page's lamp-aware eyes read this
 window.__grumplLamp = night.screen;
 const ui = initUI({ DROP, FLAVORS, focus: (i) => focus(i), step, jump, motion, canMove });
@@ -1198,10 +1213,7 @@ resize();
 
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 1 / 20);
-  const pinned = document.body.classList.contains('hero-pinned');
-  const rise = pinned ? 1 : Math.min(1, scrollY / 140), risen = rise !== hemRise;   // a jump straight to the band still draws it risen
-  if (slots[0].set && risen) { riseHem(rise); poke(2); }
-  if (!slots[0].set || !heroOn || covered() || (pinned && !risen)) return;
+  if (!slots[0].set || !heroOn || covered() || document.body.classList.contains('hero-pinned')) return;
   if (grip && dt > 0) hand.velocity.set((handTarget.x - hand.position.x) / dt * 0.6, (handTarget.y - hand.position.y) / dt * 0.6, (handTarget.z - hand.position.z) / dt * 0.6);
   motion.tick();
   if (motion.on) {
