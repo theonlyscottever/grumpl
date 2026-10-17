@@ -189,7 +189,6 @@ const tintU = { value: new THREE.Color(0x56c2dc) };
 const nightU = { value: 0 };
 const lampU = { value: new THREE.Vector3(0, 0, 0) };
 const logoMaskU = { value: null };
-const logoLineU = { value: null };   // a tighter silhouette for the crisp line where the logo is pressed in
 const logoRectU = { value: new THREE.Vector4(0, 0, 1, 1) };   // centre xy, size xy in the front cloud's own space
 const hemCutU = { value: -2 };   // NDC y below which only the hem draws (placeHem)
 function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
@@ -200,7 +199,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
     envMapIntensity: 1.25, vertexColors: true, toneMapped: false });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uOcc = occU; sh.uniforms.uPress = pressU; sh.uniforms.uSky = skyU; sh.uniforms.uTint = tintU;
-    sh.uniforms.uMask = logoMaskU; sh.uniforms.uLine = logoLineU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU;
+    sh.uniforms.uMask = logoMaskU; sh.uniforms.uRect = logoRectU; sh.uniforms.uNight = nightU; sh.uniforms.uLamp = lampU; sh.uniforms.uHemCut = hemCutU;
     const DENT = `
       uniform vec4 uPress; uniform sampler2D uMask; uniform vec4 uRect;
       float dentH( vec2 q ) {
@@ -231,7 +230,7 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
       .replace('#include <worldpos_vertex>',
         '#include <worldpos_vertex>\n vCW = (modelMatrix * vec4(transformed, 1.0)).xyz; vCN = normalize(mat3(modelMatrix) * objectNormal);')
       .replace('#include <project_vertex>', '#include <project_vertex>\n vSY = gl_Position.y / gl_Position.w;');
-    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut; uniform sampler2D uLine;\n' + AO_GLSL + `
+    sh.fragmentShader = 'varying vec3 vCW, vCN; varying float vSY, vLogo; varying vec2 vLogoUv; uniform vec3 uSky, uTint, uLamp; uniform float uNight, uHemCut;\n' + AO_GLSL + `
       float cHash( vec3 p ) { p = fract( p * 0.1031 ); p += dot( p, p.zyx + 31.32 ); return fract( ( p.x + p.y ) * p.z ); }
       float cloudNoise( vec3 p ) {
         vec3 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
@@ -254,17 +253,12 @@ function makeCloudMat({ fade = true, front = false, hem = false } = {}) {
         shade *= 1.0 - clamp( press * 1.3, 0.0, 1.0 ) * 0.7;
         ${front ? `shade = mix( shade, 1.0, 0.45 );                                    // it faces us and the key: brighter than the bank
         shade *= 1.0 - smoothstep( 0.05, 0.9, vLogo ) * 0.3;                   // the shade of the dip it rests in
-        // the line where it's pressed in (Jason + Scott 2026-10-16): a narrow crease hugging the badge, so the white
-        // badge reads against the white cloud
-        vec2 lnUv = ( vLogoUv - 0.5 ) / 1.15 + 0.5;                          // its mask has room around the badge
-        float lM = all( greaterThan( lnUv, vec2( 0.0 ) ) ) && all( lessThan( lnUv, vec2( 1.0 ) ) ) ? texture2D( uLine, lnUv ).r : 0.0;
-        float crease = smoothstep( 0.04, 0.24, lM ) * ( 1.0 - smoothstep( 0.42, 0.66, lM ) );` : ''}
+` : ''}
         vec3 shadowCol = mix( uSky, uSky * 0.55 + uTint * 0.6, clamp( press * 1.4, 0.0, 1.0 ) );
         vec3 lit = mix( mix( shadowCol, vec3( 1.0 ), 0.25 ), vec3( 1.0 ), smoothstep( 0.1, 0.9, shade ) );
         float wisp = ${hem ? '0.5' : 'cloudNoise( vCW * 3.1 ) * 0.6 + cloudNoise( vCW * 7.3 ) * 0.4'};   // the hem is smooth: no wisps
         float edge = smoothstep( 0.5, 0.92, ( 1.0 - abs( dot( cN, cV ) ) ) + ( wisp - 0.5 ) * 0.35 );
         lit = mix( lit, vec3( 1.0 ), edge * ( 1.0 - clamp( press * 1.5, 0.0, 1.0 ) ) ${front ? '* ( 1.0 - smoothstep( 0.05, 0.5, vLogo ) )' : ''} );
-        ${front ? 'lit = mix( lit, mix( uSky, uSky * 0.5 + uTint * 0.6, 0.75 ), crease * 0.6 );' : ''}
         lit = mix( lit, vec3( 1.0 ), smoothstep( 9.0, 22.0, length( cameraPosition - vCW ) ) * 0.85 );
         outgoingLight = lit;
         if ( uNight > 0.0 ) {
@@ -288,7 +282,10 @@ const frontMat = makeCloudMat({ fade: false, front: true });
 // material, in this scene and this light, gives the cloud mass a soft rolling edge. Once you scroll, the hero
 // sticks with just that band showing, and the burger, logo and Save the date sit on it.
 const HEM_Z = 3.3;
+// The logo's cloud is always the front-most (Scott 2026-10-17): the hem draws after everything else but writes no
+// depth, back row first, so the logo's cloud, drawn last, always lands on top of it
 const hemMat = makeCloudMat({ fade: false, hem: true });
+hemMat.depthWrite = false;
 const hemBall = new THREE.SphereGeometry(1, 40, 20);
 hemBall.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(hemBall.attributes.position.count * 3).fill(1), 3));
 const hemGroup = new THREE.Group();
@@ -303,8 +300,8 @@ function placeHem(w, hc, hem, portrait) {
   let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   // Scott: "softer and less bumpy... light rolling over a larger form". A few broad, low forms, like the flat
   // underside of a cumulus seen from below: about three across the screen, the light sliding slowly over each.
-  // Two rows: the front makes the edge, the one behind (a little higher) fills the dips. They stay below the
-  // logo's cloud, so the hero itself looks as it did.
+  // Two rows: the front makes the edge, the one behind (a little higher) fills the dips. They never cover the
+  // logo's cloud.
   for (const [lift, z, n] of [[0, 0, portrait ? 2.2 : 3.2], [0.35, 0.4, portrait ? 1.6 : 2.4]]) {
     const step = w / n;
     for (let x = -step * (0.3 + rnd() * 0.3); x < w + step;) {
@@ -314,6 +311,7 @@ function placeHem(w, hc, hem, portrait) {
       const m = new THREE.Mesh(hemBall, hemMat);
       m.scale.set(rx * px, ry * px, Math.min(rx, ry * 3) * px);
       m.position.set(c.x, c.y, HEM_Z - z - ry * px);
+      m.renderOrder = lift ? 10 : 11;
       hemGroup.add(m);
       x += step * (0.95 + rnd() * 0.2);
     }
@@ -476,6 +474,17 @@ async function buildLogo() {
     return { k, parts: els.map(P), cx: bb.x + bb.width / 2, cy: bb.y + bb.height * 0.62, y0: bb.y, y1: bb.y + bb.height, t: -1 };
   });
   const outline = get('cloud-outline').getAttribute('d');
+  // the soft groove the badge is pressed into, drawn with the 3D logo (logo3d.js) so no cloud in front can cut it
+  // (Scott 2026-10-17: the crease drawn on the cloud got clipped, and it should be softer)
+  {
+    const ob = get('cloud-outline').getBBox(), M = 0.08, k = 900 / ob.width;
+    const c = document.createElement('canvas'); c.width = 900 * (1 + 2 * M); c.height = Math.round(ob.height * k + 900 * 2 * M);
+    const g = c.getContext('2d'), path = new Path2D(outline);
+    const at = (sc) => { g.setTransform(k * sc, 0, 0, k * sc, c.width / 2 - (ob.x + ob.width / 2) * k * sc, c.height / 2 - (ob.y + ob.height / 2) * k * sc); };
+    g.filter = 'blur(13px)'; g.fillStyle = 'rgba(140, 156, 222, 0.8)'; at(1.03); g.fill(path);
+    g.filter = 'none'; g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; at(0.99); g.fill(path);
+    front.groove = { canvas: c, margin: M };   // margin: on every side, as a share of the badge's width
+  }
   front.fills = Object.fromEntries([...svg.querySelectorAll('path[id]')].map((el) => [el.id, el.getAttribute('fill')]));
   holder.remove();
 
@@ -525,7 +534,6 @@ async function buildLogo() {
     return t;
   };
   logoMaskU.value = mk(16, 1.02);
-  logoLineU.value = mk(3, 1.035 / 1.15);
   const rimTex = mk(9, 0.96);
 
   const logoMat = new THREE.ShaderMaterial({
@@ -545,7 +553,7 @@ async function buildLogo() {
   });
   front.logo = new THREE.Mesh(new THREE.PlaneGeometry(LOGO_W, LOGO_H), logoMat);
   front.logo.position.set(LOGO_C.x, LOGO_C.y, LOGO_Z);
-  front.logo.renderOrder = 2;
+  front.logo.renderOrder = 13;
   front.logo.visible = false;          // the flat logo is drawn by the page as a vector on top; this plane backs the 3D finishes
   front.group.add(front.logo);
   frontMat.needsUpdate = true;
@@ -603,7 +611,7 @@ async function setLogoFinish(mode, { puff = true } = {}) {
     document.body.classList.add('logo-loading');
     try {
       const m = await import('./logo3d.js');
-      await m.initLogo3D({ after: stage, onTap: () => cycleLogo() });
+      await m.initLogo3D({ after: stage, onTap: () => cycleLogo(), groove: front.groove });
       logoMod = m;
     } catch (e) { console.error('logo 3D', e); }
     document.body.classList.remove('logo-loading');
@@ -650,7 +658,7 @@ const ready = Promise.all([
       scene.add(m);
     }
   });
-  fc.scene.traverse((o) => { if (o.isMesh) front.group.add(meshOf(o, frontMat)); });
+  fc.scene.traverse((o) => { if (o.isMesh) { const m = meshOf(o, frontMat); m.renderOrder = 12; front.group.add(m); } });   // after the hem
 
   slots.forEach((s) => {
     const fg = buildFigure(fig, s.f, lightU, eyeEnv, coarse ? 12000 : 20000);

@@ -187,6 +187,17 @@ export function initLogo3D(opts) {
       S.pieces.push(p);
     }
     seams(S.pieces);
+    // the groove in the cloud around the badge (app.js draws it from the badge outline), just behind the badge
+    const puff = S.pieces.find((p) => p.kind === 'puff');
+    if (opts.groove && puff) {
+      const bb = puff.mesh.geometry.boundingBox, w = bb.max.x - bb.min.x, h = bb.max.y - bb.min.y, m = opts.groove.margin;
+      const tex = new THREE.CanvasTexture(opts.groove.canvas); tex.colorSpace = THREE.SRGBColorSpace;
+      const groove = new THREE.Mesh(new THREE.PlaneGeometry(w * (1 + 2 * m), h + 2 * m * w),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+      groove.position.set(puff.pivot.position.x + (bb.min.x + bb.max.x) / 2, puff.pivot.position.y + (bb.min.y + bb.max.y) / 2, puff.pivot.position.z + bb.min.z);
+      groove.renderOrder = -1;
+      tilt.add(groove);
+    }
     S.tappable = S.pieces.filter((p) => p.kind !== 'puff');
     S.idle = [...S.tappable].sort((a, b) => a.pivot.position.x - b.pivot.position.x);
     wire();
