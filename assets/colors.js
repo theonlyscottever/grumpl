@@ -208,7 +208,7 @@ function pickerMarkup(u, { starters, tryButton }) {
 // opts.onChange({ hex, name, edge, belly, why }) fires on every color or name change ('color' | 'name' | 'load').
 // opts.starters: [[name, hex]] swatches under the picker ([] for none). opts.tryButton: show "Try it on a Grumpl".
 // Returns { setHex(hex, {silent}), setName(name, {silent}), hex, name, el }.
-export function mountPicker(el, { onChange = () => {}, starters = STARTERS, tryButton = false, hex: hex0 = '#56c2dc' } = {}) {
+export function mountPicker(el, { onChange = () => {}, starters = STARTERS, tryButton = false, hex: hex0 = '#56c2dc', getAccent = () => null } = {}) {
   if (!el) return null;
   const u = 'cl' + Math.random().toString(36).slice(2, 7);
   el.classList.add('cl-root');
@@ -219,10 +219,10 @@ export function mountPicker(el, { onChange = () => {}, starters = STARTERS, tryB
   const status = $('.cl-status'), xLink = $('.cl-x'), list = $('.cl-list'), more = $('.cl-more');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const state = { h: 200, s: 0.6, v: 0.86, hex: parseHex(hex0) || '#56c2dc' };
+  const state = { h: 200, s: 0.6, v: 0.86, hex: parseHex(hex0) || '#56c2dc', loadAccent: null };
   const name = () => nameIn.value.trim().replace(/\s+/g, ' ');
   let silent = false;
-  const tell = (why) => { if (silent) return; const t = deriveTones(state.hex); onChange({ hex: state.hex, name: name(), edge: t.edge, belly: t.belly, why }); };
+  const tell = (why) => { if (silent) return; const t = deriveTones(state.hex); onChange({ hex: state.hex, name: name(), edge: t.edge, belly: t.belly, why, accent: why === 'load' ? state.loadAccent : undefined }); };
 
   function paint({ fromInput = false, why = 'color' } = {}) {
     const hex = state.hex;
@@ -358,6 +358,7 @@ export function mountPicker(el, { onChange = () => {}, starters = STARTERS, tryB
     const n = name();
     if (!n) { say('It needs a name. Or hit "Name it for me".', 'warn'); nameIn.focus(); bounce(nameIn); return; }
     const req = { name: n.slice(0, 48), hex: state.hex, at: new Date().toISOString() };
+    const ac = parseHex(getAccent() || ''); if (ac) req.accent = ac;
     let mine = load(LS_MINE, []);
     if (!Array.isArray(mine)) mine = [];
     if (!mine.some((r) => idOf(r) === idOf(req))) { mine.unshift(req); save(LS_MINE, mine.slice(0, 50)); }
@@ -386,7 +387,7 @@ export function mountPicker(el, { onChange = () => {}, starters = STARTERS, tryB
   const LIMIT = 12;
   function render() {
     const stored = load(LS_MINE, []);
-    const mine = (Array.isArray(stored) ? stored : []).filter((r) => r && parseHex(r.hex) && r.name).map((r) => ({ ...r, hex: parseHex(r.hex), count: 0, mine: true }));
+    const mine = (Array.isArray(stored) ? stored : []).filter((r) => r && parseHex(r.hex) && r.name).map((r) => ({ ...r, hex: parseHex(r.hex), accent: parseHex(r.accent || '') || '', count: 0, mine: true }));
     const mineIds = new Set(mine.map(idOf));
     const v0 = load(LS_VOTES, []);
     const votes = new Set(Array.isArray(v0) ? v0 : []);
@@ -396,8 +397,8 @@ export function mountPicker(el, { onChange = () => {}, starters = STARTERS, tryB
     list.innerHTML = shown.map((r, i) => {
       const id = idOf(r), on = votes.has(id), n = (r.count || 0) + (on ? 1 : 0);
       const tilt = ((i * 37) % 7 - 3) * 0.45;
-      return `<li style="--sw:${r.hex};--tilt:${tilt}deg" class="${r.mine ? 'mine' : ''}">
-        <button type="button" class="cl-load" data-hex="${r.hex}" data-name="${esc(r.name)}" aria-label="Load ${esc(r.name)}, ${r.hex}">
+      return `<li style="--sw:${r.hex};--tilt:${tilt}deg${r.accent ? ';--ac:' + r.accent : ''}" class="${r.mine ? 'mine' : ''}${r.accent ? ' ac' : ''}">
+        <button type="button" class="cl-load" data-hex="${r.hex}" data-accent="${r.accent || ''}" data-name="${esc(r.name)}" aria-label="Load ${esc(r.name)}, ${r.hex}">
           <i aria-hidden="true"></i><b>${esc(r.name)}</b><small>${r.hex}${r.mine ? '<em>yours</em>' : ''}</small>
         </button>
         <button type="button" class="cl-vote" data-id="${esc(id)}" aria-pressed="${on}" aria-label="Plus one ${esc(r.name)}, ${n} so far">+1<span>${n}</span></button>
@@ -410,7 +411,9 @@ export function mountPicker(el, { onChange = () => {}, starters = STARTERS, tryB
     const ld = e.target.closest('.cl-load');
     if (ld) {
       nameIn.value = ld.dataset.name;
+      state.loadAccent = parseHex(ld.dataset.accent || '') || null;
       setHex(ld.dataset.hex, { why: 'load' });
+      state.loadAccent = null;
       say('');
       bounce(ld);
       return;

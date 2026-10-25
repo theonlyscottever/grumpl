@@ -188,3 +188,11 @@
 @media (prefers-reduced-motion: reduce) {
 	#Studio *, #Studio *::before, #Studio *::after { transition-duration: 0.01s !important; animation: none !important; }
 }
+
+/* accent (the airbrush color): the second of the two colors */
+#Studio .st-accent { display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 2.5px dashed color-mix(in oklab, var(--st-ink) 35%, transparent); }
+#Studio .st-accrow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+#Studio .st-accchip { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--st-ink); background: var(--st-edge); }
+#Studio .st-acclbl { flex: 1 1 140px; min-width: 0; font: 600 15px/1.2 var(--st-solid); }
+#Studio .st-accpick .cl-namecard, #Studio .st-accpick .cl-listwrap, #Studio .st-accpick .cl-slot { display: none; }
+#Studio .st-accpick .cl-sv { height: clamp(110px, 30vw, 150px); }

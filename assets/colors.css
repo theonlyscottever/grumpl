@@ -133,3 +133,6 @@
 
 /* brand book card rim: 4px of paper inside the ink border (only the stand-alone card; in the studio the card is unwrapped) */
 #Colors .cl-card::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--paper); border-radius: var(--radius-in); opacity: 0.25; pointer-events: none; z-index: 5; }
+
+/* a saved color that carries its own accent: the swatch shows both */
+:is(#Colors, #Studio) .cl-list li.ac .cl-load i { background: linear-gradient(135deg, var(--sw) 0 60%, var(--ac) 60%); }

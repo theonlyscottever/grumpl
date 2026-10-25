@@ -223,7 +223,18 @@ const TEMPLATE = `
       </div>
 
       <div class="st-pane st-color" data-pane="color" role="tabpanel">
+        <div class="st-sub">Main color</div>
         <div class="st-picker"></div>
+        <div class="st-accent">
+          <div class="st-sub">Accent</div>
+          <div class="st-accrow">
+            <span class="st-accchip" aria-hidden="true"></span>
+            <span class="st-acclbl">Auto, from the main color</span>
+            <button type="button" class="cl-btn st-accpick-btn" aria-expanded="false">Pick one</button>
+            <button type="button" class="cl-btn st-accauto" hidden>Back to auto</button>
+          </div>
+          <div class="st-accpick" hidden></div>
+        </div>
         <div class="st-flav">
           <div class="st-sub">Quick picks</div>
           <div class="st-dots" role="group" aria-label="Flavors and colors"></div>
@@ -302,6 +313,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
   // ---------- state ----------
   const norm = (f) => ({ ...f, kind: f.kind || 'vinyl', base: toInt(f.base), edge: toInt(f.edge), belly: toInt(f.belly) });
   const flavors = [...FLAVORS.map(norm), ...CLASSICS.map((f) => norm({ ...f, kind: 'vinyl' }))];
+  let accentFrom = null, accentUser = false, accPicker = null;
   const S = { flavor: flavors[0]?.id, ...POSE0, light: 'studio', bg: { type: 'wash' }, decals: [], sel: -1 };
   const flavor = () => flavors.find((f) => f.id === S.flavor) || flavors[0];
   let photo = null;          // background photo (canvas)
@@ -694,8 +706,42 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
   // The picker recolors him live: every change only repaints uniforms (paintSet), at most once a frame.
   const EXTRA = STARTERS.filter(([n]) => !flavors.some((f) => f.name === n));
   const dotsEl = $('.st-dots');
-  const picker = mountPicker($('.st-picker'), { starters: [], hex: hex(flavor()?.base ?? 0x56c2dc), onChange: onPick });
-  picker.el.querySelector('.cl-slot')?.append($('.st-flav'));
+  const picker = mountPicker($('.st-picker'), { starters: [], hex: hex(flavor()?.base ?? 0x56c2dc), onChange: onPick, getAccent: () => S.accent });
+  picker.el.querySelector('.cl-slot')?.append($('.st-flav'), $('.st-accent'));
+  // accent: the airbrush color that pools where forms meet. Auto = derived from the main color (or the flavor's own); picking one pins it
+  const accEl = $('.st-accent'), accPick = $('.st-accpick');
+  accPicker = mountPicker(accPick, { starters: [], hex: hex(flavor()?.edge ?? 0xff6f8e), onChange: onAccent });
+  accPick.addEventListener('pointerdown', () => { accentUser = true; }, true);
+  accPick.addEventListener('keydown', () => { accentUser = true; }, true);
+  accPick.addEventListener('input', () => { accentUser = true; }, true);
+  function syncAccentUI() {
+    const f = flavor(), custom = !!S.accent;
+    $('.st-accchip').style.background = hex(f.edge);
+    $('.st-acclbl').textContent = custom ? `Your accent, ${hex(f.edge)}` : 'Auto, from the main color';
+    $('.st-accauto').hidden = !custom;
+  }
+  function onAccent(d) {
+    if (!accentUser || destroyed) return;
+    const f = flavor();
+    if (!S.accent && f.id !== 'pick') accentFrom = f.id;
+    S.accent = d.hex;
+    const vals = { id: 'pick', name: f.name, kind: 'vinyl', base: f.base, edge: toInt(d.hex), belly: f.belly, custom: true };
+    const cur = flavors.find((x) => x.id === 'pick');
+    S.flavor = 'pick';
+    if (cur) Object.assign(cur, vals); else { flavors.push(vals); buildDots(); }
+    liveFlavor();
+  }
+  $('.st-accpick-btn').addEventListener('click', (e) => {
+    const open = accPick.hidden; accPick.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open));
+    e.currentTarget.textContent = open ? 'Done' : 'Pick one';
+  });
+  $('.st-accauto').addEventListener('click', () => {
+    S.accent = null; accentUser = false;
+    const f = flavor(), orig = accentFrom && flavors.find((x) => x.id === accentFrom);
+    if (orig && orig.base === f.base) setFlavor(orig.id);
+    else { const t = deriveTones(hex(f.base)); Object.assign(f, { edge: toInt(t.edge) }); liveFlavor(); }
+    accentFrom = null;
+  });
   function buildDots() {
     dotsEl.innerHTML = flavors.map((f) => `<button type="button" class="st-dot" data-id="${f.id}" aria-label="${f.name}" title="${f.name}" aria-pressed="${f.id === S.flavor}"
       style="--b:${hex(f.base)};--e:${hex(f.edge)};--l:${hex(f.belly)}"></button>`).join('')
@@ -708,6 +754,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
   });
   let pickPending = null, pickRaf = 0, bgT = 0;
   function onPick(d) {
+    if (d.why === 'load') { S.accent = d.accent || null; accentFrom = null; accentUser = false; }
     pickPending = d;
     if (!pickRaf) pickRaf = requestAnimationFrame(applyPick);
   }
@@ -715,7 +762,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
     pickRaf = 0;
     const d = pickPending; pickPending = null;
     if (!d || destroyed) return;
-    const vals = { id: 'pick', name: d.name || 'Your color', kind: 'vinyl', base: toInt(d.hex), edge: toInt(d.edge), belly: toInt(d.belly), custom: true };
+    const vals = { id: 'pick', name: d.name || 'Your color', kind: 'vinyl', base: toInt(d.hex), edge: toInt(S.accent || d.edge), belly: toInt(d.belly), custom: true };
     const f = flavors.find((x) => x.id === 'pick');
     S.flavor = 'pick';
     if (f) Object.assign(f, vals); else { flavors.push(vals); buildDots(); }
@@ -729,6 +776,8 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
       if (b.dataset.id === f.id) { b.style.setProperty('--b', hex(f.base)); b.style.setProperty('--e', hex(f.edge)); b.style.setProperty('--l', hex(f.belly)); b.title = f.name; b.setAttribute('aria-label', f.name); }
     });
     $('.st-tag').textContent = f.name;
+    if (typeof syncAccentUI === 'function') syncAccentUI();
+    if (!S.accent || !accentUser) accPicker?.setHex(hex(f.edge), { silent: true });
     const hs = $('.st-hexs'); hs.hidden = f.id !== 'pick'; hs.textContent = hex(f.base);
     el.style.setProperty('--st-base', hex(f.base)); el.style.setProperty('--st-edge', hex(f.edge)); el.style.setProperty('--st-belly', hex(f.belly));
     if (G) showFigure();
@@ -742,7 +791,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
   }
   function setFlavor(id) {
     const f = flavors.find((x) => x.id === id); if (!f) return;
-    S.flavor = id;
+    S.flavor = id; if (id !== 'pick') { S.accent = null; accentFrom = null; }
     if (id !== 'pick') picker.setHex(hex(f.base), { silent: true });
     refreshFlavor();
   }
