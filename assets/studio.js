@@ -73,7 +73,24 @@ function dieCut(src, pad = 14) {
 }
 const CUTE = '400 VARpx caraque-melted, sans-serif';
 const cute = (px) => CUTE.replace('VAR', px);
+const CENSOR = { w: 380, h: 300, text: 'too juicy' };   // the Post Studio's censor block, as sized there
+// its little black tag (the Post Studio's, at the bottom of the block): transparent canvas, drawn on top of the pixels
+function censorTag() {
+  return stickerCanvas((c, w, h) => {
+    const fs = Math.min(64, h * 0.22); c.font = cute(fs);
+    const tw = c.measureText(CENSOR.text).width + fs * 0.8, th = fs * 1.4;
+    c.translate(w / 2, h - th * 0.7); c.rotate(-0.04);
+    c.fillStyle = INK; rr(c, -tw / 2, -th / 2, tw, th, 6); c.fill();
+    c.fillStyle = PAPER; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(CENSOR.text, 0, fs * 0.05);
+  }, CENSOR.w, CENSOR.h);
+}
 const STK = {
+  // tray picture only: chunky blocks of his colors with the tag. On him it pixelates what is behind it, live (decalMesh)
+  censor: () => stickerCanvas((c, w, h) => {
+    const cols = ['#9fd6e6', '#7fc3dc', '#bfe3ee', '#6fb5d4', '#d6eef5', '#8ccbe0'], k = 9, bw = w / k, bh = h / Math.round(h / bw);
+    for (let j = 0; j * bh < h; j++) for (let i = 0; i < k; i++) { c.fillStyle = cols[(i * 7 + j * 3 + i * j) % cols.length]; c.fillRect(i * bw, j * bh, bw + 1, bh + 1); }
+    c.drawImage(censorTag(), 0, 0);
+  }, CENSOR.w, CENSOR.h),
   heart: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2 + 10); c.beginPath(); c.moveTo(0, 95); c.bezierCurveTo(-150, 0, -95, -125, 0, -55); c.bezierCurveTo(95, -125, 150, 0, 0, 95); c.fillStyle = '#ff87e0'; c.fill(); c.lineWidth = 12; c.strokeStyle = INK; c.lineJoin = 'round'; c.stroke(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(-48, -40, 20, 12, -0.6, 0, 7); c.fill(); }),
   star: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2 + 8); c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 58 : 135, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); c.fillStyle = LEMON; c.fill(); c.lineWidth = 12; c.lineJoin = 'round'; c.strokeStyle = INK; c.stroke(); }),
   odds: () => stickerCanvas((c, w) => { c.beginPath(); c.arc(w / 2, w / 2, 140, 0, 7); c.fillStyle = LEMON; c.fill(); c.lineWidth = 12; c.strokeStyle = INK; c.stroke(); c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = cute(130); c.fillText('1%', w / 2, w / 2 - 12); c.font = '600 34px caraque-solid, sans-serif'; c.fillText('speshul', w / 2, w / 2 + 78); }),
@@ -83,7 +100,7 @@ const STK = {
   stamp: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2); c.rotate(-0.12); c.strokeStyle = '#d8363f'; c.lineWidth = 12; c.beginPath(); c.arc(0, 0, 140, 0, 7); c.stroke(); c.lineWidth = 5; c.beginPath(); c.arc(0, 0, 118, 0, 7); c.stroke(); c.fillStyle = '#d8363f'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = cute(58); c.fillText('process', 0, -34); c.fillText('grey', 0, 16); c.font = '600 30px caraque-solid, sans-serif'; c.fillText('approved.', 0, 62); }),
   sweat: () => stickerCanvas((c, w) => { c.translate(w / 2, w / 2); c.beginPath(); c.moveTo(0, -130); c.bezierCurveTo(30, -60, 105, 0, 105, 50); c.arc(0, 50, 105, 0, Math.PI); c.bezierCurveTo(-105, 0, -30, -60, 0, -130); c.fillStyle = '#89d7f2'; c.fill(); c.lineWidth = 11; c.strokeStyle = INK; c.lineJoin = 'round'; c.stroke(); c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(-40, 40, 16, 30, 0.3, 0, 7); c.fill(); }),
 };
-const STK_LABEL = { heart: 'Heart', star: 'Star', odds: '1% odds', tag: 'Hand made tag', bandaid: 'Band-aid', googly: 'Googly eye', stamp: 'Approved stamp', sweat: 'Sweat drop' };
+const STK_LABEL = { censor: 'Censor block', heart: 'Heart', star: 'Star', odds: '1% odds', tag: 'Hand made tag', bandaid: 'Band-aid', googly: 'Googly eye', stamp: 'Approved stamp', sweat: 'Sweat drop' };
 const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error('image failed: ' + String(src).slice(0, 60))); im.src = src; });
 function imageCanvas(im, max) {
   const w0 = im.naturalWidth || im.width || max, h0 = im.naturalHeight || im.height || max;
@@ -336,6 +353,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
       shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; shadow.renderOrder = -1;
       scene.add(shadow);
       G = { renderer, scene, camera, key, rims, lightU, rig, spin, decals, env, eyeEnv, shadow, shadowTex, figs: {}, cur: null, tex: new Map(), maxDim, ray: new THREE.Raycaster() };
+      G.ray.layers.enable(1);   // the censor blocks live on layer 1
       showFigure();
       if (!tris) tris = buildTris(G.cur.body);
       // every finish built and compiled now (the chrome with its warm room), so picking one never stalls
@@ -437,6 +455,37 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
     G.rims.forEach((r, i) => G.lightU.uRimDirV.value[i].copy(_v.copy(r.position).sub(CENTER).normalize().transformDirection(vm)));
     G.lightU.uBackDirV.value.copy(BACK).transformDirection(vm);
     G.renderer.render(G.scene, G.camera);
+    if (G.decals.children.some((m) => m.userData.censor)) censorPass();
+  }
+  // Censor blocks pixelate what is already drawn: copy the picture so far, then draw just the blocks over it (same
+  // depth buffer, so he can still hide them when he turns). The cells are screen pixels, so they stay put as he spins.
+  const _px = new THREE.Vector2(), _p0 = new THREE.Vector2(0, 0);
+  const _cq = new THREE.Quaternion(), _rq = new THREE.Quaternion(), _zAxis = new THREE.Vector3(0, 0, 1), _cn = new THREE.Vector3(), _cp = new THREE.Vector3();
+  function censorPass() {
+    const R = G.renderer, cam = G.camera, size = R.getDrawingBufferSize(_px), w = size.x, h = size.y;
+    if (!G.fb || G.fb.image.width !== w || G.fb.image.height !== h) {
+      G.fb?.dispose(); G.fb = new THREE.FramebufferTexture(w, h);
+      G.fb.minFilter = G.fb.magFilter = THREE.LinearFilter;
+    }
+    R.copyFramebufferToTexture(_p0, G.fb);
+    const worldH = 2 * Math.abs(cam.position.z) * Math.tan(D(cam.fov / 2));
+    G.decals.getWorldQuaternion(_cq).invert().multiply(cam.quaternion);            // faces the camera
+    for (const m of G.decals.children) {
+      if (!m.userData.censor) continue;
+      const d = m.userData.d, u = m.material.uniforms;
+      m.position.set(...d.p);
+      m.quaternion.copy(_cq).multiply(_rq.setFromAxisAngle(_zAxis, d.rot || 0));
+      m.updateMatrixWorld(true);
+      // shows while his spot faces you, and melts away as it turns from you
+      _cn.set(...d.n).transformDirection(G.spin.matrixWorld);
+      _cp.set(...d.p).applyMatrix4(G.spin.matrixWorld);
+      u.uVis.value = THREE.MathUtils.smoothstep(_cn.dot(_cp.negate().add(cam.position).normalize()), 0.02, 0.3);
+      u.uFb.value = G.fb; u.uRes.value.set(w, h);
+      u.uBlock.value = Math.max(5, m.userData.d.size * (h / worldH) / 9);   // about nine cells across, as in the Post Studio
+    }
+    R.autoClear = false; cam.layers.set(1);
+    R.render(G.scene, cam);
+    cam.layers.set(0); R.autoClear = true;
   }
   function draw() {
     if (!G) return;
@@ -484,12 +533,12 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
     }
     return { P, N, C, F, n };
   }
-  function nearMesh(p, nrm, rad) {
+  function nearMesh(p, nrm, rad, minDot = 0.05) {
     const { P, N, C, F, n } = tris, r2 = rad * rad, pick = [];
     for (let i = 0; i < n; i++) {
       const dx = C[i * 3] - p.x, dy = C[i * 3 + 1] - p.y, dz = C[i * 3 + 2] - p.z;
       if (dx * dx + dy * dy + dz * dz > r2) continue;
-      if (F[i * 3] * nrm.x + F[i * 3 + 1] * nrm.y + F[i * 3 + 2] * nrm.z < 0.05) continue;
+      if (F[i * 3] * nrm.x + F[i * 3 + 1] * nrm.y + F[i * 3 + 2] * nrm.z < minDot) continue;
       pick.push(i);
     }
     const pa = new Float32Array(pick.length * 9), na = new Float32Array(pick.length * 9);
@@ -514,7 +563,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
     else if (id === 'i:logo') c = imageCanvas(await loadImg(LOGO_URL), 560);
     else if (id === 'i:line') c = imageCanvas(await loadImg(LINE_URL), 512);
     else { const u = userStickers.find((s) => s.id === id); c = u.canvas; }
-    c = dieCut(c, Math.round(Math.max(c.width, c.height) * 0.04));
+    if (id !== 'b:censor') c = dieCut(c, Math.round(Math.max(c.width, c.height) * 0.04));
     srcCache.set(id, c);
     return c;
   }
@@ -530,9 +579,47 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
   function clearDecalMeshes(g = G) {
     for (const m of [...g.decals.children]) { g.decals.remove(m); m.geometry.dispose(); m.material.dispose(); }
   }
+  // The censor block (Post Studio, G-68): a flat block that always faces the camera, pinned to a spot on him, that
+  // pixelates whatever is drawn behind it (the figure as already rendered), live as he turns. It fades away when its
+  // spot turns from you. Flat, so the tag stays readable even over the crease; drawn in its own pass (censorPass).
+  async function censorMesh(d, aspect) {
+    await waitFonts();
+    G.censorTag ||= new THREE.CanvasTexture(censorTag());   // plain display values: this block draws what the screen already shows
+    const w = aspect >= 1 ? d.size : d.size * aspect, h = aspect >= 1 ? d.size / aspect : d.size;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.ShaderMaterial({
+      transparent: true, depthTest: false, depthWrite: false,
+      uniforms: { uFb: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uBlock: { value: 12 }, uTag: { value: G.censorTag }, uVis: { value: 1 } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
+      fragmentShader: `
+        uniform sampler2D uFb, uTag; uniform vec2 uRes; uniform float uBlock, uVis; varying vec2 vUv;
+        void main() {
+          vec2 q = abs( vUv - 0.5 ) * 2.0;                                       // rounded corners, like the Post Studio's block
+          float edge = 1.0 - smoothstep( 0.93, 1.0, max( q.x, q.y ) );
+          vec2 cell = ( floor( gl_FragCoord.xy / uBlock ) + 0.5 ) * uBlock;
+          vec4 acc = vec4( 0.0 );
+          for ( int i = 0; i < 4; i++ ) {                                        // the average of the cell, not one pixel of it
+            vec2 o = vec2( float( i - ( i / 2 ) * 2 ), float( i / 2 ) ) - 0.5;
+            acc += texture2D( uFb, ( cell + o * uBlock * 0.5 ) / uRes );
+          }
+          acc *= 0.25;
+          float cover = smoothstep( 0.03, 0.5, acc.a );                          // only where he is: nothing over empty space
+          vec3 rgb = acc.a > 0.01 ? acc.rgb / acc.a : vec3( 0.8 );
+          rgb *= 0.965 + 0.07 * fract( sin( dot( floor( gl_FragCoord.xy / uBlock ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );   // each cell a hair different, so the mosaic reads on his smooth color
+          vec4 tag = texture2D( uTag, vUv );
+          rgb = mix( rgb, tag.rgb, tag.a );
+          float a = edge * uVis * max( cover, tag.a * step( 0.01, acc.a ) );
+          if ( a < 0.003 ) discard;
+          gl_FragColor = vec4( rgb, a );
+        }`,
+    }));
+    m.layers.set(1);                       // drawn in its own pass, after he is (render3D)
+    m.renderOrder = 2; m.userData.d = d; m.userData.censor = true;
+    return m;
+  }
   async function decalMesh(d) {
     const { tex, aspect } = await texFor(d.src);
     if (!G) return null;
+    if (d.src === 'b:censor') return censorMesh(d, aspect);
     const pos = new THREE.Vector3(...d.p), nrm = new THREE.Vector3(...d.n).normalize();
     const helper = new THREE.Object3D();
     helper.position.copy(pos); helper.lookAt(_v.copy(pos).add(nrm)); helper.rotateZ(d.rot || 0);
@@ -599,7 +686,7 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
     const bh = hitBody(ndc);
     const h = G.ray.intersectObjects(G.decals.children, false)[0];
     if (!h) return -1;
-    if (bh && h.distance > bh.distance + 0.03) return -1;
+    if (bh && !h.object.userData.censor && h.distance > bh.distance + 0.03) return -1;   // (a censor block is flat, so it can sit a little behind his curve)
     return S.decals.indexOf(h.object.userData.d);
   }
 
@@ -746,17 +833,19 @@ export function mountStudio(el, { FLAVORS = [] } = {}) {
     // and next to the stickers already there rather than on top of them
     let spot = null, first = null;
     const free = (q) => S.decals.every((d) => Math.hypot(d.p[0] - q.p[0], d.p[1] - q.p[1], d.p[2] - q.p[2]) > Math.max(0.2, d.size * 0.7));
-    for (const [x, y] of [[0, 0], [0, -0.18], [-0.2, 0.05], [0.2, 0.05], [-0.16, -0.3], [0.16, -0.3], [0, 0.22], [-0.3, -0.12], [0.3, -0.12], [0, -0.45]]) {
+    const censor = src === 'b:censor';
+    if (censor) { S.ry = Math.PI + 0.12; syncSliders(); }     // the block belongs on his butt: turn him around first
+    for (const [x, y] of censor ? [[0, -0.3], [0, -0.22], [0, -0.38], [0, -0.12], [0, -0.45]] : [[0, 0], [0, -0.18], [-0.2, 0.05], [0.2, 0.05], [-0.16, -0.3], [0.16, -0.3], [0, 0.22], [-0.3, -0.12], [0.3, -0.12], [0, -0.45]]) {
       const h = hitBody(new THREE.Vector2(x, y)); if (!h) continue;
       const q = toFigure(h); first ||= q;
       if (free(q)) { spot = q; break; }
     }
     spot ||= first || { p: [0, 0.8, 0.6], n: [0, 0, 1] };
-    const d = { src, ...spot, size: 0.34, rot: 0 };
+    const d = { src, ...spot, size: censor ? 0.5 : 0.34, rot: 0 };
     S.decals.push(d);
     select(S.decals.length - 1);
     updateDecal(d);
-    hint('Drag the sticker around on him.');
+    hint(censor ? 'It pixelates whatever is behind it. Drag it, spin him, it stays live.' : 'Drag the sticker around on him.');
   }
   function select(i) {
     S.sel = i;
