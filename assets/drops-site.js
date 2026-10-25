@@ -33,23 +33,25 @@ const FLAVORS = {
 		url: DYLI('2258-grumpl-bagfasehed-speshul'), size: '4"', edition: 1000, minted: 17, odds: '1%', price: '$42.69', last: '$250', chase: true,
 		desc: 'The chase. Hand-painted by Process Grey, pulled from 1% of boxes, and only 17 exist. DYLI shows him as a mystery outline.' },
 
-	gift:        { name: '8" Collector\u2019s Gift', finish: 'Airdrop to holders of 5+ colors', kind: 'vinyl', base: '#e0d6c6', edge: '#ffb36b', belly: '#f2ece2', photos: ['d2312'],
+	gift:        { name: '8" Collector\u2019s Gift', finish: 'Airdrop to holders of 5+ colors', kind: 'vinyl', base: '#d8434a', edge: '#ff8a4c', belly: '#f2a8a2', photos: [], soldOut: true,
 		url: DYLI('2312-8-grumpl-collector-s-gift'), size: '8"', edition: 50, odds: 'Holders of 5+ colors', price: '$0', floor: '$100', last: '$6.90', chase: true,
-		desc: 'An 8" Grumpl airdropped to anyone holding five or more colors from the blind drop. The colorway is still being finalized.' },
+		desc: 'The red 8" Grumpl, airdropped to anyone holding five or more colors from the blind drop. Sold out.' },
 
 	...Object.fromEntries(HERO_FLAVORS.map((f) => [f.id, { ...f, base: hx(f.base), edge: hx(f.edge), belly: hx(f.belly), still: `r-${f.id}`, stand: true }])),
 };
+FLAVORS.fuzzy = { ...FLAVORS.clover };   // G-130: the same fuzzy green, as its own card in drop 04
 const DROPS = [
 	{ n: '00', name: 'Studio Pull',  when: 'Stand-in', status: 'released', flavors: ['canvas'], stand: true,
 		blurb: 'Stand-in drop. Raw white vinyl from the studio photos, until there is a real drop 00 to show.' },
 	{ n: '01', name: 'Blind Box',    when: 'Feb 2025', status: 'released', flavors: ['fleshberry', 'moss', 'obo', 'lunchbutter', 'cement', 'speshul'],
-		blurb: 'Six 4" flavors in sealed collector boxes by Process Grey with BigShotToyWorks, $42.69 a box, Feb 12\u201314 2025. Sold out; every flavor trades on DYLI now.' },
-	{ n: '02', name: 'Collector\u2019s Gift', when: 'Feb 2025', status: 'released', flavors: ['gift'],
-		blurb: 'Fifty 8" Grumpls airdropped Feb 20\u201321 2025 to holders of five or more blind box colors.' },
-	{ n: HERO_DROP.n, name: HERO_DROP.name, when: 'Stand-in', status: HERO_DROP.status, flavors: HERO_FLAVORS.map((f) => f.id), stand: true,
-		blurb: 'Stand-in for the next drop. Leave your email on a flavor to see how the remind-me flow works.' },
+		blurb: 'Six 4" flavors in sealed collector boxes by Process Grey with BigShotToyWorks, Feb 12\u201314 2025. Sold out; every flavor trades on DYLI now.' },
+	{ n: HERO_DROP.n, name: HERO_DROP.name, when: 'Stand-in', status: HERO_DROP.status, flavors: [...HERO_FLAVORS.map((f) => f.id), 'gift'], stand: true,
+		blurb: 'The 8\u201d drop: a stand-in for the next flavors, plus the red Collector\u2019s Gift, which is sold out. Leave your email on a flavor to see how the remind-me flow works.' },
+	// G-130: the fuzzy green Grumpl takes the first dotted placeholder's spot
+	{ n: '04', name: 'Fuzzy Green', when: 'Stand-in', status: 'upcoming', flavors: ['fuzzy'], stand: true,
+		blurb: 'Grass-green flocked vinyl, soft as a tennis ball. Stand-in until the drop has real details.' },
 ];
-const RESERVED = ['04', '05', '06'];
+const RESERVED = ['05', '06'];
 
 
 /* ======================= helpers ======================= */
@@ -64,6 +66,9 @@ const hexMix = (a, b, t) => {
 };
 for (const [id, f] of Object.entries(FLAVORS)) { f.id = id; f.soft = hexMix(f.belly, '#ffffff', 0.62); }
 for (const d of DROPS) d.flavors.forEach((id) => (FLAVORS[id].drop = d));
+// G-118: the email sign-up lives on the newest drop only (the hero's drop), plus one in the footer
+const NEWEST = HERO_DROP.n;
+const signs = (f) => f.drop.n === NEWEST && f.drop.status === 'upcoming' && !f.soldOut;
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
 const two = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -80,7 +85,7 @@ const ICON = {
 /* ======================= tint ======================= */
 const section = $('#Drops');
 function tint(f) { section.style.setProperty('--tint', f.base); section.style.setProperty('--tint-edge', f.edge); }
-let current = DROPS.length - 1;
+let current = DROPS.findIndex((d) => d.n === NEWEST);
 const dropTint = () => tint(FLAVORS[DROPS[current].flavors[0]]);
 
 /* ======================= rail ======================= */
@@ -106,16 +111,16 @@ const grid = $('#Grid'), head = $('#Head');
 const renders = {}; // flavor id -> 3D still (data URL) once the model is ready
 
 function flavorCard(f, i) {
-	const up = f.drop.status === 'upcoming';
+	const up = f.drop.status === 'upcoming' && !f.soldOut;
 	const main = f.photos[0] ? `<img class="art" src="${img(f.photos[0])}" alt="" draggable="false">`
 		: renders[f.id] ? `<img class="art" src="${renders[f.id]}" alt="">` : f.still ? `<img class="art" src="${img(f.still)}" alt="" draggable="false">` : `<span class="art blob"></span>`;
 	const repSrc = renders[f.id] || (f.photos[1] && img(f.photos[1]));
 	const rep = repSrc ? `<img class="rep" src="${repSrc}" alt="" draggable="false">` : '';
-	return `<button class="flavor card${cut(f.photos[0]) || (!f.photos[0] && f.still && !renders[f.id]) ? ' cut' : ''}" data-id="${f.id}" aria-label="${f.name}, ${up ? 'coming soon' : 'released'}. Open details"
+	return `<button class="flavor card${cut(f.photos[0]) || (!f.photos[0] && f.still && !renders[f.id]) ? ' cut' : ''}" data-id="${f.id}" aria-label="${f.name}, ${f.soldOut ? 'sold out' : up ? 'coming soon' : 'released'}. Open details"
 		style="--base:${f.base};--edge:${f.edge};--belly:${f.belly};--soft:${f.soft}">
 		${main}${rep}
-		<span class="acts"><span class="trigger">${ICON.eye}</span><span class="say">${up ? 'Remind me' : 'On secondary'}</span></span>
-		${up ? '<span class="sticker">Soon</span>' : f.chase ? '<span class="sticker">Chase</span>' : ''}
+		<span class="acts"><span class="trigger">${ICON.eye}</span><span class="say">${up && signs(f) ? 'Remind me' : up ? 'Soon' : 'Find one'}</span></span>
+		${f.soldOut ? '<span class="sticker">Sold out</span>' : up ? '<span class="sticker">Soon</span>' : f.chase ? '<span class="sticker">Chase</span>' : ''}
 		<span class="tag">${f.short || f.name}</span>
 		<span class="flav-sub">${f.finish}</span>
 	</button>`;
@@ -201,8 +206,7 @@ function specRows(f) {
 			<dt>Finish</dt><dd>${sw}${f.finish}</dd>
 			<dt>Edition</dt><dd>${ed}</dd>
 			<dt>${f.id === 'gift' ? 'Who got one' : 'Pull odds'}</dt><dd>${f.odds}</dd>
-			<dt>Drop price</dt><dd>${f.price}</dd>
-			<dt>${f.floor ? 'Floor' : 'Last sale'}</dt><dd>${f.floor || f.last}${f.floor ? `<small>last sale ${f.last}</small>` : ''}</dd>`;
+			<dt>Prices</dt><dd><button class="show-prices" type="button" data-prices>Show prices</button></dd>`;   // G-122: no prices up front; DYLI can show a lowball offer with an Accept button
 }
 const COARSE = matchMedia('(pointer: coarse)').matches;
 const CAN_MOVE = COARSE && 'DeviceMotionEvent' in window;
@@ -241,20 +245,21 @@ function wireMotion() {
 	});
 }
 function sheetHTML(f) {
-	const d = f.drop, up = d.status === 'upcoming';
+	const d = f.drop, up = d.status === 'upcoming' && !f.soldOut;
 	const list = d.flavors, idx = list.indexOf(f.id);
 	const photoSlides = f.photos.length
 		? f.photos.map((p, k) => `<div class="slide${cut(p) ? ' cut' : ''}" data-k="${k + 1}"><img src="${img(p)}" alt="${f.name} Grumpl, photo ${k + 1}" draggable="false"></div>`).join('')
 		: `<div class="slide soon" data-k="1"><b>Photos soon</b><span>Samples are on their way.</span></div>`;
 	const n = 1 + Math.max(1, f.photos.length);
 	const pips = Array.from({ length: n }, (_, k) => `<button class="${k === 0 ? 'is3d' : ''}" data-go="${k}" aria-label="${k === 0 ? '3D view' : 'Photo ' + k}"></button>`).join('');
-	const cta = up
+	const cta = up && signs(f)
 		? `<form class="remind" novalidate>
 				<label for="RemindEmail">Remind me when ${f.name} drops</label>
 				<div class="row"><input id="RemindEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" required><button class="go" type="submit">Remind me</button></div>
 				<p class="err" aria-live="polite"></p>
 			</form>`
-		: `<a class="cta" href="${f.url || SECONDARY_URL}" target="_blank" rel="noopener">Buy on secondary <span class="trigger">${ICON.out}</span></a>
+		: up ? `<p class="cta-note">Not out yet. Sign up on the newest drop and we\u2019ll tell you.</p>`
+		: `<a class="cta" href="${f.url || SECONDARY_URL}" target="_blank" rel="noopener">Find one <span class="trigger">${ICON.out}</span></a>
 			<p class="cta-note">${f.url ? `Sold out. Listings and sales are on DYLI.` : 'Stand-in flavor, so this button has no listing yet.'}</p>`;
 	return `
 	<div class="art card"><div class="car" id="Car">
@@ -271,7 +276,7 @@ function sheetHTML(f) {
 	</div></div>
 	<div class="info card${f.name.length > 22 ? ' long' : ''}">
 		<h2 class="tag" id="FlavorName">${f.name}</h2>
-		<div class="eyebrow"><span>Drop ${d.n} \u00b7 ${d.name}</span>${up ? '<span class="chip soon">Coming ' + d.when + '</span>' : '<span class="chip">Released ' + d.when + '</span>'}</div>
+		<div class="eyebrow"><span>Drop ${d.n} \u00b7 ${d.name}</span>${f.soldOut ? '<span class="chip">Sold out</span>' : up ? '<span class="chip soon">Coming ' + d.when + '</span>' : '<span class="chip">Released ' + d.when + '</span>'}</div>
 		<p class="desc">${f.desc}</p>
 		<dl class="specs">${specRows(f)}</dl>
 		${cta}
@@ -348,7 +353,12 @@ function goSlide(k, instant = false) {
 	$('#SlideTag').textContent = slide === 0 ? (COARSE ? '3D \u00b7 drag or flick him' : '3D \u00b7 drag to spin, flick to toss') : f.photos.length ? `Photo ${slide} of ${f.photos.length}` : 'Photos soon';
 	window.Grumpl3D?.setActive(slide === 0);
 }
+// G-122: the price rows only appear after a click
+const priceRows = (f) => `<dt>Drop price</dt><dd>${f.price}</dd>
+			<dt>${f.floor ? 'Floor' : 'Last sale'}</dt><dd>${f.floor || f.last}${f.floor ? `<small>last sale ${f.last}</small>` : ''}</dd>`;
 sheet.addEventListener('click', (e) => {
+	const pr = e.target.closest('[data-prices]');
+	if (pr) { const dd = pr.parentElement, dt = dd.previousElementSibling; dt.outerHTML = ''; dd.outerHTML = priceRows(FLAVORS[openId]); return; }
 	const s = e.target.closest('[data-step]'), g = e.target.closest('[data-go]'), fl = e.target.closest('[data-flav]');
 	if (s) goSlide(slide + +s.dataset.step);
 	if (g) goSlide(+g.dataset.go);
@@ -424,3 +434,12 @@ addEventListener('grumpl-open-flavor', (e) => openFlavor(e.detail.id));
 addEventListener('grumpl-drop', (e) => { const i = DROPS.findIndex((d) => d.n === e.detail.n); if (i >= 0) selectDrop(i); });
 
 selectDrop(current, true);
+
+/* G-118: the one community sign-up in the footer, the same form as the newest drop's */
+const foot = $('#FootSignup');
+if (foot) foot.addEventListener('submit', (e) => {
+	e.preventDefault();
+	const v = $('input', foot).value.trim();
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { $('.err', foot).textContent = 'That email looks off. Check it and try again.'; return; }
+	foot.outerHTML = `<div class="remind"><div class="done">${ICON.bell.replace('<svg', '<svg width="30" height="30"')}<div><b>You\u2019re on the list</b>We\u2019ll email ${v.replace(/[<>&"]/g, '')} about new drops.</div></div></div>`;
+});

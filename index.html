@@ -256,8 +256,13 @@ body:not(.ready) #stage, body:not(.ready) #Logo3D, body:not(.ready) #HeroLogo { 
 
 <footer id="Foot">
 	<div id="Butt"></div>
+	<form class="remind" id="FootSignup" novalidate>
+		<label for="FootEmail">Get the next drop first</label>
+		<div class="row"><input id="FootEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" required><button class="go" type="submit">Sign me up</button></div>
+		<p class="err" aria-live="polite"></p>
+	</form>
 	<nav class="links" aria-label="Elsewhere">
-		<a href="https://www.dyli.io/profile/goblintown" target="_blank" rel="noopener">Secondary on DYLI</a>
+		<a href="https://www.dyli.io/profile/goblintown" target="_blank" rel="noopener">Find one on DYLI</a>
 		<a href="brand/" target="_blank" rel="noopener">Brand book</a>
 		<a href="#Artists">The artists</a>
 		<button type="button" data-sound aria-pressed="false"><span>Sound off</span></button>
