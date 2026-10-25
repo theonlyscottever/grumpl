@@ -301,25 +301,28 @@ window.Grumpl3D = {
 	setActive(on) { active = on; kick = 3; },
 	enableMotion,
 	get motionOn() { return motion.on; },
-	async still(f, angle) {
+	async still(f, angle) { return (await this.turntable(f, [angle], 640, 0.9))[0]; },
+	// the same studio still at several angles in one go (a slow turntable for the grid cards)
+	async turntable(f, angles, size = 360, quality = 0.8) {
 		const fg = figFor(f);
 		if (!fg.set.body.envMap) roomSet(fg.set, await roomEnv(renderer));   // a still can't wait for the room to stream in mid-frame
 		const keep = { rot: spin.rotation.y, az: lightC.az, el: lightC.el, q: rig.quaternion.clone(), pos: rig.position.clone(), aspect: camera.aspect, fov: camera.fov };
-		renderer.setPixelRatio(1); renderer.setSize(640, 640, false);
+		renderer.setPixelRatio(1); renderer.setSize(size, size, false);
 		camera.aspect = 1; camera.fov = 24; camera.updateProjectionMatrix();
 		camera.position.set(0, 1.35, 6.6); camera.lookAt(LOOK);
 		box.visible = false; rig.quaternion.identity(); rig.position.set(0, 0, 0);
-		applyFlavor(f); spin.rotation.y = angle; lightC.az = KEY_AZ; lightC.el = KEY_EL; placeKey();
-		renderer.render(scene, camera);
-		const url = canvas.toDataURL('image/webp', 0.9);
+		applyFlavor(f); lightC.az = KEY_AZ; lightC.el = KEY_EL; placeKey();
+		const urls = [];
+		for (const a of angles) { spin.rotation.y = a; renderer.render(scene, camera); urls.push(canvas.toDataURL('image/webp', quality)); }
 		box.visible = true; rig.quaternion.copy(keep.q); rig.position.copy(keep.pos);
 		renderer.setPixelRatio(DPR);
 		spin.rotation.y = keep.rot; lightC.az = keep.az; lightC.el = keep.el;
 		if (flavor) applyFlavor(flavor);
 		resize();
 		await new Promise((r) => setTimeout(r, 30));
-		return url;
+		return urls;
 	},
+
 };
 // a new flavor drops in from the top of the box and lands with a little bounce
 function arrive() { resetBody(); spin.rotation.y = -1.6; vel = 3.2; idle = 0; p.y = BOX.top - 1.1; v.set(0, -2, 0); w.set(0, 0, 1.2); kick = 3; }

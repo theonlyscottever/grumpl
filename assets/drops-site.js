@@ -10,23 +10,23 @@ const SIZE = { h: ['4.75 in', '12.1 cm'], w: ['3.4 in', '8.6 cm'], d: ['2.9 in',
 const DYLI = (slug) => `https://www.dyli.io/drop/${slug}`;
 const BOX = 'Blind box, Process Grey \u00d7 BigShotToyWorks';
 const FLAVORS = {
-	canvas:      { name: 'Blank Canvas',     finish: 'Unpainted matte vinyl', kind: 'vinyl',  base: '#ece9e3', edge: '#c3cdf0', belly: '#fbfaf7', photos: ['g7719', 'g7721', 'g7688'], weight: '205 g', edition: 300, stand: true,
+	canvas:      { name: 'Blank Canvas',     finish: 'Unpainted matte vinyl', kind: 'vinyl',  base: '#ece9e3', edge: '#c3cdf0', belly: '#fbfaf7', photos: ['g7719', 'g7721', 'g7688'], pick: 'g7719', weight: '205 g', edition: 300, stand: true,
 		desc: 'The raw pull, straight off the mold with no paint. Stand-in card until the studio pull has real details.' },
 	// Rose Chrome is drop 03's now (drop.js)
 
-	fleshberry:  { name: 'Fleshberry', finish: BOX, kind: 'vinyl', base: '#eeaa9c', edge: '#ff6f8e', belly: '#f6cbbd', photos: ['d2253', 'g5729', 'g5730', 'g5733'],
+	fleshberry:  { name: 'Fleshberry', finish: BOX, kind: 'vinyl', base: '#eeaa9c', edge: '#ff6f8e', belly: '#f6cbbd', photos: ['d2253', 'g5729', 'g5730', 'g5733'], pick: 'g5730',
 		url: DYLI('2253-grumpl-fleshberry'), size: '4"', edition: 313, minted: 313, odds: '29%', price: '$42.69', floor: '$40', last: '$10',
 		desc: 'The most common pull in the box at 29%. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
-	moss:        { name: 'Mosssnootfruit', finish: BOX, kind: 'vinyl', base: '#9fd6a0', edge: '#4fb8e0', belly: '#cdeec2', photos: ['d2254', 'g5709', 'g5711', 'g5712', 'g5713', 'g5710'],
+	moss:        { name: 'Mosssnootfruit', finish: BOX, kind: 'vinyl', base: '#9fd6a0', edge: '#4fb8e0', belly: '#cdeec2', photos: ['d2254', 'g5709', 'g5711', 'g5712', 'g5713', 'g5710'], pick: 'g5713',
 		url: DYLI('2254-grumpl-mosssnootfruit'), size: '4"', edition: 273, minted: 273, odds: '25%', price: '$42.69', last: '$33',
 		desc: 'Moss green with blue pooled in the creases. One in four boxes. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
-	obo:         { name: 'Color That Tastes Like Obo\u2019s Foot', short: 'Obo\u2019s Foot', finish: BOX, kind: 'vinyl', base: '#a9a6e6', edge: '#7f8cff', belly: '#cac8f2', photos: ['d2255', 'g5717', 'g5718', 'g5719', 'g5720', 'g5721', 'g5722', 'g5723'],
+	obo:         { name: 'Color That Tastes Like Obo\u2019s Foot', short: 'Obo\u2019s Foot', finish: BOX, kind: 'vinyl', base: '#a9a6e6', edge: '#7f8cff', belly: '#cac8f2', photos: ['d2255', 'g5717', 'g5718', 'g5719', 'g5720', 'g5721', 'g5722', 'g5723'], pick: 'g5720',
 		url: DYLI('2255-grumpl-color-that-tastes-like-obo-s-foot'), size: '4"', edition: 213, minted: 213, odds: '20%', price: '$42.69', last: '$20',
 		desc: 'Periwinkle that leans violet at the ears and toes. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
-	lunchbutter: { name: 'Lunchbutter', finish: BOX, kind: 'vinyl', base: '#d8b862', edge: '#ff9fb0', belly: '#efd9a0', photos: ['d2256', 'g5716'],
+	lunchbutter: { name: 'Lunchbutter', finish: BOX, kind: 'vinyl', base: '#d8b862', edge: '#ff9fb0', belly: '#efd9a0', photos: ['d2256', 'g5716'], pick: 'g5716',
 		url: DYLI('2256-grumpl-lunchbutter'), size: '4"', edition: 163, minted: 163, odds: '15%', price: '$42.69', last: '$37.90',
 		desc: 'Mustard butter with pink ears. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
-	cement:      { name: 'Cement Juice', finish: BOX, kind: 'vinyl', base: '#c9c7c4', edge: '#ff9fb8', belly: '#e6e4e1', photos: ['d2257', 'g5726', 'g5725', 'g5727'],
+	cement:      { name: 'Cement Juice', finish: BOX, kind: 'vinyl', base: '#c9c7c4', edge: '#ff9fb8', belly: '#e6e4e1', photos: ['d2257', 'g5726', 'g5725', 'g5727'], pick: 'g5726',
 		url: DYLI('2257-grumpl-cement-juice'), size: '4"', edition: 107, minted: 107, odds: '10%', price: '$42.69', last: '$6',
 		desc: 'Sidewalk gray with pink in the crevices. One in ten boxes. Sealed collector box designed by Process Grey; 4" vinyl art figure.' },
 	speshul:     { name: 'Bagfasehed Speshul', finish: 'Hand-painted by Process Grey', kind: 'vinyl', base: '#d9d4cc', edge: '#b48cff', belly: '#efebe5', photos: ['d2258'],
@@ -112,11 +112,12 @@ const renders = {}; // flavor id -> 3D still (data URL) once the model is ready
 
 function flavorCard(f, i) {
 	const up = f.drop.status === 'upcoming' && !f.soldOut;
-	const main = f.photos[0] ? `<img class="art" src="${img(f.photos[0])}" alt="" draggable="false">`
+	const lead = f.pick || f.photos[0];
+	const main = lead ? `<img class="art" src="${img(lead)}" alt="" draggable="false">`
 		: renders[f.id] ? `<img class="art" src="${renders[f.id]}" alt="">` : f.still ? `<img class="art" src="${img(f.still)}" alt="" draggable="false">` : `<span class="art blob"></span>`;
-	const repSrc = renders[f.id] || (f.photos[1] && img(f.photos[1]));
+	const repSrc = renders[f.id] || (f.pick ? '' : f.photos[1] && img(f.photos[1]));
 	const rep = repSrc ? `<img class="rep" src="${repSrc}" alt="" draggable="false">` : '';
-	return `<button class="flavor card${cut(f.photos[0]) || (!f.photos[0] && f.still && !renders[f.id]) ? ' cut' : ''}" data-id="${f.id}" aria-label="${f.name}, ${f.soldOut ? 'sold out' : up ? 'coming soon' : 'released'}. Open details"
+	return `<button class="flavor card${cut(lead) || (!lead && f.still && !renders[f.id]) ? ' cut' : ''}" data-id="${f.id}" aria-label="${f.name}, ${f.soldOut ? 'sold out' : up ? 'coming soon' : 'released'}. Open details"
 		style="--base:${f.base};--edge:${f.edge};--belly:${f.belly};--soft:${f.soft}">
 		${main}${rep}
 		<span class="acts"><span class="trigger">${ICON.eye}</span><span class="say">${up && signs(f) ? 'Remind me' : up ? 'Soon' : 'Find one'}</span></span>
@@ -422,6 +423,23 @@ addEventListener('grumpl3d-ready', async () => {
 });
 
 
+
+/* hover on a card: the 3D Grumpl turns slowly on his colored background (a turntable of stills, made on first hover) */
+const TURN = { n: 30, rate: 7 }; // frames per revolution, frames per second
+const turns = {}, spinning = new WeakMap();
+function turntable(f) { return turns[f.id] ||= window.Grumpl3D?.turntable ? window.Grumpl3D.turntable(f, Array.from({ length: TURN.n }, (_, k) => 0.55 + k * Math.PI * 2 / TURN.n)).then((u) => { u.forEach((s) => { new Image().src = s; }); return u; }) : null; }
+function stopSpin(c) { const t = spinning.get(c); if (t) { clearInterval(t); spinning.delete(c); } }
+if (!COARSE && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+	grid.addEventListener('pointerover', async (e) => {
+		const c = e.target.closest('.flavor'); if (!c || spinning.has(c) || e.relatedTarget && c.contains(e.relatedTarget)) return;
+		const f = FLAVORS[c.dataset.id], rep = $('.rep', c), job = f && rep && turntable(f); if (!job) return;
+		spinning.set(c, 0);
+		const frames = await job; if (!spinning.has(c)) return;
+		let k = 0; rep.src = frames[0];
+		spinning.set(c, setInterval(() => { rep.src = frames[k = (k + 1) % frames.length]; }, 1000 / TURN.rate));
+	});
+	grid.addEventListener('pointerout', (e) => { const c = e.target.closest('.flavor'); if (c && !(e.relatedTarget && c.contains(e.relatedTarget))) stopSpin(c); });
+}
 
 /* the 3D box loads once the section gets close, or when a popup opens first */
 let booted = false;
